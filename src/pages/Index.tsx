@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -144,6 +145,7 @@ const Index = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
+      <ScrollToTop />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
         <header className="mb-10 space-y-6">
@@ -212,7 +214,7 @@ const Index = () => {
                 <div className="flex items-center gap-4">
                   <span className="text-2xl font-serif font-bold text-primary">{year}</span>
                   <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
-                    {yearData[year]?.length || 0} Items
+                    {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
                   </span>
                 </div>
                 <ChevronDown 

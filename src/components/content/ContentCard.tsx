@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, CheckCircle2 } from 'lucide-react';
+import { Star, CheckCircle2, Film } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentItem } from '@/lib/tmdb';
 
@@ -15,7 +15,7 @@ interface ContentCardProps {
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate }: ContentCardProps) => {
   const formatDate = (dateStr: string) => {
-    if (dateStr === "TBA") return "TBA";
+    if (!dateStr || dateStr === "TBA") return "TBA";
     try {
       const date = new Date(dateStr);
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -25,6 +25,8 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
+  const hasPoster = item.poster_path && !item.poster_path.includes('placeholder.svg');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -33,38 +35,43 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       className="group relative flex flex-col gap-3"
     >
       <div className={cn(
-        "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500",
+        "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900",
         isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
       )}>
-        <img
-          src={item.poster_path}
-          alt={item.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          loading="lazy"
-        />
+        {hasPoster ? (
+          <img
+            src={item.poster_path}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center gap-4 bg-gradient-to-b from-neutral-800 to-neutral-950">
+            <Film className="text-primary/40" size={48} />
+            <span className="text-sm font-serif font-bold text-white/60 line-clamp-3">{item.title}</span>
+          </div>
+        )}
         
         {/* Overlay for actions */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          {!showReleaseDate && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleWatched?.(item.id);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-full font-bold text-sm transition-all transform translate-y-4 group-hover:translate-y-0",
-                isWatched 
-                  ? "bg-primary text-black" 
-                  : "bg-white text-black hover:bg-primary"
-              )}
-            >
-              {isWatched ? "Watched" : "Add to Watched"}
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWatched?.(item.id);
+            }}
+            className={cn(
+              "px-4 py-2 rounded-full font-bold text-sm transition-all transform translate-y-4 group-hover:translate-y-0",
+              isWatched 
+                ? "bg-primary text-black" 
+                : "bg-white text-black hover:bg-primary"
+            )}
+          >
+            {isWatched ? "Watched" : "Add to Watched"}
+          </button>
         </div>
 
         {isWatched && (
-          <div className="absolute top-3 right-3 bg-primary text-black p-1.5 rounded-full shadow-lg">
+          <div className="absolute top-3 right-3 bg-primary text-black p-1.5 rounded-full shadow-lg z-10">
             <CheckCircle2 size={16} />
           </div>
         )}
@@ -75,16 +82,23 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
           {item.title}
         </h3>
         
-        {showReleaseDate ? (
-          <p className="text-sm font-medium">
-            <span className="text-primary">Release:</span> {formatDate(item.release_date)}
-          </p>
-        ) : (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-primary font-bold">IMDb:</span>
-            <span className="text-white/90">{item.vote_average > 0 ? item.vote_average.toFixed(1) : "N/A"}</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between text-sm">
+          {showReleaseDate ? (
+            <p className="font-medium">
+              <span className="text-primary">Release:</span> {formatDate(item.release_date)}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-primary font-bold">IMDb:</span>
+              <span className="text-white/90">{item.vote_average > 0 ? item.vote_average.toFixed(1) : "N/A"}</span>
+            </div>
+          )}
+          {item.release_date && !showReleaseDate && (
+            <span className="text-muted-foreground text-xs">
+              {new Date(item.release_date).getFullYear() || ""}
+            </span>
+          )}
+        </div>
       </div>
     </motion.div>
   );

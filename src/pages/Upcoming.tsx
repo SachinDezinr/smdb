@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter } from 'lucide-react';
+import { Search, Loader2, Filter, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -28,21 +29,28 @@ const Upcoming = () => {
   const [activeRegion, setActiveRegion] = useState<Region>('all');
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const load = async (pageNum: number = 1) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      const data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+      setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
+      setPage(pageNum);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchUpcoming(activeCategory, activeRegion);
-        setItems(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    load(1);
   }, [activeCategory, activeRegion]);
 
   const filteredItems = items.filter(item => 
@@ -52,13 +60,21 @@ const Upcoming = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
+      <ScrollToTop />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
         <header className="mb-10 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <h1 className="text-4xl lg:text-5xl font-serif font-bold">
-              Upcoming <span className="text-primary">Releases</span>
-            </h1>
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+                Upcoming <span className="text-primary">Releases</span>
+              </h1>
+              {!loading && (
+                <p className="text-muted-foreground mt-2 font-medium">
+                  Showing {items.length}+ anticipated titles
+                </p>
+              )}
+            </div>
             
             <div className="relative group max-w-md w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
@@ -115,11 +131,26 @@ const Upcoming = () => {
             <Loader2 className="animate-spin text-primary" size={48} />
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
-              <ContentCard key={item.id} item={item} showReleaseDate />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredItems.map((item) => (
+                <ContentCard key={item.id} item={item} showReleaseDate />
+              ))}
+            </div>
+            
+            {items.length > 0 && (
+              <div className="mt-12 flex justify-center">
+                <button
+                  onClick={() => load(page + 1)}
+                  disabled={loadingMore}
+                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10 disabled:opacity-50"
+                >
+                  {loadingMore ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} />}
+                  Load More Upcoming
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
