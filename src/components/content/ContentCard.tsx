@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, CheckCircle2, Film } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentItem } from '@/lib/tmdb';
 
@@ -46,29 +46,30 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center gap-4 bg-gradient-to-b from-neutral-800 to-neutral-950">
-            <Film className="text-primary/40" size={48} />
-            <span className="text-sm font-serif font-bold text-white/60 line-clamp-3">{item.title}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-neutral-950">
+            <span className="text-sm font-serif font-bold text-white/60 line-clamp-4">{item.title}</span>
           </div>
         )}
         
-        {/* Overlay for actions */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleWatched?.(item.id);
-            }}
-            className={cn(
-              "px-4 py-2 rounded-full font-bold text-sm transition-all transform translate-y-4 group-hover:translate-y-0",
-              isWatched 
-                ? "bg-primary text-black" 
-                : "bg-white text-black hover:bg-primary"
-            )}
-          >
-            {isWatched ? "Watched" : "Add to Watched"}
-          </button>
-        </div>
+        {/* Overlay for actions - Hidden for upcoming content */}
+        {!showReleaseDate && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWatched?.(item.id);
+              }}
+              className={cn(
+                "px-4 py-2 rounded-full font-bold text-sm transition-all transform translate-y-4 group-hover:translate-y-0",
+                isWatched 
+                  ? "bg-primary text-black" 
+                  : "bg-white text-black hover:bg-primary"
+              )}
+            >
+              {isWatched ? "Watched" : "Add to Watched"}
+            </button>
+          </div>
+        )}
 
         {isWatched && (
           <div className="absolute top-3 right-3 bg-primary text-black p-1.5 rounded-full shadow-lg z-10">

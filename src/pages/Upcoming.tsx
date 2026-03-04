@@ -69,11 +69,9 @@ const Upcoming = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Upcoming <span className="text-primary">Releases</span>
               </h1>
-              {!loading && (
-                <p className="text-muted-foreground mt-2 font-medium">
-                  Showing {items.length}+ anticipated titles
-                </p>
-              )}
+              <p className="text-muted-foreground mt-2 font-medium">
+                Showing {items.length > 0 ? `${items.length}+` : "20+"} anticipated titles
+              </p>
             </div>
             
             <div className="relative group max-w-md w-full">
