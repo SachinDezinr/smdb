@@ -12,6 +12,8 @@ import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
 import Collection from "./pages/Collection";
 import Profile from "./pages/Profile";
+import Friends from "./pages/Friends";
+import Stats from "./pages/Stats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
           <Route path="/upcoming" element={<ProtectedRoute><Upcoming /></ProtectedRoute>} />
           <Route path="/collection" element={<ProtectedRoute><Collection /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
+          <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
