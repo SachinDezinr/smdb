@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Film } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentItem } from '@/lib/tmdb';
 
@@ -46,8 +46,12 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-neutral-950">
-            <span className="text-sm font-serif font-bold text-white/60 line-clamp-4">{item.title}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative">
+            <Film className="text-primary/20 mb-4" size={48} strokeWidth={1} />
+            <span className="text-sm font-serif font-bold text-white/80 line-clamp-4 relative z-10">
+              {item.title}
+            </span>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
           </div>
         )}
         
