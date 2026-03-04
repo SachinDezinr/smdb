@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, Settings, LogOut, Shield, Edit3, Check, Loader2 } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
@@ -102,16 +102,26 @@ const Profile = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </section>
 
-              <div className="pt-6 border-t border-white/5">
-                <button
-                  onClick={() => navigate('/change-password')}
-                  className="flex items-center gap-3 text-muted-foreground hover:text-white transition-colors"
-                >
-                  <Shield size={18} />
-                  Change Password
-                </button>
-              </div>
+          <section className="glass-card p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6">Support & Info</h2>
+            <div className="space-y-2">
+              <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Info size={20} className="text-primary" />
+                  <span>About CineTrack</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+              <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Mail size={20} className="text-primary" />
+                  <span>Contact Support</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
             </div>
           </section>
 

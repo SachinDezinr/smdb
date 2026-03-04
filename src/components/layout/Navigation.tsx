@@ -2,13 +2,15 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Library, User, Info, Mail, Film } from 'lucide-react';
+import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
+  { icon: BarChart3, label: 'Stats', path: '/stats' },
+  { icon: Users, label: 'Friends', path: '/friends' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 

@@ -72,7 +72,7 @@ export const fetchContent = async (
       genre_ids: item.genre_ids || [],
       overview: item.overview
     }))
-    .filter((item: any) => !year || item.release_date <= today); // Filter out unreleased on home
+    .filter((item: any) => !year || item.release_date <= today);
 };
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all"): Promise<ContentItem[]> => {
@@ -81,23 +81,21 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   
   switch (type) {
     case "movie":
-      url = `${BASE_URL}/movie/upcoming?api_key=${TMDB_API_KEY}${regionParams}`;
+      url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=primary_release_date.asc${regionParams}`;
       break;
     case "tv":
-      url = `${BASE_URL}/tv/on_the_air?api_key=${TMDB_API_KEY}${regionParams}`;
+      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc${regionParams}`;
       break;
     case "anime":
-      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&sort_by=first_air_date.desc`;
+      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc`;
       break;
     case "k-drama":
-      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&sort_by=first_air_date.desc`;
+      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc`;
       break;
   }
     
   const response = await fetch(url);
   const data = await response.json();
-  
-  const today = new Date().toISOString().split('T')[0];
   
   return (data.results || [])
     .map((item: any) => ({
@@ -109,6 +107,5 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       media_type: type,
       genre_ids: item.genre_ids || [],
       overview: item.overview
-    }))
-    .filter((item: any) => item.release_date > today || item.release_date === "TBA");
+    }));
 };
