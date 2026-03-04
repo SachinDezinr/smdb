@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
-import { fetchContent, ContentItem, MediaType } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2 } from 'lucide-react';
+import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, ChevronDown, Loader2, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -17,8 +17,18 @@ const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'K-Drama', value: 'k-drama' },
 ];
 
+const REGIONS: { label: string; value: Region }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Hollywood', value: 'hollywood' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Punjabi', value: 'punjabi' },
+  { label: 'South Indian', value: 'south-indian' },
+  { label: 'Animated', value: 'animated' },
+];
+
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
+  const [activeRegion, setActiveRegion] = useState<Region>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
   const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
@@ -26,7 +36,7 @@ const Index = () => {
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
 
   const fetchWatchedIds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -47,7 +57,7 @@ const Index = () => {
     
     setLoading(true);
     try {
-      const results = await fetchContent(activeCategory, year);
+      const results = await fetchContent(activeCategory, year, 1, "", activeRegion);
       setYearData(prev => ({ ...prev, [year]: results }));
     } catch (error) {
       console.error("Failed to fetch year content", error);
@@ -79,7 +89,7 @@ const Index = () => {
         .eq('content_id', item.id);
 
       if (error) {
-        showError("Failed to remove from watched");
+        showError("Failed to remove from watched. Did you run the SQL?");
       } else {
         setWatchedIds(prev => prev.filter(id => id !== item.id));
         showSuccess("Removed from collection");
@@ -98,7 +108,7 @@ const Index = () => {
         });
 
       if (error) {
-        showError("Failed to add to watched");
+        showError("Failed to add to watched. Did you run the SQL?");
       } else {
         setWatchedIds(prev => [...prev, item.id]);
         showSuccess("Added to your collection!");
@@ -111,7 +121,7 @@ const Index = () => {
     setExpandedYears([currentYear]);
     loadYearContent(currentYear);
     fetchWatchedIds();
-  }, [activeCategory]);
+  }, [activeCategory, activeRegion]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -128,7 +138,7 @@ const Index = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
               <input
                 type="text"
-                placeholder="Search by title, year, or genre..."
+                placeholder="Search by title..."
                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -136,21 +146,41 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
-                className={cn(
-                  "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                  activeCategory === cat.value 
-                    ? "bg-primary text-black" 
-                    : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                )}
-              >
-                {cat.label}
-              </button>
-            ))}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setActiveCategory(cat.value)}
+                  className={cn(
+                    "px-6 py-2 rounded-full text-sm font-semibold transition-all",
+                    activeCategory === cat.value 
+                      ? "bg-primary text-black" 
+                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2 items-center">
+              <Filter size={16} className="text-primary mr-2" />
+              {REGIONS.map((reg) => (
+                <button
+                  key={reg.value}
+                  onClick={() => setActiveRegion(reg.value)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                    activeRegion === reg.value 
+                      ? "border-primary bg-primary/10 text-primary" 
+                      : "border-white/10 text-muted-foreground hover:border-white/30"
+                  )}
+                >
+                  {reg.label}
+                </button>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -188,7 +218,7 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                          {yearData[year]?.map((item) => (
+                          {yearData[year]?.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase())).map((item) => (
                             <ContentCard 
                               key={item.id} 
                               item={item} 
