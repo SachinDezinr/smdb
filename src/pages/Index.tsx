@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchContent, ContentItem, MediaType } from '@/lib/tmdb';
-import { Search, Filter, ChevronDown, Loader2 } from 'lucide-react';
+import { Search, ChevronDown, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { showSuccess, showError } from '@/utils/toast';
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -25,6 +27,20 @@ const Index = () => {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i);
+
+  const fetchWatchedIds = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('watched_content')
+      .select('content_id')
+      .eq('user_id', user.id);
+    
+    if (data) {
+      setWatchedIds(data.map(item => item.content_id));
+    }
+  };
 
   const loadYearContent = async (year: number) => {
     if (yearData[year]) return;
@@ -49,16 +65,52 @@ const Index = () => {
     }
   };
 
-  const toggleWatched = (id: number) => {
-    setWatchedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+  const toggleWatched = async (item: ContentItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isCurrentlyWatched = watchedIds.includes(item.id);
+
+    if (isCurrentlyWatched) {
+      const { error } = await supabase
+        .from('watched_content')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.id);
+
+      if (error) {
+        showError("Failed to remove from watched");
+      } else {
+        setWatchedIds(prev => prev.filter(id => id !== item.id));
+        showSuccess("Removed from collection");
+      }
+    } else {
+      const { error } = await supabase
+        .from('watched_content')
+        .insert({
+          user_id: user.id,
+          content_id: item.id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (error) {
+        showError("Failed to add to watched");
+      } else {
+        setWatchedIds(prev => [...prev, item.id]);
+        showSuccess("Added to your collection!");
+      }
+    }
   };
 
   useEffect(() => {
     setYearData({});
     setExpandedYears([currentYear]);
     loadYearContent(currentYear);
+    fetchWatchedIds();
   }, [activeCategory]);
 
   return (
@@ -141,7 +193,7 @@ const Index = () => {
                               key={item.id} 
                               item={item} 
                               isWatched={watchedIds.includes(item.id)}
-                              onToggleWatched={toggleWatched}
+                              onToggleWatched={() => toggleWatched(item)}
                             />
                           ))}
                         </div>
