@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, BarChart3 } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { ContentItem } from '@/lib/tmdb';
+import { Link } from 'react-router-dom';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
@@ -64,9 +64,19 @@ const Collection = () => {
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
         <header className="mb-10 space-y-8">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <h1 className="text-4xl lg:text-5xl font-serif font-bold">
-              Your <span className="text-primary">Collection</span>
-            </h1>
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+                Your <span className="text-primary">Collection</span>
+              </h1>
+              <Link 
+                to="/stats" 
+                className="inline-flex items-center gap-2 mt-4 text-primary hover:underline font-bold text-sm lg:hidden"
+              >
+                <BarChart3 size={16} />
+                View Detailed Stats
+                <ChevronRight size={14} />
+              </Link>
+            </div>
             
             <div className="relative group max-w-md w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -103,6 +103,20 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="glass-card p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Users size={20} className="text-primary" />
+              Social Circle
+            </h2>
+            <Link to="/friends" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+              <div className="flex items-center gap-3">
+                <Users size={20} className="text-primary" />
+                <span>Manage Friends & Requests</span>
+              </div>
+              <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+            </Link>
           </section>
 
           <section className="glass-card p-8 border-white/5">

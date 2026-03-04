@@ -5,12 +5,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
+const desktopNavItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: BarChart3, label: 'Stats', path: '/stats' },
   { icon: Users, label: 'Friends', path: '/friends' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+const mobileNavItems = [
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
@@ -24,7 +31,7 @@ export const Navigation = () => {
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Remains the same */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r border-white/10 bg-background/50 backdrop-blur-xl p-6">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -34,7 +41,7 @@ export const Navigation = () => {
         </div>
 
         <nav className="flex-1 space-y-2">
-          {navItems.map((item) => (
+          {desktopNavItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -73,9 +80,9 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile Bottom Nav - Cleaned up */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-4 z-50">
-        {navItems.map((item) => (
+        {mobileNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
