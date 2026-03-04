@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +32,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
   const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
-  const [loading, setLoading] = useState(false);
+  const [yearPages, setYearPages] = useState<Record<number, number>>({});
+  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
 
   const currentYear = new Date().getFullYear();
@@ -42,27 +43,36 @@ const Index = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('watched_content')
       .select('content_id')
       .eq('user_id', user.id);
+    
+    if (error) {
+      console.error("Error fetching watched IDs:", error);
+      return;
+    }
     
     if (data) {
       setWatchedIds(data.map(item => item.content_id));
     }
   };
 
-  const loadYearContent = async (year: number) => {
-    if (yearData[year]) return;
-    
-    setLoading(true);
+  const loadYearContent = async (year: number, page: number = 1) => {
+    setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
-      const results = await fetchContent(activeCategory, year, 1, "", activeRegion);
-      setYearData(prev => ({ ...prev, [year]: results }));
+      const results = await fetchContent(activeCategory, year, page, "", activeRegion);
+      
+      setYearData(prev => ({ 
+        ...prev, 
+        [year]: page === 1 ? results : [...(prev[year] || []), ...results] 
+      }));
+      setYearPages(prev => ({ ...prev, [year]: page }));
     } catch (error) {
-      console.error("Failed to fetch year content", error);
+      console.error(`Failed to fetch content for ${year}:`, error);
+      showError(`Failed to load content for ${year}`);
     } finally {
-      setLoading(false);
+      setLoadingYears(prev => ({ ...prev, [year]: false }));
     }
   };
 
@@ -71,13 +81,18 @@ const Index = () => {
       setExpandedYears(prev => prev.filter(y => y !== year));
     } else {
       setExpandedYears(prev => [...prev, year]);
-      loadYearContent(year);
+      if (!yearData[year]) {
+        loadYearContent(year, 1);
+      }
     }
   };
 
   const toggleWatched = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      showError("Please sign in to track movies");
+      return;
+    }
 
     const isCurrentlyWatched = watchedIds.includes(item.id);
 
@@ -89,7 +104,8 @@ const Index = () => {
         .eq('content_id', item.id);
 
       if (error) {
-        showError("Failed to remove from watched. Did you run the SQL?");
+        showError("Failed to remove. Check if SQL was run.");
+        console.error("Delete error:", error);
       } else {
         setWatchedIds(prev => prev.filter(id => id !== item.id));
         showSuccess("Removed from collection");
@@ -108,7 +124,8 @@ const Index = () => {
         });
 
       if (error) {
-        showError("Failed to add to watched. Did you run the SQL?");
+        showError("Failed to add. Check if SQL was run.");
+        console.error("Insert error:", error);
       } else {
         setWatchedIds(prev => [...prev, item.id]);
         showSuccess("Added to your collection!");
@@ -118,8 +135,9 @@ const Index = () => {
 
   useEffect(() => {
     setYearData({});
+    setYearPages({});
     setExpandedYears([currentYear]);
-    loadYearContent(currentYear);
+    loadYearContent(currentYear, 1);
     fetchWatchedIds();
   }, [activeCategory, activeRegion]);
 
@@ -212,21 +230,33 @@ const Index = () => {
                     transition={{ duration: 0.3 }}
                   >
                     <div className="p-6 pt-0">
-                      {loading && !yearData[year] ? (
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                        {yearData[year]?.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase())).map((item) => (
+                          <ContentCard 
+                            key={item.id} 
+                            item={item} 
+                            isWatched={watchedIds.includes(item.id)}
+                            onToggleWatched={() => toggleWatched(item)}
+                          />
+                        ))}
+                      </div>
+
+                      {loadingYears[year] ? (
                         <div className="flex items-center justify-center py-10">
                           <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                          {yearData[year]?.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase())).map((item) => (
-                            <ContentCard 
-                              key={item.id} 
-                              item={item} 
-                              isWatched={watchedIds.includes(item.id)}
-                              onToggleWatched={() => toggleWatched(item)}
-                            />
-                          ))}
-                        </div>
+                        yearData[year] && yearData[year].length > 0 && (
+                          <div className="mt-8 flex justify-center">
+                            <button
+                              onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
+                              className="flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-bold text-sm border border-white/10"
+                            >
+                              <Plus size={18} />
+                              Load More Movies
+                            </button>
+                          </div>
+                        )
                       )}
                     </div>
                   </motion.div>
