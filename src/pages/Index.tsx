@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +31,8 @@ const Index = () => {
   const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
   const [activeRegion, setActiveRegion] = useState<Region>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
   const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
   const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
   const [yearPages, setYearPages] = useState<Record<number, number>>({});
@@ -49,13 +51,25 @@ const Index = () => {
       .select('content_id')
       .eq('user_id', user.id);
     
-    if (error) {
-      console.error("Error fetching watched IDs:", error);
+    if (data) setWatchedIds(data.map(item => item.content_id));
+  };
+
+  const handleGlobalSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) {
+      setIsSearching(false);
       return;
     }
-    
-    if (data) {
-      setWatchedIds(data.map(item => item.content_id));
+
+    setIsSearching(true);
+    setLoadingYears({ 0: true }); // Use 0 as a key for global search loading
+    try {
+      const results = await fetchContent(activeCategory, undefined, 1, searchQuery, activeRegion);
+      setSearchResults(results);
+    } catch (error) {
+      showError("Search failed. Please try again.");
+    } finally {
+      setLoadingYears({ 0: false });
     }
   };
 
@@ -63,7 +77,6 @@ const Index = () => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
       const results = await fetchContent(activeCategory, year, page, "", activeRegion);
-      
       setYearData(prev => ({ 
         ...prev, 
         [year]: page === 1 ? results : [...(prev[year] || []), ...results] 
@@ -71,7 +84,6 @@ const Index = () => {
       setYearPages(prev => ({ ...prev, [year]: page }));
     } catch (error) {
       console.error(`Failed to fetch content for ${year}:`, error);
-      showError(`Failed to load content for ${year}`);
     } finally {
       setLoadingYears(prev => ({ ...prev, [year]: false }));
     }
@@ -82,9 +94,7 @@ const Index = () => {
       setExpandedYears(prev => prev.filter(y => y !== year));
     } else {
       setExpandedYears(prev => [...prev, year]);
-      if (!yearData[year]) {
-        loadYearContent(year, 1);
-      }
+      if (!yearData[year]) loadYearContent(year, 1);
     }
   };
 
@@ -104,10 +114,7 @@ const Index = () => {
         .eq('user_id', user.id)
         .eq('content_id', item.id);
 
-      if (error) {
-        showError("Failed to remove. Check if SQL was run.");
-        console.error("Delete error:", error);
-      } else {
+      if (!error) {
         setWatchedIds(prev => prev.filter(id => id !== item.id));
         showSuccess("Removed from collection");
       }
@@ -124,10 +131,7 @@ const Index = () => {
           media_type: item.media_type
         });
 
-      if (error) {
-        showError("Failed to add. Check if SQL was run.");
-        console.error("Insert error:", error);
-      } else {
+      if (!error) {
         setWatchedIds(prev => [...prev, item.id]);
         showSuccess("Added to your collection!");
       }
@@ -135,12 +139,14 @@ const Index = () => {
   };
 
   useEffect(() => {
-    setYearData({});
-    setYearPages({});
-    setExpandedYears([currentYear]);
-    loadYearContent(currentYear, 1);
+    if (!isSearching) {
+      setYearData({});
+      setYearPages({});
+      setExpandedYears([currentYear]);
+      loadYearContent(currentYear, 1);
+    }
     fetchWatchedIds();
-  }, [activeCategory, activeRegion]);
+  }, [activeCategory, activeRegion, isSearching]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -154,16 +160,33 @@ const Index = () => {
               Discover <span className="text-primary">Cinema</span>
             </h1>
             
-            <div className="relative group max-w-md w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-              <input
-                type="text"
-                placeholder="Search by title..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <form onSubmit={handleGlobalSearch} className="relative group max-w-md w-full flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search globally..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button 
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setIsSearching(false); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+              <button 
+                type="submit"
+                className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform"
+              >
+                Search
+              </button>
+            </form>
           </div>
 
           <div className="space-y-4">
@@ -171,7 +194,7 @@ const Index = () => {
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.value}
-                  onClick={() => setActiveCategory(cat.value)}
+                  onClick={() => { setActiveCategory(cat.value); if(isSearching) handleGlobalSearch(); }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-semibold transition-all",
                     activeCategory === cat.value 
@@ -189,7 +212,7 @@ const Index = () => {
               {REGIONS.map((reg) => (
                 <button
                   key={reg.value}
-                  onClick={() => setActiveRegion(reg.value)}
+                  onClick={() => { setActiveRegion(reg.value); if(isSearching) handleGlobalSearch(); }}
                   className={cn(
                     "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
                     activeRegion === reg.value 
@@ -205,67 +228,102 @@ const Index = () => {
         </header>
 
         <div className="space-y-4">
-          {years.map((year) => (
-            <div key={year} className="glass-card overflow-hidden border-white/5">
-              <button
-                onClick={() => toggleYear(year)}
-                className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl font-serif font-bold text-primary">{year}</span>
-                  <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
-                    {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
-                  </span>
+          {isSearching ? (
+            <div className="glass-card p-8 border-primary/20">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-serif font-bold">Search Results for "{searchQuery}"</h2>
+                <button 
+                  onClick={() => setIsSearching(false)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Back to Years
+                </button>
+              </div>
+              
+              {loadingYears[0] ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="animate-spin text-primary" size={48} />
                 </div>
-                <ChevronDown 
-                  className={cn("transition-transform duration-300", expandedYears.includes(year) && "rotate-180")} 
-                  size={24} 
-                />
-              </button>
-
-              <AnimatePresence>
-                {expandedYears.includes(year) && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="p-6 pt-0">
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        {yearData[year]?.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase())).map((item) => (
-                          <ContentCard 
-                            key={item.id} 
-                            item={item} 
-                            isWatched={watchedIds.includes(item.id)}
-                            onToggleWatched={() => toggleWatched(item)}
-                          />
-                        ))}
-                      </div>
-
-                      {loadingYears[year] ? (
-                        <div className="flex items-center justify-center py-10">
-                          <Loader2 className="animate-spin text-primary" size={32} />
-                        </div>
-                      ) : (
-                        yearData[year] && yearData[year].length > 0 && (
-                          <div className="mt-8 flex justify-center">
-                            <button
-                              onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
-                              className="flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-bold text-sm border border-white/10"
-                            >
-                              <Plus size={18} />
-                              Load More Movies
-                            </button>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-20 opacity-50">
+                  <p className="text-xl">No results found for your search.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  {searchResults.map((item) => (
+                    <ContentCard 
+                      key={item.id} 
+                      item={item} 
+                      isWatched={watchedIds.includes(item.id)}
+                      onToggleWatched={() => toggleWatched(item)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          ) : (
+            years.map((year) => (
+              <div key={year} className="glass-card overflow-hidden border-white/5">
+                <button
+                  onClick={() => toggleYear(year)}
+                  className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-2xl font-serif font-bold text-primary">{year}</span>
+                    <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
+                      {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
+                    </span>
+                  </div>
+                  <ChevronDown 
+                    className={cn("transition-transform duration-300", expandedYears.includes(year) && "rotate-180")} 
+                    size={24} 
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {expandedYears.includes(year) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                          {yearData[year]?.map((item) => (
+                            <ContentCard 
+                              key={item.id} 
+                              item={item} 
+                              isWatched={watchedIds.includes(item.id)}
+                              onToggleWatched={() => toggleWatched(item)}
+                            />
+                          ))}
+                        </div>
+
+                        {loadingYears[year] ? (
+                          <div className="flex items-center justify-center py-10">
+                            <Loader2 className="animate-spin text-primary" size={32} />
+                          </div>
+                        ) : (
+                          yearData[year] && yearData[year].length > 0 && (
+                            <div className="mt-8 flex justify-center">
+                              <button
+                                onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
+                                className="flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-bold text-sm border border-white/10"
+                              >
+                                <Plus size={18} />
+                                Load More
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))
+          )}
         </div>
       </main>
     </div>

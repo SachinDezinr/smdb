@@ -72,6 +72,10 @@ const Stats = () => {
     }
   };
 
+  const handleDownload = () => {
+    showSuccess("Ready for screenshot! Tip: Use your device's screenshot shortcut to save your Wrapped card.");
+  };
+
   if (loading) return null;
 
   return (
@@ -163,7 +167,7 @@ const Stats = () => {
               >
                 <button 
                   onClick={() => setShowWrapped(false)}
-                  className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                  className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors z-50"
                 >
                   <X size={20} />
                 </button>
@@ -196,6 +200,12 @@ const Stats = () => {
                 </div>
 
                 <div className="w-full text-center pb-4">
+                  <button 
+                    onClick={handleDownload}
+                    className="mb-4 px-6 py-2 bg-primary text-black rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                  >
+                    Download Card
+                  </button>
                   <p className="text-white/40 text-xs italic">"Your cinematic journey, tracked."</p>
                   <p className="text-primary font-bold text-sm mt-2">cinetrack.app</p>
                 </div>
