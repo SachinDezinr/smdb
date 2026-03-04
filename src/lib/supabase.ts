@@ -1,19 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-// These variables are injected when you connect Supabase via the UI button
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Direct connection credentials for CineTrack
+const supabaseUrl = "https://umkupiqsoblxkrxyaqst.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVta3VwaXFzb2JseGtyeHlhcXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjA3MjUsImV4cCI6MjA4ODE5NjcyNX0.bOn-g8h_XgNqctLy0dNC1qFsXVge4nMiunoeoxTBbRg";
 
-// Fallback to prevent crash during initialization if variables are missing
-const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-if (!isConfigured) {
-  console.warn("CineTrack: Supabase credentials missing. Please connect Supabase using the button above the chat.");
-}
-
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
-
-export { isConfigured };
+// Export configuration status for the UI
+export const isConfigured = true;
