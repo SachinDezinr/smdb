@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export type MediaType = "movie" | "tv" | "anime" | "k-drama";
 export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indian" | "animated";
 
@@ -30,20 +28,13 @@ const getRegionParams = (region: Region) => {
 };
 
 const fetchFromProxy = async (path: string, params: Record<string, string | number | boolean> = {}) => {
-  // Get current session to pass the JWT to the edge function
-  const { data: { session } } = await supabase.auth.getSession();
-  
   const url = new URL(PROXY_URL);
   url.searchParams.set('path', path);
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, String(value));
   });
   
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${session?.access_token}`
-    }
-  });
+  const response = await fetch(url.toString());
   return response.json();
 };
 
@@ -100,6 +91,8 @@ export const fetchContent = async (
         break;
     }
 
+    // Add region params manually since they are strings
+    const regionStr = getRegionParams(region);
     const data = await fetchFromProxy(path, params);
     results = data.results || [];
   }
