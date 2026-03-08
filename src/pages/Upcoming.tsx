@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus, X } from 'lucide-react';
+import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { showError } from '@/utils/toast';
@@ -28,6 +28,7 @@ const REGIONS: { label: string; value: Region }[] = [
 const Upcoming = () => {
   const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
   const [activeRegion, setActiveRegion] = useState<Region>('all');
+  const [activeYear, setActiveYear] = useState<number | null>(null);
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -41,7 +42,16 @@ const Upcoming = () => {
     else setLoadingMore(true);
     
     try {
-      const data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+      let data: ContentItem[];
+      if (activeYear) {
+        data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion, false);
+        // Filter to only show future releases for the selected year
+        const today = new Date().toISOString().split('T')[0];
+        data = data.filter(item => item.release_date >= today);
+      } else {
+        data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+      }
+      
       setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
       setPage(pageNum);
     } catch (error) {
@@ -72,7 +82,6 @@ const Upcoming = () => {
     }
   }, []);
 
-  // Live search effect with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery) {
@@ -87,7 +96,7 @@ const Upcoming = () => {
 
   useEffect(() => {
     if (!isSearching) load(1);
-  }, [activeCategory, activeRegion, isSearching]);
+  }, [activeCategory, activeRegion, activeYear, isSearching]);
 
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
@@ -134,10 +143,10 @@ const Upcoming = () => {
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => setActiveCategory(cat.value)}
+                    onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}
                     className={cn(
                       "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                      activeCategory === cat.value 
+                      activeCategory === cat.value && !activeYear
                         ? "bg-primary text-black" 
                         : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
                     )}
@@ -145,6 +154,18 @@ const Upcoming = () => {
                     {cat.label}
                   </button>
                 ))}
+                <button
+                  onClick={() => setActiveYear(activeYear === 2027 ? null : 2027)}
+                  className={cn(
+                    "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
+                    activeYear === 2027 
+                      ? "bg-primary border-primary text-black" 
+                      : "bg-white/5 border-white/10 text-primary hover:bg-primary/10"
+                  )}
+                >
+                  <CalendarIcon size={16} />
+                  2027 Releases
+                </button>
               </div>
 
               {showRegionFilters && (
