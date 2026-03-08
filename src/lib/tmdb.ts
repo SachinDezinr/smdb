@@ -53,19 +53,47 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   return response.json();
 };
 
-export const fetchTrending = async (type: 'movie' | 'tv' = 'movie'): Promise<ContentItem[]> => {
-  const data = await fetchFromProxy(`/trending/${type}/week`);
-  return (data.results || []).slice(0, 5).map((item: any) => ({
+const mapResults = (results: any[], type: MediaType): ContentItem[] => {
+  return (results || []).map((item: any) => ({
     id: item.id,
     title: item.title || item.name,
     poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
     backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
     release_date: item.release_date || item.first_air_date || "TBA",
     vote_average: item.vote_average || 0,
-    media_type: type as MediaType,
+    media_type: (item.media_type as MediaType) || type,
     genre_ids: item.genre_ids || [],
     overview: item.overview
   }));
+};
+
+// Interleave two arrays to provide a balanced mix
+const interleave = <T>(arr1: T[], arr2: T[]): T[] => {
+  const result: T[] = [];
+  const maxLen = Math.max(arr1.length, arr2.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < arr1.length) result.push(arr1[i]);
+    if (i < arr2.length) result.push(arr2[i]);
+  }
+  return result;
+};
+
+export const fetchTrending = async (type: 'movie' | 'tv' = 'movie'): Promise<ContentItem[]> => {
+  // Fetch global trending and Indian trending separately to ensure a mix
+  const [globalData, indianData] = await Promise.all([
+    fetchFromProxy(`/trending/${type}/week`),
+    fetchFromProxy(`/discover/${type}`, { 
+      region: 'IN', 
+      with_original_language: 'hi|te|ta|kn|ml',
+      sort_by: 'popularity.desc'
+    })
+  ]);
+
+  const global = mapResults(globalData.results || [], type as MediaType);
+  const indian = mapResults(indianData.results || [], type as MediaType);
+
+  // Interleave and take top 6 for the hero
+  return interleave(global, indian).slice(0, 6);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
@@ -82,16 +110,13 @@ export const fetchContent = async (
   region: Region = "all",
   includeAdult: boolean = false
 ): Promise<ContentItem[]> => {
-  let results: any[] = [];
-  const currentYear = new Date().getFullYear();
-
   if (query) {
     const [multiData, personData] = await Promise.all([
       fetchFromProxy('/search/multi', { query, page, include_adult: includeAdult }),
       fetchFromProxy('/search/person', { query, include_adult: includeAdult })
     ]);
 
-    results = [...(multiData.results || [])];
+    let results = [...(multiData.results || [])];
 
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
@@ -102,72 +127,61 @@ export const fetchContent = async (
       ];
       results = [...results, ...personCredits];
     }
-  } else {
-    let path = "";
-    let params: any = { 
-      page, 
-      include_adult: includeAdult,
-      sort_by: 'popularity.desc'
-    };
-
-    const regionParams = getRegionParams(region);
-
-    switch (type) {
-      case "movie":
-        path = '/discover/movie';
-        params.primary_release_year = year || currentYear;
-        break;
-      case "tv":
-        path = '/discover/tv';
-        params.first_air_date_year = year || currentYear;
-        break;
-      case "anime":
-        path = '/discover/tv';
-        params.with_keywords = '210024';
-        params.with_original_language = 'ja';
-        params.first_air_date_year = year || currentYear;
-        break;
-      case "k-drama":
-        path = '/discover/tv';
-        params.with_original_language = 'ko';
-        params.first_air_date_year = year || currentYear;
-        break;
-    }
-
-    const data = await fetchFromProxy(path, { ...params, ...regionParams });
-    results = data.results || [];
+    return mapResults(results, type);
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  const seen = new Set();
+  const currentYear = new Date().getFullYear();
+  const targetYear = year || currentYear;
 
-  return results
-    .map((item: any) => {
-      let mediaType: MediaType = item.media_type || (type === 'movie' ? 'movie' : 'tv');
-      if (item.first_air_date || item.name) mediaType = 'tv';
-      if (item.release_date || item.title) mediaType = 'movie';
+  if (region === "all" && (type === "movie" || type === "tv")) {
+    // Fetch Hollywood and Indian content separately to interleave them
+    const hollywoodParams = { 
+      page, 
+      include_adult: includeAdult,
+      sort_by: 'popularity.desc',
+      ...getRegionParams('hollywood'),
+      [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+    };
+    
+    const indianParams = { 
+      page, 
+      include_adult: includeAdult,
+      sort_by: 'popularity.desc',
+      region: 'IN',
+      with_original_language: 'hi|te|ta|kn|ml|pa',
+      [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+    };
 
-      return {
-        id: item.id,
-        title: item.title || item.name,
-        poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-        backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
-        release_date: item.release_date || item.first_air_date || "TBA",
-        vote_average: item.vote_average || 0,
-        media_type: mediaType,
-        genre_ids: item.genre_ids || [],
-        overview: item.overview
-      };
-    })
-    .filter((item: any) => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      if (!item.poster_path && item.vote_average === 0) return false;
-      if (!item.title) return false;
-      if (query) return true;
-      if (!year) return true;
-      return item.release_date <= today;
-    });
+    const [hData, iData] = await Promise.all([
+      fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, hollywoodParams),
+      fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
+    ]);
+
+    const hResults = mapResults(hData.results || [], type);
+    const iResults = mapResults(iData.results || [], type);
+
+    return interleave(hResults, iResults);
+  }
+
+  // Specific region or special category (Anime/K-Drama)
+  let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
+  let params: any = { 
+    page, 
+    include_adult: includeAdult,
+    sort_by: 'popularity.desc',
+    ...getRegionParams(region),
+    [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+  };
+
+  if (type === "anime") {
+    params.with_keywords = '210024';
+    params.with_original_language = 'ja';
+  } else if (type === "k-drama") {
+    params.with_original_language = 'ko';
+  }
+
+  const data = await fetchFromProxy(path, params);
+  return mapResults(data.results || [], type);
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
@@ -178,50 +192,50 @@ export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
 };
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all", page: number = 1, includeAdult: boolean = false): Promise<ContentItem[]> => {
-  let path = "";
-  const regionParams = getRegionParams(region);
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (region === "all" && (type === "movie" || type === "tv")) {
+    const hollywoodParams = {
+      page,
+      include_adult: includeAdult,
+      sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
+      ...getRegionParams('hollywood'),
+      [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
+    };
+
+    const indianParams = {
+      page,
+      include_adult: includeAdult,
+      sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
+      region: 'IN',
+      with_original_language: 'hi|te|ta|kn|ml|pa',
+      [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
+    };
+
+    const [hData, iData] = await Promise.all([
+      fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, hollywoodParams),
+      fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
+    ]);
+
+    return interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
+  }
+
+  let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
   let params: any = { 
     page, 
     include_adult: includeAdult,
     sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
-    ...regionParams
+    ...getRegionParams(region),
+    [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
   };
-  
-  const today = new Date().toISOString().split('T')[0];
 
-  switch (type) {
-    case "movie":
-      path = '/discover/movie';
-      params['primary_release_date.gte'] = today;
-      break;
-    case "tv":
-      path = '/discover/tv';
-      params['first_air_date.gte'] = today;
-      break;
-    case "anime":
-      path = '/discover/tv';
-      params.with_keywords = '210024';
-      params.with_original_language = 'ja';
-      params['first_air_date.gte'] = today;
-      break;
-    case "k-drama":
-      path = '/discover/tv';
-      params.with_original_language = 'ko';
-      params['first_air_date.gte'] = today;
-      break;
+  if (type === "anime") {
+    params.with_keywords = '210024';
+    params.with_original_language = 'ja';
+  } else if (type === "k-drama") {
+    params.with_original_language = 'ko';
   }
     
   const data = await fetchFromProxy(path, params);
-  return (data.results || [])
-    .map((item: any) => ({
-      id: item.id,
-      title: item.title || item.name,
-      poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-      backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
-      release_date: item.release_date || item.first_air_date || "TBA",
-      vote_average: item.vote_average || 0,
-      media_type: type,
-      genre_ids: item.genre_ids || [],
-      overview: item.overview
-    }));
+  return mapResults(data.results || [], type);
 };
