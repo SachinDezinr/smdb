@@ -19,24 +19,26 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const App = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    // Initial session check
+    const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
       } catch (error) {
-        console.error("Auth check failed:", error);
+        console.error("Auth initialization failed:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    initAuth();
 
+    // Listen for auth changes globally
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
@@ -49,7 +51,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="animate-spin text-primary" size={48} />
-        <p className="text-muted-foreground animate-pulse">Initializing CineTrack...</p>
+        <p className="text-muted-foreground animate-pulse">Initializing SMDB...</p>
       </div>
     );
   }
@@ -63,7 +65,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           To start tracking your cinema journey, please connect Supabase using the button above the chat.
         </p>
         <div className="flex gap-4">
-          <a href="/about" className="text-primary hover:underline">About CineTrack</a>
+          <a href="/about" className="text-primary hover:underline">About SMDB</a>
           <span className="text-white/10">|</span>
           <a href="/contact" className="text-primary hover:underline">Contact Support</a>
         </div>
@@ -71,31 +73,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!session) return <Navigate to="/auth" />;
-  return <>{children}</>;
-};
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            
+            {/* Auth Route */}
+            <Route path="/auth" element={session ? <Navigate to="/" /> : <Auth />} />
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-          <Route path="/upcoming" element={<ProtectedRoute><Upcoming /></ProtectedRoute>} />
-          <Route path="/collection" element={<ProtectedRoute><Collection /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
-          <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            {/* Protected Routes */}
+            <Route path="/" element={session ? <Index /> : <Navigate to="/auth" />} />
+            <Route path="/upcoming" element={session ? <Upcoming /> : <Navigate to="/auth" />} />
+            <Route path="/collection" element={session ? <Collection /> : <Navigate to="/auth" />} />
+            <Route path="/profile" element={session ? <Profile /> : <Navigate to="/auth" />} />
+            <Route path="/friends" element={session ? <Friends /> : <Navigate to="/auth" />} />
+            <Route path="/stats" element={session ? <Stats /> : <Navigate to="/auth" />} />
+            
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
