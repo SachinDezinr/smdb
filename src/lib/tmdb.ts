@@ -36,23 +36,40 @@ export const fetchContent = async (
   region: Region = "all",
   includeAdult: boolean = false
 ): Promise<ContentItem[]> => {
-  let url = "";
+  let results: any[] = [];
   const currentYear = new Date().getFullYear();
   const regionParams = getRegionParams(region);
   const adultParam = `&include_adult=${includeAdult}`;
   const animeAdultFilter = !includeAdult ? "&without_keywords=190370" : "";
 
   if (query) {
-    const personSearch = await fetch(`${BASE_URL}/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`);
-    const personData = await personSearch.json();
-    
+    // Perform both multi-search (titles) and person search simultaneously
+    const [multiRes, personRes] = await Promise.all([
+      fetch(`${BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}${adultParam}`),
+      fetch(`${BASE_URL}/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}${adultParam}`)
+    ]);
+
+    const multiData = await multiRes.json();
+    const personData = await personRes.json();
+
+    results = [...(multiData.results || [])];
+
+    // If a person is found, also fetch their credits and add to results
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
-      url = `${BASE_URL}/person/${personId}/combined_credits?api_key=${TMDB_API_KEY}${adultParam}`;
-    } else {
-      url = `${BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}${adultParam}`;
+      const creditsRes = await fetch(`${BASE_URL}/person/${personId}/combined_credits?api_key=${TMDB_API_KEY}${adultParam}`);
+      const creditsData = await creditsRes.json();
+      
+      // Combine cast and crew credits
+      const personCredits = [
+        ...(creditsData.cast || []),
+        ...(creditsData.crew || [])
+      ];
+      
+      results = [...results, ...personCredits];
     }
   } else {
+    let url = "";
     switch (type) {
       case "movie":
         url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
@@ -67,14 +84,14 @@ export const fetchContent = async (
         url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year || currentYear}&page=${page}${adultParam}`;
         break;
     }
+    const response = await fetch(url);
+    const data = await response.json();
+    results = data.results || [];
   }
 
-  const response = await fetch(url);
-  const data = await response.json();
-  const results = data.results || data.cast || [];
   const today = new Date().toISOString().split('T')[0];
-
   const seen = new Set();
+
   return results
     .map((item: any) => {
       let mediaType: MediaType = item.media_type || (type === 'movie' ? 'movie' : 'tv');
@@ -93,10 +110,18 @@ export const fetchContent = async (
       };
     })
     .filter((item: any) => {
+      // Deduplicate by ID
       if (seen.has(item.id)) return false;
       seen.add(item.id);
+
+      // Basic quality filters
       if (!item.poster_path && item.vote_average === 0) return false;
+      if (!item.title) return false;
+
+      // If searching, show everything found
       if (query) return true;
+      
+      // If browsing by year, only show released content
       if (!year) return true;
       return item.release_date <= today;
     });
