@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
-import { fetchUpcoming, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus } from 'lucide-react';
+import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, Loader2, Filter, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { showError } from '@/utils/toast';
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -32,6 +33,8 @@ const Upcoming = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
 
   const load = async (pageNum: number = 1) => {
     if (pageNum === 1) setLoading(true);
@@ -49,13 +52,33 @@ const Upcoming = () => {
     }
   };
 
-  useEffect(() => {
-    load(1);
-  }, [activeCategory, activeRegion]);
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) {
+      setIsSearching(false);
+      return;
+    }
 
-  const filteredItems = items.filter(item => 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    setIsSearching(true);
+    setLoading(true);
+    try {
+      // Search across all types for the best results
+      const results = await fetchContent('movie', undefined, 1, searchQuery, 'all', false);
+      // Filter for upcoming only
+      const today = new Date().toISOString().split('T')[0];
+      setSearchResults(results.filter(item => item.release_date > today));
+    } catch (error) {
+      showError("Search failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isSearching) load(1);
+  }, [activeCategory, activeRegion, isSearching]);
+
+  const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -69,59 +92,74 @@ const Upcoming = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Upcoming <span className="text-primary">Releases</span>
               </h1>
-              <p className="text-muted-foreground mt-2 font-medium">
-                Showing {items.length > 0 ? `${items.length}+` : "20+"} anticipated titles
-              </p>
             </div>
             
-            <div className="relative group max-w-md w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-              <input
-                type="text"
-                placeholder="Search upcoming..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <form onSubmit={handleSearch} className="relative group max-w-md w-full flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search upcoming..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button 
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setIsSearching(false); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+              <button type="submit" className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform">
+                Search
+              </button>
+            </form>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => setActiveCategory(cat.value)}
-                  className={cn(
-                    "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                    activeCategory === cat.value 
-                      ? "bg-primary text-black" 
-                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+          {!isSearching && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setActiveCategory(cat.value)}
+                    className={cn(
+                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
+                      activeCategory === cat.value 
+                        ? "bg-primary text-black" 
+                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
-              <Filter size={16} className="text-primary mr-2" />
-              {REGIONS.map((reg) => (
-                <button
-                  key={reg.value}
-                  onClick={() => setActiveRegion(reg.value)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                    activeRegion === reg.value 
-                      ? "border-primary bg-primary/10 text-primary" 
-                      : "border-white/10 text-muted-foreground hover:border-white/30"
-                  )}
-                >
-                  {reg.label}
-                </button>
-              ))}
+              {showRegionFilters && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Filter size={16} className="text-primary mr-2" />
+                  {REGIONS.map((reg) => (
+                    <button
+                      key={reg.value}
+                      onClick={() => setActiveRegion(reg.value)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                        activeRegion === reg.value 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-white/10 text-muted-foreground hover:border-white/30"
+                      )}
+                    >
+                      {reg.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </header>
 
         {loading ? (
@@ -131,12 +169,18 @@ const Upcoming = () => {
         ) : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredItems.map((item) => (
+              {(isSearching ? searchResults : items).map((item) => (
                 <ContentCard key={item.id} item={item} showReleaseDate />
               ))}
             </div>
             
-            {items.length > 0 && (
+            {isSearching && searchResults.length === 0 && (
+              <div className="text-center py-20 opacity-50">
+                <p className="text-xl">No result found.</p>
+              </div>
+            )}
+            
+            {!isSearching && items.length > 0 && (
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => load(page + 1)}

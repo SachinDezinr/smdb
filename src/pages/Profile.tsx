@@ -37,7 +37,6 @@ const Profile = () => {
   }, []);
 
   const handleUpdateUsername = async () => {
-    // Strict username validation
     const usernameRegex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
     if (!usernameRegex.test(username)) {
       showError("Username must start/end with letters, and only contain letters, numbers, _ or .");
@@ -46,7 +45,6 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      // Check if username is taken
       const { data: existing } = await supabase
         .from('profiles')
         .select('username')
@@ -198,6 +196,29 @@ const Profile = () => {
                 <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
               </div>
             </Link>
+          </section>
+
+          <section className="glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Info size={20} className="text-primary" />
+              Information
+            </h2>
+            <div className="space-y-3">
+              <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Info size={20} className="text-primary" />
+                  <span>About SMDB</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+              <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Mail size={20} className="text-primary" />
+                  <span>Contact Us</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+            </div>
           </section>
 
           <section className="glass-card p-6 lg:p-8 border-white/5">
