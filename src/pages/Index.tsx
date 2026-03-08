@@ -42,7 +42,8 @@ const Index = () => {
   const [adultFilter, setAdultFilter] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1949 + 1 }, (_, i) => (currentYear + 1) - i); // Include next year
+  // Limit Home page to currentYear + 1 (e.g., 2026)
+  const years = Array.from({ length: currentYear - 1949 + 1 }, (_, i) => (currentYear + 1) - i);
 
   const fetchWatchedIds = async () => {
     const { data: { user } } = await supabase.auth.getUser();

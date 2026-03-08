@@ -67,7 +67,6 @@ const mapResults = (results: any[], type: MediaType): ContentItem[] => {
   }));
 };
 
-// Interleave two arrays to provide a balanced mix
 const interleave = <T>(arr1: T[], arr2: T[]): T[] => {
   const result: T[] = [];
   const maxLen = Math.max(arr1.length, arr2.length);
@@ -78,22 +77,25 @@ const interleave = <T>(arr1: T[], arr2: T[]): T[] => {
   return result;
 };
 
-export const fetchTrending = async (type: 'movie' | 'tv' = 'movie'): Promise<ContentItem[]> => {
-  // Fetch global trending and Indian trending separately to ensure a mix
-  const [globalData, indianData] = await Promise.all([
-    fetchFromProxy(`/trending/${type}/week`),
-    fetchFromProxy(`/discover/${type}`, { 
-      region: 'IN', 
-      with_original_language: 'hi|te|ta|kn|ml',
-      sort_by: 'popularity.desc'
-    })
+export const fetchTrending = async (): Promise<ContentItem[]> => {
+  const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
+    fetchFromProxy('/trending/movie/week'),
+    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc' }),
+    fetchFromProxy('/trending/tv/week'),
+    fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc' }),
+    fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc' })
   ]);
 
-  const global = mapResults(globalData.results || [], type as MediaType);
-  const indian = mapResults(indianData.results || [], type as MediaType);
+  const gm = mapResults(globalMovies.results || [], 'movie');
+  const im = mapResults(indianMovies.results || [], 'movie');
+  const gt = mapResults(globalTv.results || [], 'tv');
+  const an = mapResults(anime.results || [], 'anime');
+  const kd = mapResults(kdrama.results || [], 'k-drama');
 
-  // Interleave and take top 6 for the hero
-  return interleave(global, indian).slice(0, 6);
+  const movies = interleave(gm, im);
+  const others = interleave(gt, interleave(an, kd));
+  
+  return interleave(movies, others).slice(0, 12);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
@@ -134,7 +136,6 @@ export const fetchContent = async (
   const targetYear = year || currentYear;
 
   if (region === "all" && (type === "movie" || type === "tv")) {
-    // Fetch Hollywood and Indian content separately to interleave them
     const hollywoodParams = { 
       page, 
       include_adult: includeAdult,
@@ -163,7 +164,6 @@ export const fetchContent = async (
     return interleave(hResults, iResults);
   }
 
-  // Specific region or special category (Anime/K-Drama)
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
   let params: any = { 
     page, 
