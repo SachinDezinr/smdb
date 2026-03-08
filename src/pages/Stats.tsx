@@ -24,8 +24,11 @@ const Stats = () => {
         .eq('user_id', user.id);
 
       if (watched) {
-        const yearWatched = watched.filter(i => new Date(i.created_at).getFullYear() === currentYear);
-        const releasedThisYear = watched.filter(i => new Date(i.release_date).getFullYear() === currentYear);
+        // Filter by release year as requested
+        const yearWatched = watched.filter(i => {
+          if (!i.release_date || i.release_date === "TBA") return false;
+          return new Date(i.release_date).getFullYear() === currentYear;
+        });
         
         const counts = {
           movie: yearWatched.filter(i => i.media_type === 'movie').length,
@@ -53,7 +56,6 @@ const Stats = () => {
         setStats({
           total: watched.length,
           yearTotal: yearWatched.length,
-          releasedThisYear: releasedThisYear.length,
           topGenre,
           avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
           monthly: monthlyData,
@@ -89,7 +91,7 @@ const Stats = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {[
-            { label: 'Watched in 2026', value: stats?.yearTotal, icon: Calendar },
+            { label: `Released in ${currentYear}`, value: stats?.yearTotal, icon: Calendar },
             { label: 'Top Category', value: stats?.topGenre, icon: Film, color: 'text-primary' },
             { label: 'Avg IMDb Rating', value: stats?.avgRating, icon: Star },
             { label: 'Total Lifetime', value: stats?.total, icon: Clock },
@@ -111,7 +113,7 @@ const Stats = () => {
         <section className="glass-card p-8 border-primary/10 cinematic-glow">
           <h2 className="text-2xl font-serif font-bold mb-8 flex items-center gap-3">
             <BarChart3 className="text-primary" />
-            Monthly Watch History (2026)
+            Monthly Watch History ({currentYear} Releases)
           </h2>
           
           <div className="flex items-end justify-between h-64 gap-2">
@@ -163,7 +165,7 @@ const Stats = () => {
 
                 <div className="w-full space-y-8">
                   <div className="text-center">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Total Titles in 2026</p>
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Titles Released in {currentYear}</p>
                     <p className="text-6xl font-bold text-white">{stats.yearTotal}</p>
                   </div>
 
