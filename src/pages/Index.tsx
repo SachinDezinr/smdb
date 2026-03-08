@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
+import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
 import { Search, ChevronDown, Loader2, Filter, Plus, X, Shield, ShieldOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,7 +75,6 @@ const Index = () => {
     }
   }, [adultFilter]);
 
-  // Live search effect with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery) {
@@ -239,7 +239,7 @@ const Index = () => {
                   {REGIONS.map((reg) => (
                     <button
                       key={reg.value}
-                      onClick={() => setActiveRegion(reg.value)}
+                      onClick={() => setActiveRegion(reg.value as Region)}
                       className={cn(
                         "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
                         activeRegion === reg.value 
@@ -255,6 +255,8 @@ const Index = () => {
             </div>
           )}
         </header>
+
+        {!isSearching && <TrendingHero />}
 
         <div className="space-y-4">
           {isSearching ? (

@@ -7,6 +7,7 @@ export interface ContentItem {
   id: number;
   title: string;
   poster_path: string;
+  backdrop_path?: string;
   release_date: string;
   vote_average: number;
   media_type: MediaType;
@@ -52,6 +53,27 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   return response.json();
 };
 
+export const fetchTrending = async (type: 'movie' | 'tv' = 'movie'): Promise<ContentItem[]> => {
+  const data = await fetchFromProxy(`/trending/${type}/week`);
+  return (data.results || []).slice(0, 5).map((item: any) => ({
+    id: item.id,
+    title: item.title || item.name,
+    poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
+    backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
+    release_date: item.release_date || item.first_air_date || "TBA",
+    vote_average: item.vote_average || 0,
+    media_type: type as MediaType,
+    genre_ids: item.genre_ids || [],
+    overview: item.overview
+  }));
+};
+
+export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
+  const data = await fetchFromProxy(`/${type}/${id}/videos`);
+  const trailer = data.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+  return trailer ? `https://www.youtube.com/embed/${trailer.key}` : null;
+};
+
 export const fetchContent = async (
   type: MediaType,
   year?: number,
@@ -64,7 +86,6 @@ export const fetchContent = async (
   const currentYear = new Date().getFullYear();
 
   if (query) {
-    // Search for movies/tv and people simultaneously
     const [multiData, personData] = await Promise.all([
       fetchFromProxy('/search/multi', { query, page, include_adult: includeAdult }),
       fetchFromProxy('/search/person', { query, include_adult: includeAdult })
@@ -72,7 +93,6 @@ export const fetchContent = async (
 
     results = [...(multiData.results || [])];
 
-    // If a person is found (like Shah Rukh Khan), fetch their movie credits
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
       const creditsData = await fetchFromProxy(`/person/${personId}/combined_credits`, { include_adult: includeAdult });
@@ -131,6 +151,7 @@ export const fetchContent = async (
         id: item.id,
         title: item.title || item.name,
         poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
+        backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
         vote_average: item.vote_average || 0,
         media_type: mediaType,
@@ -196,6 +217,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       id: item.id,
       title: item.title || item.name,
       poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
+      backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
       release_date: item.release_date || item.first_air_date || "TBA",
       vote_average: item.vote_average || 0,
       media_type: type,
