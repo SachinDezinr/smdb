@@ -45,6 +45,7 @@ const Profile = () => {
 
     setLoading(true);
     try {
+      // Check if username is taken in profiles table
       const { data: existing } = await supabase
         .from('profiles')
         .select('username')
@@ -56,10 +57,20 @@ const Profile = () => {
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({
+      // Update Auth Metadata
+      const { error: authError } = await supabase.auth.updateUser({
         data: { username }
       });
-      if (error) throw error;
+      if (authError) throw authError;
+
+      // Update Public Profile Table (Crucial for friends to see the change)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+      
+      if (profileError) throw profileError;
+
       showSuccess("Username updated successfully!");
       setIsEditing(false);
     } catch (error: any) {

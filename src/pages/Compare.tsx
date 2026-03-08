@@ -22,23 +22,29 @@ const Compare = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !friendId) return;
 
-      // Fetch friend's profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', friendId)
-        .single();
-      setFriendProfile(profile);
+      try {
+        // Fetch friend's profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', friendId)
+          .single();
+        setFriendProfile(profile);
 
-      // Fetch both collections
-      const [myRes, friendRes] = await Promise.all([
-        supabase.from('watched_content').select('*').eq('user_id', user.id),
-        supabase.from('watched_content').select('*').eq('user_id', friendId)
-      ]);
+        // Fetch both collections
+        // Note: This requires the RLS policy to allow reading friends' data
+        const [myRes, friendRes] = await Promise.all([
+          supabase.from('watched_content').select('*').eq('user_id', user.id),
+          supabase.from('watched_content').select('*').eq('user_id', friendId)
+        ]);
 
-      setMyCollection(myRes.data || []);
-      setFriendCollection(friendRes.data || []);
-      setLoading(false);
+        setMyCollection(myRes.data || []);
+        setFriendCollection(friendRes.data || []);
+      } catch (err) {
+        console.error("Comparison fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, [friendId]);
@@ -46,8 +52,6 @@ const Compare = () => {
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="animate-spin text-primary" size={48} /></div>;
 
   const myIds = new Set(myCollection.map(i => i.content_id));
-  const friendIds = new Set(friendCollection.map(i => i.content_id));
-
   const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
   const uniqueToFriend = friendCollection.filter(i => !myIds.has(i.content_id));
 
@@ -66,7 +70,7 @@ const Compare = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
-                Comparing with <span className="text-primary">{friendProfile?.username}</span>
+                Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
               <p className="text-muted-foreground mt-2">Discover shared tastes and new recommendations.</p>
             </div>
@@ -106,9 +110,11 @@ const Compare = () => {
           <div className="glass-card p-6 border-white/5 text-center">
             <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Compatibility</p>
             <p className="text-4xl font-bold text-white">
-              {Math.round((commonItems.length / (friendCollection.length || 1)) * 100)}%
+              {friendCollection.length > 0 
+                ? Math.round((commonItems.length / friendCollection.length) * 100) 
+                : 0}%
             </p>
-            <p className="text-xs text-muted-foreground mt-2">Based on {friendProfile?.username}'s list</p>
+            <p className="text-xs text-muted-foreground mt-2">Based on {friendProfile?.username || 'their'} list</p>
           </div>
         </div>
 
@@ -116,6 +122,9 @@ const Compare = () => {
           <div className="text-center py-20 opacity-50">
             <Users size={64} className="mx-auto mb-4" />
             <p className="text-xl">No items found for this filter.</p>
+            {friendCollection.length === 0 && (
+              <p className="text-sm mt-2">Your friend hasn't added anything to their collection yet.</p>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
