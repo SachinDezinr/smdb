@@ -42,7 +42,7 @@ const Index = () => {
   const [adultFilter, setAdultFilter] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: currentYear - 1949 + 1 }, (_, i) => (currentYear + 1) - i); // Include next year
 
   const fetchWatchedIds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -163,6 +163,11 @@ const Index = () => {
   }, [activeCategory, activeRegion, isSearching, adultFilter]);
 
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
+
+  const isUpcoming = (dateStr: string) => {
+    if (!dateStr || dateStr === "TBA") return true;
+    return new Date(dateStr) > new Date();
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -287,7 +292,7 @@ const Index = () => {
                       item={item} 
                       isWatched={watchedIds.includes(item.id)}
                       onToggleWatched={() => toggleWatched(item)}
-                      showReleaseDate={new Date(item.release_date) > new Date()}
+                      showReleaseDate={isUpcoming(item.release_date)}
                     />
                   ))}
                 </div>
@@ -328,6 +333,7 @@ const Index = () => {
                               item={item} 
                               isWatched={watchedIds.includes(item.id)}
                               onToggleWatched={() => toggleWatched(item)}
+                              showReleaseDate={isUpcoming(item.release_date)}
                             />
                           ))}
                         </div>
