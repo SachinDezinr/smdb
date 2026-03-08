@@ -18,39 +18,39 @@ const Friends = () => {
 
   const fetchData = async (userId: string) => {
     try {
-      // Fetch Friends (Accepted) - Join on friend_id to see who you added
+      // Fetch Friends (Accepted) - We look for people you are friends with
       const { data: friendsData } = await supabase
         .from('friends')
         .select(`
           id,
           friend_id,
-          profiles!friends_friend_id_fkey (id, username)
+          profiles:friend_id (id, username)
         `)
         .eq('user_id', userId)
         .eq('status', 'accepted');
       
       setFriends(friendsData || []);
 
-      // Fetch Incoming Requests - Join on user_id to see who sent it
+      // Fetch Incoming Requests - People who sent a request TO you
       const { data: incomingData } = await supabase
         .from('friends')
         .select(`
           id,
           user_id,
-          profiles!friends_user_id_fkey (id, username)
+          profiles:user_id (id, username)
         `)
         .eq('friend_id', userId)
         .eq('status', 'pending');
       
       setIncomingRequests(incomingData || []);
 
-      // Fetch Sent Requests - Join on friend_id to see who you invited
+      // Fetch Sent Requests - People YOU sent a request to
       const { data: sentData } = await supabase
         .from('friends')
         .select(`
           id,
           friend_id,
-          profiles!friends_friend_id_fkey (id, username)
+          profiles:friend_id (id, username)
         `)
         .eq('user_id', userId)
         .eq('status', 'pending');
