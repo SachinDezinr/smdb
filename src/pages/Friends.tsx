@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, Clock } from 'lucide-react';
+import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, Clock, RefreshCw } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Friends = () => {
@@ -14,43 +14,47 @@ const Friends = () => {
   const [sentRequests, setSentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const fetchData = async (userId: string) => {
+  const fetchData = useCallback(async (userId: string) => {
+    setRefreshing(true);
     try {
-      // Fetch Friends (Accepted) - We look for people you are friends with
+      // Fetch Friends (Accepted) - Join on friend_id to see who you added
+      // Using explicit join hint !friends_friend_id_fkey
       const { data: friendsData } = await supabase
         .from('friends')
         .select(`
           id,
           friend_id,
-          profiles:friend_id (id, username)
+          profiles!friends_friend_id_fkey (id, username)
         `)
         .eq('user_id', userId)
         .eq('status', 'accepted');
       
       setFriends(friendsData || []);
 
-      // Fetch Incoming Requests - People who sent a request TO you
+      // Fetch Incoming Requests - Join on user_id to see who sent it
+      // Using explicit join hint !friends_user_id_fkey
       const { data: incomingData } = await supabase
         .from('friends')
         .select(`
           id,
           user_id,
-          profiles:user_id (id, username)
+          profiles!friends_user_id_fkey (id, username)
         `)
         .eq('friend_id', userId)
         .eq('status', 'pending');
       
       setIncomingRequests(incomingData || []);
 
-      // Fetch Sent Requests - People YOU sent a request to
+      // Fetch Sent Requests - Join on friend_id to see who you invited
       const { data: sentData } = await supabase
         .from('friends')
         .select(`
           id,
           friend_id,
-          profiles:friend_id (id, username)
+          profiles!friends_friend_id_fkey (id, username)
         `)
         .eq('user_id', userId)
         .eq('status', 'pending');
@@ -58,8 +62,10 @@ const Friends = () => {
       setSentRequests(sentData || []);
     } catch (err) {
       console.error("Error fetching social data:", err);
+    } finally {
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -71,7 +77,7 @@ const Friends = () => {
       setLoading(false);
     };
     init();
-  }, []);
+  }, [fetchData]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -151,9 +157,19 @@ const Friends = () => {
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-5xl mx-auto w-full">
         <header className="mb-10">
-          <h1 className="text-4xl lg:text-5xl font-serif font-bold mb-6">
-            Social <span className="text-primary">Circle</span>
-          </h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+              Social <span className="text-primary">Circle</span>
+            </h1>
+            <button 
+              onClick={() => fetchData(currentUser.id)}
+              disabled={refreshing}
+              className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-primary"
+              title="Refresh lists"
+            >
+              <RefreshCw className={refreshing ? "animate-spin" : ""} size={20} />
+            </button>
+          </div>
           
           <div className="flex gap-4">
             <div className="relative flex-1 group">
@@ -181,7 +197,10 @@ const Friends = () => {
           <div className="lg:col-span-2 space-y-8">
             {searchResults.length > 0 && (
               <section className="glass-card p-6 border-primary/20 cinematic-glow">
-                <h2 className="text-xl font-serif font-bold mb-4">Search Results</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-serif font-bold">Search Results</h2>
+                  <button onClick={() => setSearchResults([])} className="text-xs text-muted-foreground hover:text-white">Clear</button>
+                </div>
                 <div className="space-y-3">
                   {searchResults.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
