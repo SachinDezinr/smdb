@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, Clock, RefreshCw } from 'lucide-react';
+import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, Clock, RefreshCw, BarChart3 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { Link } from 'react-router-dom';
 
 const Friends = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,8 +21,6 @@ const Friends = () => {
   const fetchData = useCallback(async (userId: string) => {
     setRefreshing(true);
     try {
-      // 1. Fetch Friends (Accepted)
-      // We join profiles on the friend_id to see who we are friends with
       const { data: friendsData } = await supabase
         .from('friends')
         .select(`
@@ -34,8 +33,6 @@ const Friends = () => {
       
       setFriends(friendsData || []);
 
-      // 2. Fetch Incoming Requests (Pending)
-      // We join profiles on the user_id (the sender) to see who sent us the request
       const { data: incomingData } = await supabase
         .from('friends')
         .select(`
@@ -48,8 +45,6 @@ const Friends = () => {
       
       setIncomingRequests(incomingData || []);
 
-      // 3. Fetch Sent Requests (Pending)
-      // We join profiles on the friend_id (the receiver) to see who we invited
       const { data: sentData } = await supabase
         .from('friends')
         .select(`
@@ -125,7 +120,6 @@ const Friends = () => {
         return;
       }
 
-      // Create reciprocal relationship for mutual friendship
       const request = incomingRequests.find(r => r.id === requestId);
       if (request) {
         await supabase.from('friends').insert({ 
@@ -243,12 +237,21 @@ const Friends = () => {
                         </div>
                         <p className="font-bold">{friend.profiles?.username || 'Unknown'}</p>
                       </div>
-                      <button 
-                        onClick={() => removeFriend(friend.id, friend.friend_id)}
-                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <UserMinus size={18} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          to={`/compare/${friend.friend_id}`}
+                          className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary hover:text-black transition-all"
+                          title="Compare Collections"
+                        >
+                          <BarChart3 size={18} />
+                        </Link>
+                        <button 
+                          onClick={() => removeFriend(friend.id, friend.friend_id)}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <UserMinus size={18} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
