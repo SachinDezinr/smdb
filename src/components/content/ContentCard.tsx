@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Film } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, Film, Users, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ContentItem } from '@/lib/tmdb';
+import { ContentItem, fetchCredits } from '@/lib/tmdb';
 
 interface ContentCardProps {
   item: ContentItem;
@@ -14,6 +14,10 @@ interface ContentCardProps {
 }
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate }: ContentCardProps) => {
+  const [showCredits, setShowCredits] = useState(false);
+  const [credits, setCredits] = useState<{ director: string; cast: string[] } | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr === "TBA") return "TBA";
     try {
@@ -25,6 +29,21 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
+  const handlePosterClick = async () => {
+    if (!showReleaseDate) return; // Only for upcoming
+    
+    if (showCredits) {
+      setShowCredits(false);
+      return;
+    }
+
+    setLoadingCredits(true);
+    const data = await fetchCredits(item.id, item.media_type);
+    setCredits(data);
+    setLoadingCredits(false);
+    setShowCredits(true);
+  };
+
   const hasPoster = item.poster_path && !item.poster_path.includes('placeholder.svg');
 
   return (
@@ -34,15 +53,21 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       whileHover={{ scale: 1.02 }}
       className="group relative flex flex-col gap-3"
     >
-      <div className={cn(
-        "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900",
-        isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
-      )}>
+      <div 
+        onClick={handlePosterClick}
+        className={cn(
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900 cursor-pointer",
+          isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
+        )}
+      >
         {hasPoster ? (
           <img
             src={item.poster_path}
             alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className={cn(
+              "w-full h-full object-cover transition-all duration-700",
+              showCredits ? "blur-xl scale-110 opacity-40" : "group-hover:scale-110"
+            )}
             loading="lazy"
           />
         ) : (
@@ -51,12 +76,37 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             <span className="text-sm font-serif font-bold text-white/80 line-clamp-4 relative z-10">
               {item.title}
             </span>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
           </div>
         )}
+
+        <AnimatePresence>
+          {showCredits && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black/40"
+            >
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Director</p>
+                  <p className="text-sm font-bold text-white">{credits?.director}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Main Cast</p>
+                  <div className="flex flex-col gap-1">
+                    {credits?.cast.map((name, i) => (
+                      <p key={i} className="text-xs text-white/90">{name}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Overlay for actions - Hidden for upcoming content */}
-        {!showReleaseDate && (
+        {!showReleaseDate && !showCredits && (
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
             <button
               onClick={(e) => {

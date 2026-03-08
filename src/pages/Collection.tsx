@@ -4,15 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'total' | 'this-year'>('total');
+  const [visibleCount, setVisibleCount] = useState(10);
+  const currentYear = new Date().getFullYear();
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -45,21 +49,23 @@ const Collection = () => {
     fetchWatched();
   }, []);
 
-  const stats = {
-    total: watchedItems.length,
-    movies: watchedItems.filter(i => i.media_type === 'movie').length,
-    tv: watchedItems.filter(i => i.media_type === 'tv').length,
-    anime: watchedItems.filter(i => i.media_type === 'anime').length,
-    kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
-  };
+  const filteredByTab = watchedItems.filter(item => {
+    if (activeTab === 'this-year') {
+      return item.release_date && item.release_date.startsWith(currentYear.toString());
+    }
+    return true;
+  });
 
-  const filteredItems = watchedItems.filter(item => 
+  const filteredBySearch = filteredByTab.filter(item => 
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const visibleItems = filteredBySearch.slice(0, visibleCount);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
+      <ScrollToTop />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
         <header className="mb-10 space-y-8">
@@ -68,14 +74,26 @@ const Collection = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Your <span className="text-primary">Collection</span>
               </h1>
-              <Link 
-                to="/stats" 
-                className="inline-flex items-center gap-2 mt-4 text-primary hover:underline font-bold text-sm lg:hidden"
-              >
-                <BarChart3 size={16} />
-                View Detailed Stats
-                <ChevronRight size={14} />
-              </Link>
+              <div className="flex gap-4 mt-4">
+                <button
+                  onClick={() => setActiveTab('total')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                    activeTab === 'total' ? "border-primary bg-primary/10 text-primary" : "border-white/10 text-muted-foreground"
+                  )}
+                >
+                  Total Watched
+                </button>
+                <button
+                  onClick={() => setActiveTab('this-year')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                    activeTab === 'this-year' ? "border-primary bg-primary/10 text-primary" : "border-white/10 text-muted-foreground"
+                  )}
+                >
+                  Released in {currentYear}
+                </button>
+              </div>
             </div>
             
             <div className="relative group max-w-md w-full">
@@ -89,67 +107,58 @@ const Collection = () => {
               />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: 'Total', value: stats.total, color: 'primary' },
-              { label: 'Movies', value: stats.movies, color: 'white' },
-              { label: 'Series', value: stats.tv, color: 'white' },
-              { label: 'Anime', value: stats.anime, color: 'white' },
-              { label: 'K-Drama', value: stats.kdrama, color: 'white' },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-card p-4 text-center border-white/5"
-              >
-                <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className={cn("text-2xl font-bold", stat.color === 'primary' ? "text-primary" : "text-white")}>
-                  {stat.value}
-                </p>
-              </motion.div>
-            ))}
-          </div>
         </header>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="animate-spin text-primary" size={48} />
           </div>
-        ) : watchedItems.length === 0 ? (
+        ) : filteredBySearch.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center opacity-50">
             <Library size={64} className="mb-4" />
-            <h2 className="text-2xl font-serif">Your collection is empty</h2>
-            <p>Start adding content from the Home tab</p>
+            <h2 className="text-2xl font-serif">No items found</h2>
+            <p>Try changing your filters or adding more content</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
-              <div key={item.content_id} className="relative group">
-                <ContentCard 
-                  item={{
-                    id: item.content_id,
-                    title: item.title,
-                    poster_path: item.poster_path,
-                    release_date: item.release_date,
-                    vote_average: item.vote_average,
-                    media_type: item.media_type,
-                    genre_ids: [],
-                    overview: ""
-                  }} 
-                  isWatched={true}
-                />
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {visibleItems.map((item) => (
+                <div key={item.content_id} className="relative group">
+                  <ContentCard 
+                    item={{
+                      id: item.content_id,
+                      title: item.title,
+                      poster_path: item.poster_path,
+                      release_date: item.release_date,
+                      vote_average: item.vote_average,
+                      media_type: item.media_type,
+                      genre_ids: [],
+                      overview: ""
+                    }} 
+                    isWatched={true}
+                  />
+                  <button
+                    onClick={() => removeWatched(item.content_id)}
+                    className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {visibleCount < filteredBySearch.length && (
+              <div className="mt-12 flex justify-center">
                 <button
-                  onClick={() => removeWatched(item.content_id)}
-                  className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
                 >
-                  <Trash2 size={16} />
+                  <Plus size={20} />
+                  Load More Content
                 </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </main>
     </div>

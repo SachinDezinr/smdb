@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, Shield, ShieldOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +38,7 @@ const Index = () => {
   const [yearPages, setYearPages] = useState<Record<number, number>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
+  const [adultFilter, setAdultFilter] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
@@ -62,9 +63,9 @@ const Index = () => {
     }
 
     setIsSearching(true);
-    setLoadingYears({ 0: true }); // Use 0 as a key for global search loading
+    setLoadingYears({ 0: true });
     try {
-      const results = await fetchContent(activeCategory, undefined, 1, searchQuery, activeRegion);
+      const results = await fetchContent(activeCategory, undefined, 1, searchQuery, activeRegion, adultFilter);
       setSearchResults(results);
     } catch (error) {
       showError("Search failed. Please try again.");
@@ -76,7 +77,7 @@ const Index = () => {
   const loadYearContent = async (year: number, page: number = 1) => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
-      const results = await fetchContent(activeCategory, year, page, "", activeRegion);
+      const results = await fetchContent(activeCategory, year, page, "", activeRegion, adultFilter);
       setYearData(prev => ({ 
         ...prev, 
         [year]: page === 1 ? results : [...(prev[year] || []), ...results] 
@@ -146,7 +147,9 @@ const Index = () => {
       loadYearContent(currentYear, 1);
     }
     fetchWatchedIds();
-  }, [activeCategory, activeRegion, isSearching]);
+  }, [activeCategory, activeRegion, isSearching, adultFilter]);
+
+  const showRegionFilters = activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -160,70 +163,92 @@ const Index = () => {
               Discover <span className="text-primary">Cinema</span>
             </h1>
             
-            <form onSubmit={handleGlobalSearch} className="relative group max-w-md w-full flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search globally..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button 
-                    type="button"
-                    onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                  >
-                    <X size={18} />
-                  </button>
+            <div className="flex items-center gap-4 w-full lg:w-auto">
+              <form onSubmit={handleGlobalSearch} className="relative group flex-1 lg:w-80 flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Search globally..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button 
+                      type="button"
+                      onClick={() => { setSearchQuery(''); setIsSearching(false); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+                <button 
+                  type="submit"
+                  className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform"
+                >
+                  Search
+                </button>
+              </form>
+
+              <button
+                onClick={() => setAdultFilter(!adultFilter)}
+                className={cn(
+                  "p-3 rounded-2xl border transition-all flex items-center gap-2 font-bold text-xs",
+                  adultFilter 
+                    ? "bg-red-500/10 border-red-500 text-red-500" 
+                    : "bg-white/5 border-white/10 text-muted-foreground hover:text-white"
                 )}
-              </div>
-              <button 
-                type="submit"
-                className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform"
+                title={adultFilter ? "Adult Filter ON" : "Adult Filter OFF"}
               >
-                Search
+                {adultFilter ? <Shield size={18} /> : <ShieldOff size={18} />}
+                <span className="hidden md:inline">18+</span>
               </button>
-            </form>
+            </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => { setActiveCategory(cat.value); if(isSearching) handleGlobalSearch(); }}
-                  className={cn(
-                    "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                    activeCategory === cat.value 
-                      ? "bg-primary text-black" 
-                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+            {!isSearching && (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setActiveCategory(cat.value)}
+                      className={cn(
+                        "px-6 py-2 rounded-full text-sm font-semibold transition-all",
+                        activeCategory === cat.value 
+                          ? "bg-primary text-black" 
+                          : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
-              <Filter size={16} className="text-primary mr-2" />
-              {REGIONS.map((reg) => (
-                <button
-                  key={reg.value}
-                  onClick={() => { setActiveRegion(reg.value); if(isSearching) handleGlobalSearch(); }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                    activeRegion === reg.value 
-                      ? "border-primary bg-primary/10 text-primary" 
-                      : "border-white/10 text-muted-foreground hover:border-white/30"
-                  )}
-                >
-                  {reg.label}
-                </button>
-              ))}
-            </div>
+                {showRegionFilters && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Filter size={16} className="text-primary mr-2" />
+                    {REGIONS.map((reg) => (
+                      <button
+                        key={reg.value}
+                        onClick={() => setActiveRegion(reg.value)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                          activeRegion === reg.value 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-white/10 text-muted-foreground hover:border-white/30"
+                        )}
+                      >
+                        {reg.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </header>
 
