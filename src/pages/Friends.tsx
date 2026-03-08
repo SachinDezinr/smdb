@@ -4,9 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, BarChart2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { showSuccess, showError } from '@/utils/toast';
-import { cn } from '@/lib/utils';
 
 const Friends = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,7 +81,14 @@ const Friends = () => {
 
   const respondRequest = async (requestId: string, accept: boolean) => {
     if (accept) {
-      await supabase.from('friends').update({ status: 'accepted' }).eq('id', requestId);
+      // RLS now ensures only the receiver can update status to 'accepted'
+      const { error } = await supabase.from('friends').update({ status: 'accepted' }).eq('id', requestId);
+      
+      if (error) {
+        showError("Failed to accept request");
+        return;
+      }
+
       // Create reciprocal friendship
       const request = requests.find(r => r.id === requestId);
       await supabase.from('friends').insert({ 
@@ -132,7 +137,6 @@ const Friends = () => {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Search Results */}
           <div className="lg:col-span-2 space-y-6">
             {searchResults.length > 0 && (
               <section className="glass-card p-6 border-primary/20">
@@ -192,7 +196,6 @@ const Friends = () => {
             </section>
           </div>
 
-          {/* Requests Sidebar */}
           <div className="space-y-6">
             <section className="glass-card p-6 border-primary/10">
               <h2 className="text-xl font-serif font-bold mb-4 flex items-center gap-2">

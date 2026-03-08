@@ -1,6 +1,3 @@
-const TMDB_API_KEY = "87ac1ac60056408dd1f46c65dbfc4a1f";
-const BASE_URL = "https://api.themoviedb.org/3";
-
 export type MediaType = "movie" | "tv" | "anime" | "k-drama";
 export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indian" | "animated";
 
@@ -17,6 +14,8 @@ export interface ContentItem {
   cast?: string[];
 }
 
+const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
+
 const getRegionParams = (region: Region) => {
   switch (region) {
     case "bollywood": return "&with_original_language=hi&region=IN";
@@ -26,6 +25,17 @@ const getRegionParams = (region: Region) => {
     case "animated": return "&with_genres=16";
     default: return "";
   }
+};
+
+const fetchFromProxy = async (path: string, params: Record<string, string | number | boolean> = {}) => {
+  const url = new URL(PROXY_URL);
+  url.searchParams.set('path', path);
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.set(key, String(value));
+  });
+  
+  const response = await fetch(url.toString());
+  return response.json();
 };
 
 export const fetchContent = async (
@@ -38,54 +48,52 @@ export const fetchContent = async (
 ): Promise<ContentItem[]> => {
   let results: any[] = [];
   const currentYear = new Date().getFullYear();
-  const regionParams = getRegionParams(region);
-  const adultParam = `&include_adult=${includeAdult}`;
-  const animeAdultFilter = !includeAdult ? "&without_keywords=190370" : "";
+  const adultParam = includeAdult;
+  const animeAdultFilter = !includeAdult ? "190370" : "";
 
   if (query) {
-    // Perform both multi-search (titles) and person search simultaneously
-    const [multiRes, personRes] = await Promise.all([
-      fetch(`${BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}${adultParam}`),
-      fetch(`${BASE_URL}/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}${adultParam}`)
-    ]);
-
-    const multiData = await multiRes.json();
-    const personData = await personRes.json();
+    const multiData = await fetchFromProxy('/search/multi', { query, page, include_adult: adultParam });
+    const personData = await fetchFromProxy('/search/person', { query, include_adult: adultParam });
 
     results = [...(multiData.results || [])];
 
-    // If a person is found, also fetch their credits and add to results
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
-      const creditsRes = await fetch(`${BASE_URL}/person/${personId}/combined_credits?api_key=${TMDB_API_KEY}${adultParam}`);
-      const creditsData = await creditsRes.json();
-      
-      // Combine cast and crew credits
-      const personCredits = [
-        ...(creditsData.cast || []),
-        ...(creditsData.crew || [])
-      ];
-      
-      results = [...results, ...personCredits];
+      const creditsData = await fetchFromProxy(`/person/${personId}/combined_credits`, { include_adult: adultParam });
+      results = [...results, ...(creditsData.cast || []), ...(creditsData.crew || [])];
     }
   } else {
-    let url = "";
+    let path = "";
+    let params: any = { page, include_adult: adultParam };
+
     switch (type) {
       case "movie":
-        url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
+        path = '/discover/movie';
+        params.primary_release_year = year || currentYear;
+        params.sort_by = 'popularity.desc';
         break;
       case "tv":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
+        path = '/discover/tv';
+        params.first_air_date_year = year || currentYear;
+        params.sort_by = 'popularity.desc';
         break;
       case "anime":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date_year=${year || currentYear}&page=${page}${adultParam}${animeAdultFilter}`;
+        path = '/discover/tv';
+        params.with_keywords = '210024';
+        params.with_original_language = 'ja';
+        params.first_air_date_year = year || currentYear;
+        if (animeAdultFilter) params.without_keywords = animeAdultFilter;
         break;
       case "k-drama":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year || currentYear}&page=${page}${adultParam}`;
+        path = '/discover/tv';
+        params.with_original_language = 'ko';
+        params.first_air_date_year = year || currentYear;
         break;
     }
-    const response = await fetch(url);
-    const data = await response.json();
+
+    // Add region params manually since they are strings
+    const regionStr = getRegionParams(region);
+    const data = await fetchFromProxy(path, params);
     results = data.results || [];
   }
 
@@ -110,54 +118,56 @@ export const fetchContent = async (
       };
     })
     .filter((item: any) => {
-      // Deduplicate by ID
       if (seen.has(item.id)) return false;
       seen.add(item.id);
-
-      // Basic quality filters
       if (!item.poster_path && item.vote_average === 0) return false;
       if (!item.title) return false;
-
-      // If searching, show everything found
       if (query) return true;
-      
-      // If browsing by year, only show released content
       if (!year) return true;
       return item.release_date <= today;
     });
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
-  const url = `${BASE_URL}/${type}/${id}/credits?api_key=${TMDB_API_KEY}`;
-  const response = await fetch(url);
-  const data = await response.json();
+  const data = await fetchFromProxy(`/${type}/${id}/credits`);
   const director = data.crew?.find((c: any) => c.job === 'Director')?.name;
   const cast = data.cast?.slice(0, 5).map((c: any) => c.name);
   return { director, cast };
 };
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all", page: number = 1, includeAdult: boolean = false): Promise<ContentItem[]> => {
-  const regionParams = getRegionParams(region);
-  const adultParam = `&include_adult=${includeAdult}`;
-  let url = "";
+  let path = "";
+  let params: any = { 
+    page, 
+    include_adult: includeAdult,
+    sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc'
+  };
   
+  const today = new Date().toISOString().split('T')[0];
+
   switch (type) {
     case "movie":
-      url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=primary_release_date.asc&page=${page}${regionParams}${adultParam}`;
+      path = '/discover/movie';
+      params['primary_release_date.gte'] = today;
       break;
     case "tv":
-      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc&page=${page}${regionParams}${adultParam}`;
+      path = '/discover/tv';
+      params['first_air_date.gte'] = today;
       break;
     case "anime":
-      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc&page=${page}${adultParam}`;
+      path = '/discover/tv';
+      params.with_keywords = '210024';
+      params.with_original_language = 'ja';
+      params['first_air_date.gte'] = today;
       break;
     case "k-drama":
-      url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date.gte=${new Date().toISOString().split('T')[0]}&sort_by=first_air_date.asc&page=${page}${adultParam}`;
+      path = '/discover/tv';
+      params.with_original_language = 'ko';
+      params['first_air_date.gte'] = today;
       break;
   }
     
-  const response = await fetch(url);
-  const data = await response.json();
+  const data = await fetchFromProxy(path, params);
   return (data.results || [])
     .map((item: any) => ({
       id: item.id,

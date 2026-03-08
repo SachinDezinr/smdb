@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -35,7 +35,6 @@ const Auth = () => {
           throw new Error("Username must start/end with letters, and only contain letters, numbers, _ or .");
         }
 
-        // Check if username exists
         const { data: existing } = await supabase
           .from('profiles')
           .select('username')
@@ -53,21 +52,10 @@ const Auth = () => {
         showSuccess("You are successfully registered! Please check your email to verify.");
         setMode('login');
       } else if (mode === 'forgot') {
-        // Rule: Username and Email must match
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', username)
-          .eq('email', email)
-          .single();
-        
-        if (profileError || !profile) {
-          throw new Error("Username and Email do not match our records.");
-        }
-
+        // Securely trigger password reset via Supabase Auth
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        showSuccess("Password reset link sent to your email!");
+        showSuccess("If an account exists with this email, a reset link has been sent.");
         setMode('login');
       }
     } catch (error: any) {
@@ -100,7 +88,7 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          {(mode === 'register' || mode === 'forgot') && (
+          {mode === 'register' && (
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
               <input
