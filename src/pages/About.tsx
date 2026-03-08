@@ -23,20 +23,20 @@ const About = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
         >
-          <h1 className="text-5xl lg:text-6xl font-serif font-bold mb-4">About <span className="text-primary">CineTrack</span></h1>
+          <h1 className="text-5xl lg:text-6xl font-serif font-bold mb-4">About <span className="text-primary">SMDB</span></h1>
           <p className="text-xl text-muted-foreground">Track what you watch. Discover what’s next.</p>
         </motion.div>
 
         <div className="space-y-12">
           <section className="glass-card p-8 border-primary/20 cinematic-glow">
-            <h2 className="text-2xl font-serif font-bold mb-4 text-primary">What is CineTrack?</h2>
+            <h2 className="text-2xl font-serif font-bold mb-4 text-primary">What is SMDB?</h2>
             <p className="text-lg leading-relaxed text-white/80 mb-6">
-              CineTrack is a premium content tracking and statistics platform designed for true cinema lovers. 
+              SMDB (Shows & Movies Database) is a premium content tracking and statistics platform designed for true cinema lovers. 
               It is <span className="text-primary font-bold">NOT</span> a streaming service. We provide the tools 
               to organize your cinematic journey, from Hollywood blockbusters to niche Anime and K-Dramas.
             </p>
             <p className="text-sm text-muted-foreground italic">
-              CineTrack uses the TMDB API for content information and metadata.
+              SMDB uses the TMDB API for content information and metadata.
             </p>
           </section>
 
@@ -77,7 +77,7 @@ const About = () => {
 
           <div className="text-center pt-10">
             <p className="text-2xl font-serif font-bold text-primary italic">
-              "CineTrack helps you build your cinematic journey."
+              "SMDB helps you build your cinematic journey."
             </p>
           </div>
         </div>

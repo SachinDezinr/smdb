@@ -11,7 +11,6 @@ const Stats = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showWrapped, setShowWrapped] = useState(false);
-  const [activeTab, setActiveTab] = useState<'thisYear' | 'total'>('thisYear');
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
@@ -88,33 +87,12 @@ const Stats = () => {
           </button>
         </header>
 
-        <div className="flex gap-4 mb-8">
-          <button 
-            onClick={() => setActiveTab('thisYear')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-bold transition-all",
-              activeTab === 'thisYear' ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"
-            )}
-          >
-            This Year (2026)
-          </button>
-          <button 
-            onClick={() => setActiveTab('total')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-bold transition-all",
-              activeTab === 'total' ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"
-            )}
-          >
-            Lifetime Total
-          </button>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {[
-            { label: activeTab === 'thisYear' ? 'Watched in 2026' : 'Total Watched', value: activeTab === 'thisYear' ? stats?.yearTotal : stats?.total, icon: Calendar },
+            { label: 'Watched in 2026', value: stats?.yearTotal, icon: Calendar },
             { label: 'Top Category', value: stats?.topGenre, icon: Film, color: 'text-primary' },
             { label: 'Avg IMDb Rating', value: stats?.avgRating, icon: Star },
-            { label: 'Released in 2026', value: stats?.releasedThisYear, icon: Clock },
+            { label: 'Total Lifetime', value: stats?.total, icon: Clock },
           ].map((item, i) => (
             <motion.div
               key={i}
@@ -133,7 +111,7 @@ const Stats = () => {
         <section className="glass-card p-8 border-primary/10 cinematic-glow">
           <h2 className="text-2xl font-serif font-bold mb-8 flex items-center gap-3">
             <BarChart3 className="text-primary" />
-            Monthly Watch History
+            Monthly Watch History (2026)
           </h2>
           
           <div className="flex items-end justify-between h-64 gap-2">
