@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
@@ -52,19 +52,17 @@ const Upcoming = () => {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!searchQuery.trim()) {
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
       setIsSearching(false);
+      setSearchResults([]);
       return;
     }
 
     setIsSearching(true);
     setLoading(true);
     try {
-      // Search across all types for the best results
-      const results = await fetchContent('movie', undefined, 1, searchQuery, 'all', false);
-      // Filter for upcoming only
+      const results = await fetchContent('movie', undefined, 1, query, 'all', false);
       const today = new Date().toISOString().split('T')[0];
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
@@ -72,7 +70,20 @@ const Upcoming = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Live search effect with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        performSearch(searchQuery);
+      } else {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, performSearch]);
 
   useEffect(() => {
     if (!isSearching) load(1);
@@ -94,7 +105,7 @@ const Upcoming = () => {
               </h1>
             </div>
             
-            <form onSubmit={handleSearch} className="relative group max-w-md w-full flex gap-2">
+            <div className="relative group max-w-md w-full flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
                 <input
@@ -114,10 +125,7 @@ const Upcoming = () => {
                   </button>
                 )}
               </div>
-              <button type="submit" className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform">
-                Search
-              </button>
-            </form>
+            </div>
           </div>
 
           {!isSearching && (

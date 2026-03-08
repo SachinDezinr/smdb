@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
@@ -55,24 +55,37 @@ const Index = () => {
     if (data) setWatchedIds(data.map(item => item.content_id));
   };
 
-  const handleGlobalSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!searchQuery.trim()) {
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
       setIsSearching(false);
+      setSearchResults([]);
       return;
     }
 
     setIsSearching(true);
     setLoadingYears({ 0: true });
     try {
-      const results = await fetchContent(activeCategory, undefined, 1, searchQuery, activeRegion, adultFilter);
+      const results = await fetchContent('movie', undefined, 1, query, 'all', adultFilter);
       setSearchResults(results);
     } catch (error) {
       showError("Search failed. Please try again.");
     } finally {
       setLoadingYears({ 0: false });
     }
-  };
+  }, [adultFilter]);
+
+  // Live search effect with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        performSearch(searchQuery);
+      } else {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, performSearch]);
 
   const loadYearContent = async (year: number, page: number = 1) => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
@@ -149,7 +162,7 @@ const Index = () => {
     fetchWatchedIds();
   }, [activeCategory, activeRegion, isSearching, adultFilter]);
 
-  const showRegionFilters = activeCategory !== 'anime' && activeCategory !== 'k-drama';
+  const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -164,7 +177,7 @@ const Index = () => {
             </h1>
             
             <div className="flex flex-col md:flex-row gap-4 max-w-2xl w-full">
-              <form onSubmit={handleGlobalSearch} className="relative group flex-1 flex gap-2">
+              <div className="relative group flex-1 flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
                   <input
@@ -184,13 +197,7 @@ const Index = () => {
                     </button>
                   )}
                 </div>
-                <button 
-                  type="submit"
-                  className="bg-primary text-black px-6 rounded-2xl font-bold hover:scale-105 transition-transform"
-                >
-                  Search
-                </button>
-              </form>
+              </div>
 
               <button
                 onClick={() => setAdultFilter(!adultFilter)}
@@ -207,44 +214,46 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => { setActiveCategory(cat.value); if(isSearching) handleGlobalSearch(); }}
-                  className={cn(
-                    "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                    activeCategory === cat.value 
-                      ? "bg-primary text-black" 
-                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            {showRegionFilters && (
-              <div className="flex flex-wrap gap-2 items-center">
-                <Filter size={16} className="text-primary mr-2" />
-                {REGIONS.map((reg) => (
+          {!isSearching && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                {CATEGORIES.map((cat) => (
                   <button
-                    key={reg.value}
-                    onClick={() => { setActiveRegion(reg.value); if(isSearching) handleGlobalSearch(); }}
+                    key={cat.value}
+                    onClick={() => setActiveCategory(cat.value)}
                     className={cn(
-                      "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                      activeRegion === reg.value 
-                        ? "border-primary bg-primary/10 text-primary" 
-                        : "border-white/10 text-muted-foreground hover:border-white/30"
+                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
+                      activeCategory === cat.value 
+                        ? "bg-primary text-black" 
+                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
                     )}
                   >
-                    {reg.label}
+                    {cat.label}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+
+              {showRegionFilters && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Filter size={16} className="text-primary mr-2" />
+                  {REGIONS.map((reg) => (
+                    <button
+                      key={reg.value}
+                      onClick={() => setActiveRegion(reg.value)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                        activeRegion === reg.value 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-white/10 text-muted-foreground hover:border-white/30"
+                      )}
+                    >
+                      {reg.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         <div className="space-y-4">
@@ -253,7 +262,7 @@ const Index = () => {
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-serif font-bold">Search Results for "{searchQuery}"</h2>
                 <button 
-                  onClick={() => setIsSearching(false)}
+                  onClick={() => { setSearchQuery(''); setIsSearching(false); }}
                   className="text-sm text-primary hover:underline"
                 >
                   Back to Years
