@@ -50,6 +50,11 @@ export const TrendingHero = () => {
     setTrailerUrl(url);
   };
 
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
+
   if (loading || trending.length === 0) return (
     <div className="w-full aspect-[4/5] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
   );
@@ -74,7 +79,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[4/5] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group">
+    <div className="relative w-full aspect-[4/5] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -87,15 +92,27 @@ export const TrendingHero = () => {
             x: { type: "spring", stiffness: 300, damping: 30 },
             opacity: { duration: 0.4 }
           }}
-          className="absolute inset-0"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={1}
+          onDragEnd={(e, { offset, velocity }) => {
+            const swipe = swipePower(offset.x, velocity.x);
+
+            if (swipe < -swipeConfidenceThreshold) {
+              paginate(1);
+            } else if (swipe > swipeConfidenceThreshold) {
+              paginate(-1);
+            }
+          }}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
         >
           <img 
             src={current.backdrop_path || current.poster_path} 
             alt={current.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
@@ -115,7 +132,7 @@ export const TrendingHero = () => {
         </button>
       </div>
 
-      <div className="absolute inset-0 p-6 lg:p-12 flex flex-col justify-end max-w-2xl z-10">
+      <div className="absolute inset-0 p-6 lg:p-12 flex flex-col justify-end max-w-2xl z-10 pointer-events-none">
         <motion.div
           key={`info-${current.id}`}
           initial={{ y: 20, opacity: 0 }}
@@ -139,7 +156,7 @@ export const TrendingHero = () => {
             {current.overview}
           </p>
 
-          <div className="flex items-center gap-4 pt-2">
+          <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
               className="flex items-center gap-2 bg-primary text-black px-4 py-2 lg:px-6 lg:py-3 rounded-xl font-bold text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"

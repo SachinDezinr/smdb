@@ -95,7 +95,17 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const movies = interleave(gm, im);
   const others = interleave(gt, interleave(an, kd));
   
-  return interleave(movies, others).slice(0, 12);
+  const combined = interleave(movies, others);
+  
+  // Filter out duplicates by ID
+  const seen = new Set();
+  const unique = combined.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+
+  return unique.slice(0, 12);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
