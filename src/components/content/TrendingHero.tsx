@@ -2,15 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
-interface TrendingHeroProps {
-  type?: 'released' | 'upcoming';
-}
-
-export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
+export const TrendingHero = () => {
   const [trending, setTrending] = useState<ContentItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
@@ -27,8 +23,7 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      const data = await fetchTrending(type);
+      const data = await fetchTrending();
       setTrending(data);
       setLoading(false);
     };
@@ -37,10 +32,9 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [type]);
+  }, []);
 
   const paginate = (newDirection: number) => {
-    if (trending.length === 0) return;
     setDirection(newDirection);
     setCurrentIndex((prevIndex) => {
       let nextIndex = prevIndex + newDirection;
@@ -56,13 +50,14 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
     setTrailerUrl(url);
   };
 
-  if (loading) return (
-    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 flex items-center justify-center rounded-[2rem] mb-12">
-      <Loader2 className="animate-spin text-primary" size={48} />
-    </div>
-  );
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
 
-  if (trending.length === 0) return null;
+  if (loading || trending.length === 0) return (
+    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
+  );
 
   const current = trending[currentIndex];
 
@@ -97,19 +92,32 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
             x: { type: "spring", stiffness: 300, damping: 30 },
             opacity: { duration: 0.4 }
           }}
-          className="absolute inset-0"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={1}
+          onDragEnd={(e, { offset, velocity }) => {
+            const swipe = swipePower(offset.x, velocity.x);
+
+            if (swipe < -swipeConfidenceThreshold) {
+              paginate(1);
+            } else if (swipe > swipeConfidenceThreshold) {
+              paginate(-1);
+            }
+          }}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
         >
           <img 
             src={current.backdrop_path || current.poster_path} 
             alt={current.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none flex">
+      {/* Desktop Navigation Buttons */}
+      <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
           className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
@@ -133,9 +141,7 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
           className="space-y-3 lg:space-y-4"
         >
           <div className="flex items-center gap-3">
-            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">
-              {type === 'released' ? 'Trending Now' : 'Coming Soon'}
-            </span>
+            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
             <div className="flex items-center gap-1 text-primary">
               <Star size={14} fill="currentColor" />
               <span className="text-sm font-bold">{current.vote_average.toFixed(1)}</span>
@@ -153,7 +159,7 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
           <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 lg:px-6 lg:py-3 rounded-xl font-bold text-[10px] lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 bg-primary text-black px-3 py-1.5 lg:px-6 lg:py-3 rounded-xl font-bold text-[10px] lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
               <Play size={12} fill="currentColor" />
               Watch Trailer
@@ -162,6 +168,7 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
         </motion.div>
       </div>
 
+      {/* Navigation Dots */}
       <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
         {trending.map((_, i) => (
           <button
@@ -179,6 +186,7 @@ export const TrendingHero = ({ type = 'released' }: TrendingHeroProps) => {
         ))}
       </div>
 
+      {/* Trailer Modal */}
       <AnimatePresence>
         {trailerUrl && (
           <motion.div
