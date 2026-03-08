@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type MediaType = "movie" | "tv" | "anime" | "k-drama";
 export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indian" | "animated";
 
@@ -16,25 +18,37 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-const getRegionParams = (region: Region) => {
+const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
-    case "bollywood": return "&with_original_language=hi&region=IN";
-    case "punjabi": return "&with_original_language=pa&region=IN";
-    case "south-indian": return "&with_original_language=te|ta|kn|ml&region=IN";
-    case "hollywood": return "&with_original_language=en&region=US";
-    case "animated": return "&with_genres=16";
-    default: return "";
+    case "bollywood": return { with_original_language: "hi", region: "IN" };
+    case "punjabi": return { with_original_language: "pa", region: "IN" };
+    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN" };
+    case "hollywood": return { with_original_language: "en", region: "US" };
+    case "animated": return { with_genres: "16" };
+    default: return {};
   }
 };
 
 const fetchFromProxy = async (path: string, params: Record<string, string | number | boolean> = {}) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
   const url = new URL(PROXY_URL);
   url.searchParams.set('path', path);
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, String(value));
   });
   
-  const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${session?.access_token}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch from proxy');
+  }
+  
   return response.json();
 };
 
@@ -48,41 +62,50 @@ export const fetchContent = async (
 ): Promise<ContentItem[]> => {
   let results: any[] = [];
   const currentYear = new Date().getFullYear();
-  const adultParam = includeAdult;
-  const animeAdultFilter = !includeAdult ? "190370" : "";
 
   if (query) {
-    const multiData = await fetchFromProxy('/search/multi', { query, page, include_adult: adultParam });
-    const personData = await fetchFromProxy('/search/person', { query, include_adult: adultParam });
+    // Search for movies/tv and people simultaneously
+    const [multiData, personData] = await Promise.all([
+      fetchFromProxy('/search/multi', { query, page, include_adult: includeAdult }),
+      fetchFromProxy('/search/person', { query, include_adult: includeAdult })
+    ]);
 
     results = [...(multiData.results || [])];
 
+    // If a person is found (like Shah Rukh Khan), fetch their movie credits
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
-      const creditsData = await fetchFromProxy(`/person/${personId}/combined_credits`, { include_adult: adultParam });
-      results = [...results, ...(creditsData.cast || []), ...(creditsData.crew || [])];
+      const creditsData = await fetchFromProxy(`/person/${personId}/combined_credits`, { include_adult: includeAdult });
+      const personCredits = [
+        ...(creditsData.cast || []),
+        ...(creditsData.crew || []).filter((c: any) => c.job === 'Director')
+      ];
+      results = [...results, ...personCredits];
     }
   } else {
     let path = "";
-    let params: any = { page, include_adult: adultParam };
+    let params: any = { 
+      page, 
+      include_adult: includeAdult,
+      sort_by: 'popularity.desc'
+    };
+
+    const regionParams = getRegionParams(region);
 
     switch (type) {
       case "movie":
         path = '/discover/movie';
         params.primary_release_year = year || currentYear;
-        params.sort_by = 'popularity.desc';
         break;
       case "tv":
         path = '/discover/tv';
         params.first_air_date_year = year || currentYear;
-        params.sort_by = 'popularity.desc';
         break;
       case "anime":
         path = '/discover/tv';
         params.with_keywords = '210024';
         params.with_original_language = 'ja';
         params.first_air_date_year = year || currentYear;
-        if (animeAdultFilter) params.without_keywords = animeAdultFilter;
         break;
       case "k-drama":
         path = '/discover/tv';
@@ -91,9 +114,7 @@ export const fetchContent = async (
         break;
     }
 
-    // Add region params manually since they are strings
-    const regionStr = getRegionParams(region);
-    const data = await fetchFromProxy(path, params);
+    const data = await fetchFromProxy(path, { ...params, ...regionParams });
     results = data.results || [];
   }
 
@@ -137,10 +158,12 @@ export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all", page: number = 1, includeAdult: boolean = false): Promise<ContentItem[]> => {
   let path = "";
+  const regionParams = getRegionParams(region);
   let params: any = { 
     page, 
     include_adult: includeAdult,
-    sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc'
+    sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
+    ...regionParams
   };
   
   const today = new Date().toISOString().split('T')[0];

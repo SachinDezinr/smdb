@@ -34,7 +34,7 @@ const Friends = () => {
       .select(`
         id,
         friend_id,
-        profiles:friend_id (id, username)
+        profiles!friends_friend_id_fkey (id, username)
       `)
       .eq('user_id', userId)
       .eq('status', 'accepted');
@@ -48,12 +48,16 @@ const Friends = () => {
       .select(`
         id,
         user_id,
-        profiles:user_id (id, username)
+        profiles!friends_user_id_fkey (id, username)
       `)
       .eq('friend_id', userId)
       .eq('status', 'pending');
     
-    if (!error) setRequests(data || []);
+    if (error) {
+      console.error("Error fetching requests:", error);
+    } else {
+      setRequests(data || []);
+    }
   };
 
   const handleSearch = async () => {
@@ -64,9 +68,10 @@ const Friends = () => {
       .select('id, username')
       .ilike('username', `%${searchQuery}%`)
       .neq('id', currentUser?.id)
-      .limit(5);
+      .limit(10);
     
     if (!error) setSearchResults(data || []);
+    else showError("Search failed");
     setSearching(false);
   };
 
@@ -81,15 +86,16 @@ const Friends = () => {
 
   const respondRequest = async (requestId: string, accept: boolean) => {
     if (accept) {
-      // RLS now ensures only the receiver can update status to 'accepted'
-      const { error } = await supabase.from('friends').update({ status: 'accepted' }).eq('id', requestId);
+      const { error } = await supabase
+        .from('friends')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
       
       if (error) {
         showError("Failed to accept request");
         return;
       }
 
-      // Create reciprocal friendship
       const request = requests.find(r => r.id === requestId);
       await supabase.from('friends').insert({ 
         user_id: currentUser.id, 
@@ -177,9 +183,9 @@ const Friends = () => {
                     <div key={friend.id} className="p-4 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between group">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary">
-                          {friend.profiles.username[0].toUpperCase()}
+                          {friend.profiles?.username?.[0]?.toUpperCase() || '?'}
                         </div>
-                        <p className="font-bold">{friend.profiles.username}</p>
+                        <p className="font-bold">{friend.profiles?.username || 'Unknown'}</p>
                       </div>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button className="p-2 text-primary hover:bg-primary/10 rounded-lg">
@@ -208,7 +214,7 @@ const Friends = () => {
                 <div className="space-y-3">
                   {requests.map((req) => (
                     <div key={req.id} className="p-3 bg-white/5 rounded-xl border border-white/5">
-                      <p className="text-sm font-bold mb-3">{req.profiles.username}</p>
+                      <p className="text-sm font-bold mb-3">{req.profiles?.username || 'Unknown'}</p>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => respondRequest(req.id, true)}
