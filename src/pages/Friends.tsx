@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, BarChart2, Clock } from 'lucide-react';
+import { Search, UserPlus, UserMinus, Check, X, Users, Loader2, Clock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Friends = () => {
@@ -17,44 +17,48 @@ const Friends = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const fetchData = async (userId: string) => {
-    // Fetch Friends (Accepted)
-    const { data: friendsData } = await supabase
-      .from('friends')
-      .select(`
-        id,
-        friend_id,
-        profiles:friend_id (id, username)
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'accepted');
-    
-    setFriends(friendsData || []);
+    try {
+      // Fetch Friends (Accepted) - Join on friend_id to see who you added
+      const { data: friendsData } = await supabase
+        .from('friends')
+        .select(`
+          id,
+          friend_id,
+          profiles!friends_friend_id_fkey (id, username)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'accepted');
+      
+      setFriends(friendsData || []);
 
-    // Fetch Incoming Requests
-    const { data: incomingData } = await supabase
-      .from('friends')
-      .select(`
-        id,
-        user_id,
-        profiles:user_id (id, username)
-      `)
-      .eq('friend_id', userId)
-      .eq('status', 'pending');
-    
-    setIncomingRequests(incomingData || []);
+      // Fetch Incoming Requests - Join on user_id to see who sent it
+      const { data: incomingData } = await supabase
+        .from('friends')
+        .select(`
+          id,
+          user_id,
+          profiles!friends_user_id_fkey (id, username)
+        `)
+        .eq('friend_id', userId)
+        .eq('status', 'pending');
+      
+      setIncomingRequests(incomingData || []);
 
-    // Fetch Sent Requests
-    const { data: sentData } = await supabase
-      .from('friends')
-      .select(`
-        id,
-        friend_id,
-        profiles:friend_id (id, username)
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'pending');
-    
-    setSentRequests(sentData || []);
+      // Fetch Sent Requests - Join on friend_id to see who you invited
+      const { data: sentData } = await supabase
+        .from('friends')
+        .select(`
+          id,
+          friend_id,
+          profiles!friends_friend_id_fkey (id, username)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+      
+      setSentRequests(sentData || []);
+    } catch (err) {
+      console.error("Error fetching social data:", err);
+    }
   };
 
   useEffect(() => {
@@ -82,33 +86,20 @@ const Friends = () => {
       
       if (error) throw error;
       setSearchResults(data || []);
-      if (data?.length === 0) showSuccess("No users found with that name.");
     } catch (err: any) {
-      showError("Search failed: " + err.message);
+      showError("Search failed");
     } finally {
       setSearching(false);
     }
   };
 
   const sendRequest = async (friendId: string) => {
-    // Check if already friends or request exists
-    const { data: existing } = await supabase
-      .from('friends')
-      .select('id')
-      .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUser.id})`)
-      .single();
-
-    if (existing) {
-      showError("A connection or request already exists with this user.");
-      return;
-    }
-
     const { error } = await supabase
       .from('friends')
       .insert({ user_id: currentUser.id, friend_id: friendId, status: 'pending' });
     
     if (error) {
-      showError("Failed to send request.");
+      showError("Request already exists");
     } else {
       showSuccess("Friend request sent!");
       fetchData(currentUser.id);
@@ -123,11 +114,11 @@ const Friends = () => {
         .eq('id', requestId);
       
       if (error) {
-        showError("Failed to accept request");
+        showError("Failed to accept");
         return;
       }
 
-      // Create the reciprocal relationship for mutual friendship
+      // Create reciprocal relationship for mutual friendship
       const request = incomingRequests.find(r => r.id === requestId);
       if (request) {
         await supabase.from('friends').insert({ 
@@ -139,21 +130,20 @@ const Friends = () => {
       showSuccess("Friend request accepted!");
     } else {
       await supabase.from('friends').delete().eq('id', requestId);
-      showSuccess("Request declined.");
+      showSuccess("Request declined");
     }
     fetchData(currentUser.id);
   };
 
   const removeFriend = async (friendshipId: string, friendId: string) => {
     if (!confirm("Remove this friend?")) return;
-    
     await supabase.from('friends').delete().eq('id', friendshipId);
-    // Also remove the reciprocal one
     await supabase.from('friends').delete().eq('user_id', friendId).eq('friend_id', currentUser.id);
-    
-    showSuccess("Friend removed.");
+    showSuccess("Friend removed");
     fetchData(currentUser.id);
   };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -204,7 +194,6 @@ const Friends = () => {
                       <button 
                         onClick={() => sendRequest(user.id)}
                         className="p-2 bg-primary text-black rounded-lg hover:scale-110 transition-transform"
-                        title="Send Friend Request"
                       >
                         <UserPlus size={18} />
                       </button>
@@ -234,15 +223,12 @@ const Friends = () => {
                         </div>
                         <p className="font-bold">{friend.profiles?.username || 'Unknown'}</p>
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => removeFriend(friend.id, friend.friend_id)}
-                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
-                          title="Remove Friend"
-                        >
-                          <UserMinus size={18} />
-                        </button>
-                      </div>
+                      <button 
+                        onClick={() => removeFriend(friend.id, friend.friend_id)}
+                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <UserMinus size={18} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -266,13 +252,13 @@ const Friends = () => {
                       <div className="flex gap-2">
                         <button 
                           onClick={() => respondRequest(req.id, true)}
-                          className="flex-1 py-2 bg-primary text-black text-xs font-bold rounded-lg hover:bg-primary/80 transition-colors"
+                          className="flex-1 py-2 bg-primary text-black text-xs font-bold rounded-lg"
                         >
                           Accept
                         </button>
                         <button 
                           onClick={() => respondRequest(req.id, false)}
-                          className="flex-1 py-2 bg-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/20 transition-colors"
+                          className="flex-1 py-2 bg-white/10 text-white text-xs font-bold rounded-lg"
                         >
                           Decline
                         </button>
