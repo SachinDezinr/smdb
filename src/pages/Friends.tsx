@@ -36,7 +36,7 @@ const Friends = () => {
       .select(`
         id,
         friend_id,
-        profiles:friend_id (id, username, email)
+        profiles:friend_id (id, username)
       `)
       .eq('user_id', userId)
       .eq('status', 'accepted');
@@ -50,7 +50,7 @@ const Friends = () => {
       .select(`
         id,
         user_id,
-        profiles:user_id (id, username, email)
+        profiles:user_id (id, username)
       `)
       .eq('friend_id', userId)
       .eq('status', 'pending');
@@ -63,7 +63,7 @@ const Friends = () => {
     setSearching(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, username, email')
+      .select('id, username')
       .ilike('username', `%${searchQuery}%`)
       .neq('id', currentUser?.id)
       .limit(5);
@@ -146,7 +146,6 @@ const Friends = () => {
                         </div>
                         <div>
                           <p className="font-bold">{user.username}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
                       <button 
