@@ -20,8 +20,8 @@ const Friends = () => {
   const fetchData = useCallback(async (userId: string) => {
     setRefreshing(true);
     try {
-      // Fetch Friends (Accepted) - Join on friend_id to see who you added
-      // Using explicit join hint !friends_friend_id_fkey
+      // 1. Fetch Friends (Accepted)
+      // We join profiles on the friend_id to see who we are friends with
       const { data: friendsData } = await supabase
         .from('friends')
         .select(`
@@ -34,8 +34,8 @@ const Friends = () => {
       
       setFriends(friendsData || []);
 
-      // Fetch Incoming Requests - Join on user_id to see who sent it
-      // Using explicit join hint !friends_user_id_fkey
+      // 2. Fetch Incoming Requests (Pending)
+      // We join profiles on the user_id (the sender) to see who sent us the request
       const { data: incomingData } = await supabase
         .from('friends')
         .select(`
@@ -48,7 +48,8 @@ const Friends = () => {
       
       setIncomingRequests(incomingData || []);
 
-      // Fetch Sent Requests - Join on friend_id to see who you invited
+      // 3. Fetch Sent Requests (Pending)
+      // We join profiles on the friend_id (the receiver) to see who we invited
       const { data: sentData } = await supabase
         .from('friends')
         .select(`
