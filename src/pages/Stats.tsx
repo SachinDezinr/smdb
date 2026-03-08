@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart } from 'lucide-react';
+import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Stats = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showWrapped, setShowWrapped] = useState(false);
+  const [activeTab, setActiveTab] = useState<'thisYear' | 'total'>('thisYear');
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
@@ -25,6 +26,7 @@ const Stats = () => {
 
       if (watched) {
         const yearWatched = watched.filter(i => new Date(i.created_at).getFullYear() === currentYear);
+        const releasedThisYear = watched.filter(i => new Date(i.release_date).getFullYear() === currentYear);
         
         const counts = {
           movie: yearWatched.filter(i => i.media_type === 'movie').length,
@@ -52,6 +54,7 @@ const Stats = () => {
         setStats({
           total: watched.length,
           yearTotal: yearWatched.length,
+          releasedThisYear: releasedThisYear.length,
           topGenre,
           avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
           monthly: monthlyData,
@@ -85,12 +88,33 @@ const Stats = () => {
           </button>
         </header>
 
+        <div className="flex gap-4 mb-8">
+          <button 
+            onClick={() => setActiveTab('thisYear')}
+            className={cn(
+              "px-6 py-2 rounded-full text-sm font-bold transition-all",
+              activeTab === 'thisYear' ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"
+            )}
+          >
+            This Year (2026)
+          </button>
+          <button 
+            onClick={() => setActiveTab('total')}
+            className={cn(
+              "px-6 py-2 rounded-full text-sm font-bold transition-all",
+              activeTab === 'total' ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"
+            )}
+          >
+            Lifetime Total
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {[
-            { label: 'Watched this Year', value: stats?.yearTotal, icon: Calendar },
+            { label: activeTab === 'thisYear' ? 'Watched in 2026' : 'Total Watched', value: activeTab === 'thisYear' ? stats?.yearTotal : stats?.total, icon: Calendar },
             { label: 'Top Category', value: stats?.topGenre, icon: Film, color: 'text-primary' },
             { label: 'Avg IMDb Rating', value: stats?.avgRating, icon: Star },
-            { label: 'Total Lifetime', value: stats?.total, icon: TrendingUp },
+            { label: 'Released in 2026', value: stats?.releasedThisYear, icon: Clock },
           ].map((item, i) => (
             <motion.div
               key={i}
@@ -109,7 +133,7 @@ const Stats = () => {
         <section className="glass-card p-8 border-primary/10 cinematic-glow">
           <h2 className="text-2xl font-serif font-bold mb-8 flex items-center gap-3">
             <BarChart3 className="text-primary" />
-            Monthly Breakdown
+            Monthly Watch History
           </h2>
           
           <div className="flex items-end justify-between h-64 gap-2">
@@ -155,17 +179,17 @@ const Stats = () => {
                   <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Film className="text-black" size={32} />
                   </div>
-                  <h3 className="text-3xl font-serif font-bold text-primary">CineTrack</h3>
+                  <h3 className="text-3xl font-serif font-bold text-primary">SMDB</h3>
                   <p className="text-white/60 text-sm uppercase tracking-widest mt-2">Wrapped {currentYear}</p>
                 </div>
 
-                <div className="w-full space-y-6">
+                <div className="w-full space-y-8">
                   <div className="text-center">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Total Titles</p>
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Total Titles in 2026</p>
                     <p className="text-6xl font-bold text-white">{stats.yearTotal}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
                       <PlayCircle className="text-primary mb-2" size={20} />
                       <p className="text-2xl font-bold text-white">{stats.counts.movie}</p>
@@ -187,21 +211,12 @@ const Stats = () => {
                       <p className="text-[10px] text-white/40 uppercase tracking-widest">K-Drama</p>
                     </div>
                   </div>
-
-                  <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-center">
-                    <p className="text-primary/60 text-[10px] uppercase tracking-widest mb-1">Top Category</p>
-                    <p className="text-xl font-bold text-primary">{stats.topGenre}</p>
-                  </div>
                 </div>
 
                 <div className="w-full text-center pb-4">
                   <p className="text-white/40 text-xs italic">"Your cinematic journey, tracked."</p>
-                  <p className="text-primary font-bold text-sm mt-2">cinetrack.app</p>
+                  <p className="text-primary font-bold text-sm mt-2">smdb.app</p>
                 </div>
-
-                {/* Decorative elements */}
-                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-[80px]" />
               </motion.div>
             </div>
           )}

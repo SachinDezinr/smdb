@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Film } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, Film, User, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ContentItem } from '@/lib/tmdb';
+import { ContentItem, fetchCredits } from '@/lib/tmdb';
 
 interface ContentCardProps {
   item: ContentItem;
@@ -14,6 +14,10 @@ interface ContentCardProps {
 }
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate }: ContentCardProps) => {
+  const [showCredits, setShowCredits] = useState(false);
+  const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr === "TBA") return "TBA";
     try {
@@ -25,7 +29,24 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
-  const hasPoster = item.poster_path && !item.poster_path.includes('placeholder.svg');
+  const handlePosterClick = async () => {
+    if (!showReleaseDate) return; // Only show credits for upcoming content
+    
+    if (showCredits) {
+      setShowCredits(false);
+      return;
+    }
+
+    if (!credits) {
+      setLoadingCredits(true);
+      const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+      setCredits(data);
+      setLoadingCredits(false);
+    }
+    setShowCredits(true);
+  };
+
+  const hasPoster = item.poster_path && item.poster_path !== "";
 
   return (
     <motion.div
@@ -34,29 +55,74 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       whileHover={{ scale: 1.02 }}
       className="group relative flex flex-col gap-3"
     >
-      <div className={cn(
-        "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900",
-        isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
-      )}>
+      <div 
+        onClick={handlePosterClick}
+        className={cn(
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900 cursor-pointer",
+          isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
+        )}
+      >
         {hasPoster ? (
           <img
             src={item.poster_path}
             alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className={cn(
+              "w-full h-full object-cover transition-all duration-700",
+              showCredits ? "blur-xl scale-110 opacity-40" : "group-hover:scale-110"
+            )}
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative">
+          <div className={cn(
+            "w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative",
+            showCredits && "blur-md opacity-40"
+          )}>
             <Film className="text-primary/20 mb-4" size={48} strokeWidth={1} />
             <span className="text-sm font-serif font-bold text-white/80 line-clamp-4 relative z-10">
               {item.title}
             </span>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
           </div>
         )}
+
+        {/* Credits Overlay */}
+        <AnimatePresence>
+          {showCredits && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20"
+            >
+              {loadingCredits ? (
+                <div className="flex justify-center"><Film className="animate-spin text-primary" /></div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
+                      <User size={10} /> Director
+                    </p>
+                    <p className="text-sm font-bold text-white">{credits?.director || "Unknown"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
+                      <Users size={10} /> Main Cast
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {credits?.cast?.map((name, i) => (
+                        <span key={i} className="text-[11px] bg-white/10 px-2 py-0.5 rounded-md text-white/90">
+                          {name}
+                        </span>
+                      )) || <span className="text-xs text-white/60">N/A</span>}
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
         
-        {/* Overlay for actions - Hidden for upcoming content */}
-        {!showReleaseDate && (
+        {/* Watch Action Overlay */}
+        {!showReleaseDate && !showCredits && (
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
             <button
               onClick={(e) => {

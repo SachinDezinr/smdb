@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight, ChevronUp, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -13,6 +13,8 @@ const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -28,6 +30,13 @@ const Collection = () => {
     setLoading(false);
   };
 
+  useEffect(() => {
+    fetchWatched();
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const removeWatched = async (id: number) => {
     if (!confirm("Are you sure you want to remove this from your collection?")) return;
 
@@ -41,10 +50,6 @@ const Collection = () => {
     }
   };
 
-  useEffect(() => {
-    fetchWatched();
-  }, []);
-
   const stats = {
     total: watchedItems.length,
     movies: watchedItems.filter(i => i.media_type === 'movie').length,
@@ -56,6 +61,8 @@ const Collection = () => {
   const filteredItems = watchedItems.filter(item => 
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const displayedItems = filteredItems.slice(0, visibleCount);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -125,32 +132,60 @@ const Collection = () => {
             <p>Start adding content from the Home tab</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
-              <div key={item.content_id} className="relative group">
-                <ContentCard 
-                  item={{
-                    id: item.content_id,
-                    title: item.title,
-                    poster_path: item.poster_path,
-                    release_date: item.release_date,
-                    vote_average: item.vote_average,
-                    media_type: item.media_type,
-                    genre_ids: [],
-                    overview: ""
-                  }} 
-                  isWatched={true}
-                />
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayedItems.map((item) => (
+                <div key={item.content_id} className="relative group">
+                  <ContentCard 
+                    item={{
+                      id: item.content_id,
+                      title: item.title,
+                      poster_path: item.poster_path,
+                      release_date: item.release_date,
+                      vote_average: item.vote_average,
+                      media_type: item.media_type,
+                      genre_ids: [],
+                      overview: ""
+                    }} 
+                    isWatched={true}
+                  />
+                  <button
+                    onClick={() => removeWatched(item.content_id)}
+                    className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {visibleCount < filteredItems.length && (
+              <div className="mt-12 flex justify-center">
                 <button
-                  onClick={() => removeWatched(item.content_id)}
-                  className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
                 >
-                  <Trash2 size={16} />
+                  <Plus size={20} />
+                  Load More
                 </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
+
+        <AnimatePresence>
+          {showScrollTop && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+            >
+              <ChevronUp size={24} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

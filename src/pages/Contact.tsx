@@ -3,7 +3,7 @@
 import React from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
-import { Mail, Instagram, ExternalLink } from 'lucide-react';
+import { Mail, Instagram, ExternalLink, Linkedin, Code } from 'lucide-react';
 
 const Contact = () => {
   return (
@@ -16,25 +16,37 @@ const Contact = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-2xl text-center"
         >
-          <h1 className="text-5xl font-serif font-bold mb-4">Contact <span className="text-primary">Me</span></h1>
+          <h1 className="text-5xl font-serif font-bold mb-4">Contact <span className="text-primary">SMDB</span></h1>
           <p className="text-xl text-muted-foreground mb-12">Have feedback, suggestions, or collaboration ideas? Let’s connect.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <motion.a
-              href="mailto:sachinpanwarpay@gmail.com"
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="glass-card p-8 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+              href="mailto:smdbwork@gmail.com"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
             >
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
-                <Mail size={32} />
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Mail size={24} />
               </div>
               <div>
-                <h3 className="text-2xl font-serif font-bold mb-1">Email Me</h3>
-                <p className="text-muted-foreground text-sm">Send your queries directly via Gmail.</p>
+                <h3 className="text-xl font-serif font-bold mb-1">Email Us</h3>
+                <p className="text-muted-foreground text-xs">smdbwork@gmail.com</p>
               </div>
-              <div className="mt-4 text-primary font-bold flex items-center gap-2">
-                sachinpanwarpay@gmail.com
-                <ExternalLink size={14} />
+            </motion.a>
+
+            <motion.a
+              href="https://www.linkedin.com/in/sachin-panwar-dezinr"
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+            >
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Linkedin size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">LinkedIn</h3>
+                <p className="text-muted-foreground text-xs">Connect professionally</p>
               </div>
             </motion.a>
 
@@ -42,25 +54,31 @@ const Contact = () => {
               href="https://www.instagram.com/isachin.panwar"
               target="_blank"
               rel="noopener noreferrer"
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="glass-card p-8 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
             >
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
-                <Instagram size={32} />
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Instagram size={24} />
               </div>
               <div>
-                <h3 className="text-2xl font-serif font-bold mb-1">Instagram</h3>
-                <p className="text-muted-foreground text-sm">Follow for updates and cinematic vibes.</p>
-              </div>
-              <div className="mt-4 text-primary font-bold flex items-center gap-2">
-                @isachin.panwar
-                <ExternalLink size={14} />
+                <h3 className="text-xl font-serif font-bold mb-1">Instagram</h3>
+                <p className="text-muted-foreground text-xs">@isachin.panwar</p>
               </div>
             </motion.a>
+
+            <div className="glass-card p-6 flex flex-col items-center gap-4 border-primary/20 cinematic-glow">
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-black">
+                <Code size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">Developed By</h3>
+                <p className="text-primary font-bold">Sachin Panwar</p>
+              </div>
+            </div>
           </div>
 
           <footer className="mt-20 text-muted-foreground text-sm">
-            <p>Built with passion for cinema.</p>
+            <p>© 2026 SMDB. All Rights Reserved.</p>
           </footer>
         </motion.div>
       </main>

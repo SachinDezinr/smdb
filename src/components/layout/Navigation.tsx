@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 const desktopNavItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -28,16 +29,38 @@ const footerItems = [
 
 export const Navigation = () => {
   const location = useLocation();
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
+
+  useEffect(() => {
+    const checkRequests = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('friend_id', user.id)
+        .eq('status', 'pending');
+      
+      setHasPendingRequests(data && data.length > 0);
+    };
+    checkRequests();
+  }, []);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <>
-      {/* Desktop Sidebar - Remains the same */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r border-white/10 bg-background/50 backdrop-blur-xl p-6">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <Film className="text-black" size={24} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tighter text-primary">CineTrack</h1>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary">SMDB</h1>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -46,7 +69,7 @@ export const Navigation = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group",
+                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group relative",
                 location.pathname === item.path 
                   ? "bg-primary text-black font-semibold" 
                   : "text-muted-foreground hover:bg-white/5 hover:text-white"
@@ -57,6 +80,9 @@ export const Navigation = () => {
                 location.pathname === item.path ? "text-black" : "text-primary"
               )} />
               {item.label}
+              {item.path === '/profile' && hasPendingRequests && (
+                <span className="absolute right-4 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
             </Link>
           ))}
         </nav>
@@ -77,22 +103,30 @@ export const Navigation = () => {
               {item.label}
             </Link>
           ))}
+          
+          <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
+            <p>© 2026 SMDB. All Rights Reserved.</p>
+            <p className="mt-1">Unauthorized copying of code, design, or content is strictly prohibited.</p>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav - Cleaned up */}
+      {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-4 z-50">
         {mobileNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "flex flex-col items-center gap-1 transition-colors",
+              "flex flex-col items-center gap-1 transition-colors relative",
               location.pathname === item.path ? "text-primary" : "text-muted-foreground"
             )}
           >
             <item.icon size={20} />
             <span className="text-[10px] font-medium">{item.label}</span>
+            {item.path === '/profile' && hasPendingRequests && (
+              <span className="absolute top-0 right-2 w-2 h-2 bg-red-500 rounded-full border border-background" />
+            )}
           </Link>
         ))}
       </nav>
