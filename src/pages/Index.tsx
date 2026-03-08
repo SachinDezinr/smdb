@@ -350,6 +350,11 @@ const Index = () => {
             ))
           )}
         </div>
+
+        <footer className="mt-20 py-10 border-t border-white/5 text-center text-muted-foreground text-xs space-y-2">
+          <p>© 2026 SMDB. All Rights Reserved.</p>
+          <p>Unauthorized copying of code, design, or content is strictly prohibited.</p>
+        </footer>
       </main>
     </div>
   );

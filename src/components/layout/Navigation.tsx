@@ -31,13 +31,13 @@ export const Navigation = () => {
 
   return (
     <>
-      {/* Desktop Sidebar - Remains the same */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r border-white/10 bg-background/50 backdrop-blur-xl p-6">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <Film className="text-black" size={24} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tighter text-primary">CineTrack</h1>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary">SMDB</h1>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -80,7 +80,7 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav - Cleaned up */}
+      {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-4 z-50">
         {mobileNavItems.map((item) => (
           <Link
