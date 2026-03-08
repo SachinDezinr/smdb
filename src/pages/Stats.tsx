@@ -1,73 +1,92 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock } from 'lucide-react';
+import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Stats = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const fetchStats = useCallback(async () => {
+    setRefreshing(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data: watched } = await supabase
-        .from('watched_content')
-        .select('*')
-        .eq('user_id', user.id);
+    const { data: watched } = await supabase
+      .from('watched_content')
+      .select('*')
+      .eq('user_id', user.id);
 
-      if (watched) {
-        // Filter by release year as requested
-        const yearWatched = watched.filter(i => {
-          if (!i.release_date || i.release_date === "TBA") return false;
-          return new Date(i.release_date).getFullYear() === currentYear;
-        });
-        
-        const counts = {
-          movie: yearWatched.filter(i => i.media_type === 'movie').length,
-          tv: yearWatched.filter(i => i.media_type === 'tv').length,
-          anime: yearWatched.filter(i => i.media_type === 'anime').length,
-          kdrama: yearWatched.filter(i => i.media_type === 'k-drama').length,
+    if (watched) {
+      const yearWatched = watched.filter(i => {
+        if (!i.release_date || i.release_date === "TBA") return false;
+        return new Date(i.release_date).getFullYear() === currentYear;
+      });
+      
+      const counts = {
+        movie: yearWatched.filter(i => i.media_type === 'movie').length,
+        tv: yearWatched.filter(i => i.media_type === 'tv').length,
+        anime: yearWatched.filter(i => i.media_type === 'anime').length,
+        kdrama: yearWatched.filter(i => i.media_type === 'k-drama').length,
+      };
+
+      const genres: Record<string, number> = {};
+      watched.forEach(i => {
+        const g = i.media_type === 'tv' ? 'Web Series' : i.media_type.charAt(0).toUpperCase() + i.media_type.slice(1);
+        genres[g] = (genres[g] || 0) + 1;
+      });
+
+      const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+      const monthlyData = Array.from({ length: 12 }, (_, i) => {
+        const count = yearWatched.filter(w => new Date(w.created_at).getMonth() === i).length;
+        return {
+          month: new Date(0, i).toLocaleString('default', { month: 'short' }),
+          count
         };
+      });
 
-        const genres: Record<string, number> = {};
-        watched.forEach(i => {
-          const g = i.media_type === 'tv' ? 'Web Series' : i.media_type.charAt(0).toUpperCase() + i.media_type.slice(1);
-          genres[g] = (genres[g] || 0) + 1;
-        });
-
-        const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-
-        const monthlyData = Array.from({ length: 12 }, (_, i) => {
-          const count = yearWatched.filter(w => new Date(w.created_at).getMonth() === i).length;
-          return {
-            month: new Date(0, i).toLocaleString('default', { month: 'short' }),
-            count
-          };
-        });
-
-        setStats({
-          total: watched.length,
-          yearTotal: yearWatched.length,
-          topGenre,
-          avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
-          monthly: monthlyData,
-          counts
-        });
-      }
-      setLoading(false);
-    };
-    fetchStats();
+      setStats({
+        total: watched.length,
+        yearTotal: yearWatched.length,
+        topGenre,
+        avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
+        monthly: monthlyData,
+        counts
+      });
+    }
+    setLoading(false);
+    setRefreshing(false);
   }, [currentYear]);
 
-  if (loading) return null;
+  useEffect(() => {
+    fetchStats();
+    
+    // Listen for changes in watched_content to update graph dynamically
+    const channel = supabase
+      .channel('stats_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats]);
+
+  if (loading) return (
+    <div className="flex min-h-screen bg-background items-center justify-center">
+      <Loader2 className="animate-spin text-primary" size={48} />
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -81,12 +100,21 @@ const Stats = () => {
             </h1>
             <p className="text-muted-foreground mt-2">Your cinematic journey in {currentYear}</p>
           </div>
-          <button 
-            onClick={() => setShowWrapped(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-black rounded-xl hover:scale-105 transition-transform font-bold shadow-lg shadow-primary/20"
-          >
-            <Sparkles size={18} /> View My Wrapped
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={fetchStats}
+              className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-primary"
+              title="Refresh Stats"
+            >
+              <RefreshCw className={refreshing ? "animate-spin" : ""} size={20} />
+            </button>
+            <button 
+              onClick={() => setShowWrapped(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-primary text-black rounded-xl hover:scale-105 transition-transform font-bold shadow-lg shadow-primary/20"
+            >
+              <Sparkles size={18} /> View My Wrapped
+            </button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -97,10 +125,9 @@ const Stats = () => {
             { label: 'Total Lifetime', value: stats?.total, icon: Clock },
           ].map((item, i) => (
             <motion.div
-              key={i}
+              key={`${i}-${item.value}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
               className="glass-card p-6 border-white/5"
             >
               <item.icon className="text-primary mb-4" size={24} />
@@ -118,7 +145,7 @@ const Stats = () => {
           
           <div className="flex items-end justify-between h-64 gap-2">
             {stats?.monthly.map((m: any, i: number) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
+              <div key={`${i}-${m.count}`} className="flex-1 flex flex-col items-center gap-3 group">
                 <div className="w-full relative h-full flex items-end">
                   <motion.div
                     initial={{ height: 0 }}
@@ -138,7 +165,6 @@ const Stats = () => {
           </div>
         </section>
 
-        {/* Wrapped Modal */}
         <AnimatePresence>
           {showWrapped && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
+import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
 import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,7 +46,6 @@ const Upcoming = () => {
       let data: ContentItem[];
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion, false);
-        // Filter to only show future releases for the selected year
         const today = new Date().toISOString().split('T')[0];
         data = data.filter(item => item.release_date >= today);
       } else {
@@ -190,6 +190,8 @@ const Upcoming = () => {
             </div>
           )}
         </header>
+
+        {!isSearching && <TrendingHero type="upcoming" />}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
