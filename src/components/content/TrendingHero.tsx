@@ -56,7 +56,7 @@ export const TrendingHero = () => {
   };
 
   if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[4/5] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
+    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
   );
 
   const current = trending[currentIndex];
@@ -79,7 +79,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[4/5] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
+    <div className="relative w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -148,20 +148,20 @@ export const TrendingHero = () => {
             </div>
           </div>
           
-          <h2 className="text-3xl lg:text-6xl font-serif font-bold leading-tight">
+          <h2 className="text-2xl lg:text-6xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
           
-          <p className="text-muted-foreground text-xs lg:text-base line-clamp-2 max-w-lg">
+          <p className="text-muted-foreground text-[10px] lg:text-base line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
           <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 lg:px-6 lg:py-3 rounded-xl font-bold text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 bg-primary text-black px-3 py-1.5 lg:px-6 lg:py-3 rounded-xl font-bold text-[10px] lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              <Play size={14} fill="currentColor" />
+              <Play size={12} fill="currentColor" />
               Watch Trailer
             </button>
           </div>
