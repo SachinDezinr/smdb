@@ -23,6 +23,7 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'Punjabi', value: 'punjabi' },
   { label: 'South Indian', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
+  { label: 'Korean', value: 'korean' },
 ];
 
 const Upcoming = () => {
