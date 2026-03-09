@@ -25,14 +25,6 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'Animated', value: 'animated' },
 ];
 
-const REGIONS_2027: { label: string; value: Region }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'International', value: 'international' },
-  { label: 'Indian', value: 'indian' },
-  { label: 'Korean', value: 'korean' },
-  { label: 'Animated', value: 'animated' },
-];
-
 const Upcoming = () => {
   const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
   const [activeRegion, setActiveRegion] = useState<Region>('all');
@@ -106,7 +98,6 @@ const Upcoming = () => {
   }, [activeCategory, activeRegion, activeYear, isSearching]);
 
   const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
-  const currentRegions = activeYear === 2027 ? REGIONS_2027 : REGIONS;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -163,7 +154,7 @@ const Upcoming = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); setActiveRegion('all'); }}
+                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
                     activeYear === 2027 
@@ -179,7 +170,7 @@ const Upcoming = () => {
               {showRegionFilters && (
                 <div className="flex flex-wrap gap-2 items-center">
                   <Filter size={16} className="text-primary mr-2" />
-                  {currentRegions.map((reg) => (
+                  {REGIONS.map((reg) => (
                     <button
                       key={reg.value}
                       onClick={() => setActiveRegion(reg.value)}
