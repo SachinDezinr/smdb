@@ -208,6 +208,18 @@ const Upcoming = () => {
                 <p className="text-xl">No result found.</p>
               </div>
             )}
+
+            {!isSearching && items.length === 0 && (
+              <div className="text-center py-32 opacity-50 flex flex-col items-center justify-center">
+                <CalendarIcon size={64} className="mb-4 text-primary/20" />
+                <h2 className="text-2xl font-serif font-bold">No Upcoming Content</h2>
+                <p className="text-muted-foreground mt-2">
+                  {activeRegion !== 'all' 
+                    ? `No ${activeRegion} content announced yet${activeYear ? ` for ${activeYear}` : ''}.` 
+                    : `Nothing announced for this category yet${activeYear ? ` for ${activeYear}` : ''}.`}
+                </p>
+              </div>
+            )}
             
             {!isSearching && items.length > 0 && (
               <div className="mt-12 flex justify-center">
