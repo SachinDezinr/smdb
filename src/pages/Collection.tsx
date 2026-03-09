@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, ChevronUp, Plus } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,7 @@ const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'movie' | 'tv' | 'anime' | 'k-drama'>('all');
 
@@ -66,6 +66,13 @@ const Collection = () => {
 
   const displayedItems = filteredItems.slice(0, visibleCount);
 
+  const statCards = [
+    { label: 'Movies', value: stats.movies, icon: Film, color: 'text-primary' },
+    { label: 'Series', value: stats.tv, icon: Tv, color: 'text-blue-400' },
+    { label: 'Anime', value: stats.anime, icon: Sparkles, color: 'text-purple-400' },
+    { label: 'K-Drama', value: stats.kdrama, icon: Heart, color: 'text-pink-400' },
+  ];
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
@@ -77,6 +84,7 @@ const Collection = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Your <span className="text-primary">Collection</span>
               </h1>
+              <p className="text-muted-foreground mt-2">Manage your personal cinematic library.</p>
             </div>
             
             <div className="relative group max-w-md w-full">
@@ -89,6 +97,23 @@ const Collection = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Detailed Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {statCards.map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="glass-card p-4 border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-colors"
+              >
+                <stat.icon className={cn("mb-2 transition-transform group-hover:scale-110", stat.color)} size={24} />
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+              </motion.div>
+            ))}
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -159,7 +184,7 @@ const Collection = () => {
             {visibleCount < filteredItems.length && (
               <div className="mt-12 flex justify-center">
                 <button
-                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  onClick={() => setVisibleCount(prev => prev + 12)}
                   className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
                 >
                   <Plus size={20} />
