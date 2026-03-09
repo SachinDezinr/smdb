@@ -3,15 +3,17 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Film, Mail, Lock, User, Loader2, ArrowLeft, HelpCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Film, Mail, Lock, User, Loader2, ArrowLeft, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Auth = () => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [username, setUsername] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const navigate = useNavigate();
@@ -60,22 +62,32 @@ const Auth = () => {
         showSuccess("Registration successful! Welcome to SMDB.");
         navigate('/');
       } else if (mode === 'forgot') {
-        // Simple logic: Check if username and email match in profiles
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .eq('username', username)
-          .single();
-        
-        if (profileError || !profile) {
-          throw new Error("Account details do not match our records.");
+        if (forgotStep === 1) {
+          // Move to step 2: Answer and New Password
+          setForgotStep(2);
+          setLoading(false);
+          return;
         }
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        if (error) throw error;
-        showSuccess("Details verified! A reset link has been sent to your email.");
+        // Step 2: Call Edge Function to verify and reset
+        const response = await fetch('https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            security_answer: securityAnswer,
+            new_password: newPassword
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Reset failed');
+
+        showSuccess("Password reset successful! You can now log in.");
         setMode('login');
+        setForgotStep(1);
+        setSecurityAnswer('');
+        setNewPassword('');
       }
     } catch (error: any) {
       showError(error.message);
@@ -107,65 +119,116 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          {(mode === 'register' || mode === 'forgot') && (
-            <div className="relative group">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-              <input
-                type="text"
-                placeholder="Username"
-                required
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-          )}
-          
-          <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-            <input
-              type="email"
-              placeholder="Email Address"
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+          <AnimatePresence mode="wait">
+            {mode === 'forgot' && forgotStep === 2 ? (
+              <motion.div
+                key="forgot-step-2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 mb-4">
+                  <p className="text-xs text-primary font-bold flex items-center gap-1 mb-1">
+                    <HelpCircle size={12} /> Security Question:
+                  </p>
+                  <p className="text-sm text-white/80">What is your favourite movie/series?</p>
+                </div>
 
-          {mode === 'register' && (
-            <div className="space-y-2">
-              <p className="text-xs text-primary font-bold flex items-center gap-1">
-                <HelpCircle size={12} /> Security Question:
-              </p>
-              <p className="text-sm text-white/80 mb-2">What is your favourite movie/series?</p>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Your Answer"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={securityAnswer}
-                  onChange={(e) => setSecurityAnswer(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
+                <div className="relative group">
+                  <HelpCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Your Answer"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                  />
+                </div>
 
-          {mode !== 'forgot' && (
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-              <input
-                type="password"
-                placeholder="Password"
-                required
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          )}
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    type="password"
+                    placeholder="New Password"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="standard-fields"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-4"
+              >
+                {mode === 'register' && (
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Username"
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                    />
+                  </div>
+                )}
+                
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    type="email"
+                    placeholder="Email Address"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                {mode === 'register' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-primary font-bold flex items-center gap-1">
+                      <HelpCircle size={12} /> Security Question:
+                    </p>
+                    <p className="text-sm text-white/80 mb-2">What is your favourite movie/series?</p>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Your Answer"
+                        required
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                        value={securityAnswer}
+                        onChange={(e) => setSecurityAnswer(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {mode === 'login' && (
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <button
             type="submit"
@@ -173,7 +236,9 @@ const Auth = () => {
             className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : 
-             (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Verify & Reset")}
+             (mode === 'login' ? "Sign In" : 
+              mode === 'register' ? "Create Account" : 
+              forgotStep === 1 ? "Next Step" : "Reset Password")}
           </button>
         </form>
 
@@ -188,7 +253,13 @@ const Auth = () => {
               </button>
             </>
           ) : (
-            <button onClick={() => setMode('login')} className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+            <button 
+              onClick={() => {
+                setMode('login');
+                setForgotStep(1);
+              }} 
+              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2"
+            >
               <ArrowLeft size={14} /> Back to Login
             </button>
           )}
