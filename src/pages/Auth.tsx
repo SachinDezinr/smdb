@@ -57,28 +57,24 @@ const Auth = () => {
         });
         if (error) throw error;
         
-        // Auto-login after signup (assuming email confirmation is disabled or handled)
         showSuccess("Registration successful! Welcome to SMDB.");
         navigate('/');
       } else if (mode === 'forgot') {
-        // Manual reset logic using security question
+        // Simple logic: Check if username and email match in profiles
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('security_answer')
+          .select('id')
           .eq('email', email)
+          .eq('username', username)
           .single();
         
-        if (profileError || !profile) throw new Error("Account not found");
-        
-        if (profile.security_answer !== securityAnswer.toLowerCase().trim()) {
-          throw new Error("Incorrect security answer");
+        if (profileError || !profile) {
+          throw new Error("Account details do not match our records.");
         }
 
-        // If correct, we'd normally use an edge function to reset. 
-        // For now, we'll use the standard Supabase reset but inform the user.
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        showSuccess("Security verified! A reset link has been sent to your email.");
+        showSuccess("Details verified! A reset link has been sent to your email.");
         setMode('login');
       }
     } catch (error: any) {
@@ -111,7 +107,7 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          {mode === 'register' && (
+          {(mode === 'register' || mode === 'forgot') && (
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
               <input
@@ -137,7 +133,7 @@ const Auth = () => {
             />
           </div>
 
-          {(mode === 'register' || mode === 'forgot') && (
+          {mode === 'register' && (
             <div className="space-y-2">
               <p className="text-xs text-primary font-bold flex items-center gap-1">
                 <HelpCircle size={12} /> Security Question:

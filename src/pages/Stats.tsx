@@ -43,20 +43,11 @@ const Stats = () => {
 
       const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
 
-      const monthlyData = Array.from({ length: 12 }, (_, i) => {
-        const count = yearWatched.filter(w => new Date(w.created_at).getMonth() === i).length;
-        return {
-          month: new Date(0, i).toLocaleString('default', { month: 'short' }),
-          count
-        };
-      });
-
       setStats({
         total: watched.length,
         yearTotal: yearWatched.length,
         topGenre,
         avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
-        monthly: monthlyData,
         counts
       });
     }
@@ -66,7 +57,6 @@ const Stats = () => {
   useEffect(() => {
     fetchStats();
     
-    // Subscribe to changes in watched_content to update graph dynamically
     const channel = supabase
       .channel('stats_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
@@ -126,32 +116,10 @@ const Stats = () => {
           ))}
         </div>
 
-        <section className="glass-card p-8 border-primary/10 cinematic-glow">
-          <h2 className="text-2xl font-serif font-bold mb-8 flex items-center gap-3">
-            <BarChart3 className="text-primary" />
-            Monthly Watch History ({currentYear} Releases)
-          </h2>
-          
-          <div className="flex items-end justify-between h-64 gap-2">
-            {stats?.monthly.map((m: any, i: number) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
-                <div className="w-full relative h-full flex items-end">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(m.count / (Math.max(...stats.monthly.map((x: any) => x.count)) || 1)) * 100}%` }}
-                    className="w-full bg-primary/20 group-hover:bg-primary/40 transition-colors rounded-t-lg relative min-h-[4px]"
-                  >
-                    {m.count > 0 && (
-                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                        {m.count}
-                      </span>
-                    )}
-                  </motion.div>
-                </div>
-                <span className="text-[10px] text-muted-foreground uppercase font-bold">{m.month}</span>
-              </div>
-            ))}
-          </div>
+        <section className="glass-card p-8 border-primary/10 cinematic-glow text-center py-20">
+          <TrendingUp className="text-primary mx-auto mb-4" size={48} />
+          <h2 className="text-2xl font-serif font-bold mb-2">Keep Tracking!</h2>
+          <p className="text-muted-foreground">Add more movies and series to see your detailed insights grow.</p>
         </section>
 
         <AnimatePresence>

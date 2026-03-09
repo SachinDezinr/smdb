@@ -24,15 +24,9 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       setUsername(user?.user_metadata?.username || '');
+      setSecurityAnswer(user?.user_metadata?.security_answer || '');
       
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('security_answer')
-          .eq('id', user.id)
-          .single();
-        setSecurityAnswer(profile?.security_answer || '');
-
         const { data } = await supabase
           .from('friends')
           .select('id')
@@ -53,7 +47,6 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      // Update Auth Metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { 
           username,
@@ -62,13 +55,9 @@ const Profile = () => {
       });
       if (authError) throw authError;
 
-      // Update Public Profile Table
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          username,
-          security_answer: securityAnswer.toLowerCase().trim()
-        })
+        .update({ username })
         .eq('id', user.id);
       
       if (profileError) throw profileError;
