@@ -20,8 +20,6 @@ const mobileNavItems = [
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
-  { icon: Info, label: 'About', path: '/about' },
-  { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
 const footerItems = [

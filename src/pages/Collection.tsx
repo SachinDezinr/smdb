@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3, X, PlayCircle, Clock } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
@@ -15,8 +16,7 @@ const Collection = () => {
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'movie' | 'tv' | 'anime' | 'k-drama'>('all');
-  const [showWrapped, setShowWrapped] = useState(false);
-  const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -58,7 +58,6 @@ const Collection = () => {
     tv: watchedItems.filter(i => i.media_type === 'tv').length,
     anime: watchedItems.filter(i => i.media_type === 'anime').length,
     kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
-    yearTotal: watchedItems.filter(i => i.release_date && new Date(i.release_date).getFullYear() === currentYear).length
   };
 
   const filteredItems = watchedItems.filter(item => {
@@ -102,9 +101,10 @@ const Collection = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+              {/* Detailed Stats Button - Mobile Only */}
               <button 
-                onClick={() => setShowWrapped(true)}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
+                onClick={() => navigate('/stats')}
+                className="lg:hidden flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
               >
                 <BarChart3 size={18} />
                 Detailed Stats
@@ -188,70 +188,6 @@ const Collection = () => {
             )}
           </>
         )}
-
-        {/* Wrapped Modal */}
-        <AnimatePresence>
-          {showWrapped && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="relative w-full max-w-sm aspect-[9/16] bg-gradient-to-br from-neutral-900 via-neutral-800 to-primary/20 rounded-[2.5rem] p-8 flex flex-col items-center justify-between border border-white/10 shadow-2xl overflow-hidden"
-              >
-                <button 
-                  onClick={() => setShowWrapped(false)}
-                  className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors z-50"
-                >
-                  <X size={20} />
-                </button>
-
-                <div className="text-center mt-6">
-                  <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <Film className="text-black" size={32} />
-                  </div>
-                  <h3 className="text-3xl font-serif font-bold text-primary">SMDB</h3>
-                  <p className="text-white/60 text-sm uppercase tracking-widest mt-2">Wrapped {currentYear}</p>
-                </div>
-
-                <div className="w-full space-y-8">
-                  <div className="text-center">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Titles Released in {currentYear}</p>
-                    <p className="text-6xl font-bold text-white">{stats.yearTotal}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <PlayCircle className="text-primary mb-2" size={20} />
-                      <p className="text-2xl font-bold text-white">{stats.movies}</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">Movies</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Tv className="text-primary mb-2" size={20} />
-                      <p className="text-2xl font-bold text-white">{stats.tv}</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">Series</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Sparkles className="text-primary mb-2" size={20} />
-                      <p className="text-2xl font-bold text-white">{stats.anime}</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">Anime</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Heart className="text-primary mb-2" size={20} />
-                      <p className="text-2xl font-bold text-white">{stats.kdrama}</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">K-Drama</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full text-center pb-4">
-                  <p className="text-white/40 text-xs italic">"Your cinematic journey, tracked."</p>
-                  <p className="text-primary font-bold text-sm mt-2">smdb.app</p>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
 
         <AnimatePresence>
           {showScrollTop && (
