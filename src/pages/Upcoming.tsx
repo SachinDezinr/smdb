@@ -18,9 +18,10 @@ const CATEGORIES: { label: string; value: MediaType }[] = [
 
 const REGIONS: { label: string; value: Region }[] = [
   { label: 'All', value: 'all' },
-  { label: 'International', value: 'international' },
-  { label: 'Indian', value: 'indian' },
-  { label: 'Korean', value: 'korean' },
+  { label: 'Hollywood', value: 'hollywood' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Punjabi', value: 'punjabi' },
+  { label: 'South Indian', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
 ];
 
@@ -96,7 +97,7 @@ const Upcoming = () => {
     if (!isSearching) load(1);
   }, [activeCategory, activeRegion, activeYear, isSearching]);
 
-  const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
+  const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv') && !activeYear;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -141,7 +142,7 @@ const Upcoming = () => {
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}
+                    onClick={() => { setActiveCategory(cat.value); setActiveYear(null); setActiveRegion('all'); }}
                     className={cn(
                       "px-6 py-2 rounded-full text-sm font-semibold transition-all",
                       activeCategory === cat.value && !activeYear
@@ -153,7 +154,7 @@ const Upcoming = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => setActiveYear(activeYear === 2027 ? null : 2027)}
+                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); setActiveRegion('all'); }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
                     activeYear === 2027 
