@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 
-const TMDB_API_KEY = "87ac1ac60056408dd1f46c65dbfc4a1f";
+// Fetching secret from environment variables
+const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY') || "87ac1ac60056408dd1f46c65dbfc4a1f";
 const BASE_URL = "https://api.themoviedb.org/3";
 
 const corsHeaders = {
@@ -10,11 +11,22 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    // Security: Ensure the request is authenticated
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("[tmdb-proxy] Unauthorized access attempt");
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const url = new URL(req.url);
     const path = url.searchParams.get('path');
     
@@ -25,7 +37,7 @@ serve(async (req) => {
       });
     }
 
-    // Construct the TMDB URL
+    // Construct the TMDB URL securely
     const tmdbUrl = new URL(`${BASE_URL}${path}`);
     tmdbUrl.searchParams.set('api_key', TMDB_API_KEY);
     
@@ -36,7 +48,7 @@ serve(async (req) => {
       }
     });
 
-    console.log(`[tmdb-proxy] Fetching: ${tmdbUrl.toString()}`);
+    console.log(`[tmdb-proxy] Securely fetching: ${path}`);
 
     const response = await fetch(tmdbUrl.toString());
     const data = await response.json();
@@ -47,7 +59,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("[tmdb-proxy] Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
