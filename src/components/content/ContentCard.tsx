@@ -47,6 +47,10 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
   };
 
   const hasPoster = item.poster_path && item.poster_path !== "";
+  
+  // Check if the content is released yet
+  const today = new Date().toISOString().split('T')[0];
+  const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
   return (
     <motion.div
@@ -121,8 +125,8 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
           )}
         </AnimatePresence>
         
-        {/* Watch Action Overlay */}
-        {!showReleaseDate && !showCredits && (
+        {/* Watch Action Overlay - Hidden for future releases */}
+        {!showReleaseDate && !showCredits && !isFuture && (
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
             <button
               onClick={(e) => {
@@ -154,7 +158,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
         </h3>
         
         <div className="flex items-center justify-between text-sm">
-          {showReleaseDate ? (
+          {showReleaseDate || isFuture ? (
             <p className="font-medium">
               <span className="text-primary">Release:</span> {formatDate(item.release_date)}
             </p>
@@ -164,7 +168,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
               <span className="text-white/90">{item.vote_average > 0 ? item.vote_average.toFixed(1) : "N/A"}</span>
             </div>
           )}
-          {item.release_date && !showReleaseDate && (
+          {item.release_date && !showReleaseDate && !isFuture && (
             <span className="text-muted-foreground text-xs">
               {new Date(item.release_date).getFullYear() || ""}
             </span>

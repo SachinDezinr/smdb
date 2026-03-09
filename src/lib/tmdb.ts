@@ -58,9 +58,21 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
   const adultKeywords = ['hentai', 'porn', 'erotica', 'adult', 'sexy', 'nudity'];
+  const today = new Date().toISOString().split('T')[0];
+
   return (results || [])
     .filter((item: any) => {
       if (item.adult) return false;
+      
+      // Requirement: Remove content with no poster
+      if (!item.poster_path) return false;
+
+      // Requirement: Remove content with no IMDb rating (0 or null)
+      // Exception: Allow 0 ratings for upcoming content (released today or in future)
+      const releaseDate = item.release_date || item.first_air_date || "TBA";
+      const isReleased = releaseDate !== "TBA" && releaseDate < today;
+      if (isReleased && (!item.vote_average || item.vote_average === 0)) return false;
+
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
       return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
@@ -107,7 +119,6 @@ const interleave = <T>(...arrays: T[][]): T[] => {
 };
 
 export const fetchTrending = async (): Promise<ContentItem[]> => {
-  // Use append_to_response to get videos in the same request for speed
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
@@ -130,11 +141,6 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   for (const item of combined) {
     if (seen.has(item.id)) continue;
     seen.add(item.id);
-    
-    // Only include if it has a trailer (already fetched via append_to_response in some cases, 
-    // but TMDB trending doesn't support append_to_response directly on the list, 
-    // so we'll just filter the ones that happen to have it or fetch quickly if needed)
-    // To keep it fast, we'll prioritize items from discover which support append_to_response
     unique.push(item);
     if (unique.length >= 12) break;
   }
@@ -175,7 +181,6 @@ export const fetchContent = async (
 
     const mapped = mapResults(results, type);
     
-    // Remove duplicates and sort
     const seen = new Set();
     const unique = mapped.filter(item => {
       if (seen.has(item.id)) return false;
