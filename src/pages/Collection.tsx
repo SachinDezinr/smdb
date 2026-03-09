@@ -69,7 +69,7 @@ const Collection = () => {
   const displayedItems = filteredItems.slice(0, visibleCount);
 
   const statCards = [
-    { id: 'all', label: 'All Time', value: stats.total, icon: Library, color: 'text-white' },
+    { id: 'all', label: 'All', value: stats.total, icon: Library, color: 'text-white' },
     { id: 'movie', label: 'Movies', value: stats.movies, icon: Film, color: 'text-primary' },
     { id: 'tv', label: 'Series', value: stats.tv, icon: Tv, color: 'text-blue-400' },
     { id: 'anime', label: 'Anime', value: stats.anime, icon: Sparkles, color: 'text-purple-400' },
