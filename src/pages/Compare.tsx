@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { motion } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, Film, Tv, Sparkles, Heart } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, ChevronUp } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Compare = () => {
   const { friendId } = useParams();
@@ -16,38 +17,78 @@ const Compare = () => {
   const [myCollection, setMyCollection] = useState<any[]>([]);
   const [friendCollection, setFriendCollection] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'common' | 'unique'>('all');
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const fetchData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !friendId) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', friendId)
+        .single();
+      setFriendProfile(profile);
+
+      const [myRes, friendRes] = await Promise.all([
+        supabase.from('watched_content').select('*').eq('user_id', user.id),
+        supabase.from('watched_content').select('*').eq('user_id', friendId)
+      ]);
+
+      setMyCollection(myRes.data || []);
+      setFriendCollection(friendRes.data || []);
+    } catch (err) {
+      console.error("Comparison fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !friendId) return;
-
-      try {
-        // Fetch friend's profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', friendId)
-          .single();
-        setFriendProfile(profile);
-
-        // Fetch both collections
-        // Note: This requires the RLS policy to allow reading friends' data
-        const [myRes, friendRes] = await Promise.all([
-          supabase.from('watched_content').select('*').eq('user_id', user.id),
-          supabase.from('watched_content').select('*').eq('user_id', friendId)
-        ]);
-
-        setMyCollection(myRes.data || []);
-        setFriendCollection(friendRes.data || []);
-      } catch (err) {
-        console.error("Comparison fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [friendId]);
+
+  const toggleWatched = async (item: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
+
+    if (isCurrentlyWatched) {
+      const { error } = await supabase
+        .from('watched_content')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.content_id);
+
+      if (!error) {
+        setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
+        showSuccess("Removed from collection");
+      }
+    } else {
+      const { error } = await supabase
+        .from('watched_content')
+        .insert({
+          user_id: user.id,
+          content_id: item.content_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (!error) {
+        setMyCollection(prev => [...prev, item]);
+        showSuccess("Added to your collection!");
+      }
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="animate-spin text-primary" size={48} /></div>;
 
@@ -55,7 +96,7 @@ const Compare = () => {
   const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
   const uniqueToFriend = friendCollection.filter(i => !myIds.has(i.content_id));
 
-  const displayedItems = filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection;
+  const displayedItems = (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).slice(0, visibleCount);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -83,7 +124,7 @@ const Compare = () => {
               ].map((btn) => (
                 <button
                   key={btn.id}
-                  onClick={() => setFilter(btn.id as any)}
+                  onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
                   className={cn(
                     "px-6 py-2 rounded-lg text-sm font-bold transition-all",
                     filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
@@ -122,36 +163,62 @@ const Compare = () => {
           <div className="text-center py-20 opacity-50">
             <Users size={64} className="mx-auto mb-4" />
             <p className="text-xl">No items found for this filter.</p>
-            {friendCollection.length === 0 && (
-              <p className="text-sm mt-2">Your friend hasn't added anything to their collection yet.</p>
-            )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayedItems.map((item) => (
-              <div key={item.content_id} className="relative">
-                <ContentCard 
-                  item={{
-                    id: item.content_id,
-                    title: item.title,
-                    poster_path: item.poster_path,
-                    release_date: item.release_date,
-                    vote_average: item.vote_average,
-                    media_type: item.media_type,
-                    genre_ids: [],
-                    overview: ""
-                  }} 
-                  isWatched={myIds.has(item.content_id)}
-                />
-                {myIds.has(item.content_id) && (
-                  <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
-                    <CheckCircle2 size={10} /> Shared
-                  </div>
-                )}
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayedItems.map((item) => (
+                <div key={item.content_id} className="relative group">
+                  <ContentCard 
+                    item={{
+                      id: item.content_id,
+                      title: item.title,
+                      poster_path: item.poster_path,
+                      release_date: item.release_date,
+                      vote_average: item.vote_average,
+                      media_type: item.media_type,
+                      genre_ids: [],
+                      overview: ""
+                    }} 
+                    isWatched={myIds.has(item.content_id)}
+                    onToggleWatched={() => toggleWatched(item)}
+                  />
+                  {myIds.has(item.content_id) && (
+                    <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
+                      <CheckCircle2 size={10} /> Shared
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {visibleCount < (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).length && (
+              <div className="mt-12 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 12)}
+                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
+                >
+                  <Plus size={20} />
+                  Load More
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
+
+        <AnimatePresence>
+          {showScrollTop && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+            >
+              <ChevronUp size={24} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

@@ -15,6 +15,7 @@ const Collection = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'movie' | 'tv' | 'anime' | 'k-drama'>('all');
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -58,9 +59,11 @@ const Collection = () => {
     kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
   };
 
-  const filteredItems = watchedItems.filter(item => 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = watchedItems.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTab = activeTab === 'all' || item.media_type === activeTab;
+    return matchesSearch && matchesTab;
+  });
 
   const displayedItems = filteredItems.slice(0, visibleCount);
 
@@ -75,14 +78,6 @@ const Collection = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Your <span className="text-primary">Collection</span>
               </h1>
-              <Link 
-                to="/stats" 
-                className="inline-flex items-center gap-2 mt-4 text-primary hover:underline font-bold text-sm lg:hidden"
-              >
-                <BarChart3 size={16} />
-                View Detailed Stats
-                <ChevronRight size={14} />
-              </Link>
             </div>
             
             <div className="relative group max-w-md w-full">
@@ -97,26 +92,29 @@ const Collection = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Total', value: stats.total, color: 'primary' },
-              { label: 'Movies', value: stats.movies, color: 'white' },
-              { label: 'Series', value: stats.tv, color: 'white' },
-              { label: 'Anime', value: stats.anime, color: 'white' },
-              { label: 'K-Drama', value: stats.kdrama, color: 'white' },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-card p-4 text-center border-white/5"
+              { id: 'all', label: 'All', count: stats.total },
+              { id: 'movie', label: 'Movies', count: stats.movies },
+              { id: 'tv', label: 'Series', count: stats.tv },
+              { id: 'anime', label: 'Anime', count: stats.anime },
+              { id: 'k-drama', label: 'K-Drama', count: stats.kdrama },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "px-6 py-2 rounded-full text-sm font-bold transition-all border flex items-center gap-2",
+                  activeTab === tab.id 
+                    ? "bg-primary border-primary text-black" 
+                    : "bg-white/5 border-white/10 text-muted-foreground hover:text-white"
+                )}
               >
-                <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className={cn("text-2xl font-bold", stat.color === 'primary' ? "text-primary" : "text-white")}>
-                  {stat.value}
-                </p>
-              </motion.div>
+                {tab.label}
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", activeTab === tab.id ? "bg-black/20" : "bg-white/10")}>
+                  {tab.count}
+                </span>
+              </button>
             ))}
           </div>
         </header>
@@ -125,11 +123,11 @@ const Collection = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="animate-spin text-primary" size={48} />
           </div>
-        ) : watchedItems.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center opacity-50">
             <Library size={64} className="mb-4" />
-            <h2 className="text-2xl font-serif">Your collection is empty</h2>
-            <p>Start adding content from the Home tab</p>
+            <h2 className="text-2xl font-serif">No items found</h2>
+            <p>Try changing your filters or adding more content</p>
           </div>
         ) : (
           <>

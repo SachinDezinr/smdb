@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Film, Mail, Lock, User, Loader2, ArrowLeft } from 'lucide-react';
+import { Film, Mail, Lock, User, Loader2, ArrowLeft, HelpCircle } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Auth = () => {
@@ -13,6 +13,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
   const navigate = useNavigate();
 
   const validateUsername = (name: string) => {
@@ -46,16 +47,38 @@ const Auth = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { username } }
+          options: { 
+            data: { 
+              username,
+              security_question: "What is your favourite movie/series?",
+              security_answer: securityAnswer.toLowerCase().trim()
+            } 
+          }
         });
         if (error) throw error;
-        showSuccess("You are successfully registered! Please check your email to verify.");
-        setMode('login');
+        
+        // Auto-login after signup (assuming email confirmation is disabled or handled)
+        showSuccess("Registration successful! Welcome to SMDB.");
+        navigate('/');
       } else if (mode === 'forgot') {
-        // Securely trigger password reset via Supabase Auth
+        // Manual reset logic using security question
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('security_answer')
+          .eq('email', email)
+          .single();
+        
+        if (profileError || !profile) throw new Error("Account not found");
+        
+        if (profile.security_answer !== securityAnswer.toLowerCase().trim()) {
+          throw new Error("Incorrect security answer");
+        }
+
+        // If correct, we'd normally use an edge function to reset. 
+        // For now, we'll use the standard Supabase reset but inform the user.
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        showSuccess("If an account exists with this email, a reset link has been sent.");
+        showSuccess("Security verified! A reset link has been sent to your email.");
         setMode('login');
       }
     } catch (error: any) {
@@ -114,6 +137,26 @@ const Auth = () => {
             />
           </div>
 
+          {(mode === 'register' || mode === 'forgot') && (
+            <div className="space-y-2">
+              <p className="text-xs text-primary font-bold flex items-center gap-1">
+                <HelpCircle size={12} /> Security Question:
+              </p>
+              <p className="text-sm text-white/80 mb-2">What is your favourite movie/series?</p>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                <input
+                  type="text"
+                  placeholder="Your Answer"
+                  required
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           {mode !== 'forgot' && (
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
@@ -134,7 +177,7 @@ const Auth = () => {
             className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : 
-             (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Reset Password")}
+             (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Verify & Reset")}
           </button>
         </form>
 

@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 export type MediaType = "movie" | "tv" | "anime" | "k-drama";
-export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indian" | "animated";
+export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indian" | "animated" | "international" | "korean" | "indian";
 
 export interface ContentItem {
   id: number;
@@ -13,8 +13,7 @@ export interface ContentItem {
   media_type: MediaType;
   genre_ids: number[];
   overview: string;
-  director?: string;
-  cast?: string[];
+  adult?: boolean;
 }
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
@@ -26,6 +25,9 @@ const getRegionParams = (region: Region): Record<string, string> => {
     case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN" };
     case "hollywood": return { with_original_language: "en", region: "US" };
     case "animated": return { with_genres: "16" };
+    case "korean": return { with_original_language: "ko" };
+    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN" };
+    case "international": return { with_original_language: "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa" };
     default: return {};
   }
 };
@@ -53,37 +55,48 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   return response.json();
 };
 
-const mapResults = (results: any[], type: MediaType): ContentItem[] => {
-  return (results || []).map((item: any) => ({
-    id: item.id,
-    title: item.title || item.name,
-    poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-    backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
-    release_date: item.release_date || item.first_air_date || "TBA",
-    vote_average: item.vote_average || 0,
-    media_type: (item.media_type as MediaType) || type,
-    genre_ids: item.genre_ids || [],
-    overview: item.overview
-  }));
+const mapResults = (results: any[], type: MediaType, includeAdult: boolean = false): ContentItem[] => {
+  const adultKeywords = ['hentai', 'porn', 'erotica', 'adult'];
+  return (results || [])
+    .filter((item: any) => {
+      if (includeAdult) return true;
+      if (item.adult) return false;
+      const title = (item.title || item.name || '').toLowerCase();
+      const overview = (item.overview || '').toLowerCase();
+      return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
+    })
+    .map((item: any) => ({
+      id: item.id,
+      title: item.title || item.name,
+      poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
+      backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
+      release_date: item.release_date || item.first_air_date || "TBA",
+      vote_average: item.vote_average || 0,
+      media_type: (item.media_type as MediaType) || type,
+      genre_ids: item.genre_ids || [],
+      overview: item.overview,
+      adult: item.adult
+    }));
 };
 
-const interleave = <T>(arr1: T[], arr2: T[]): T[] => {
+const interleave = <T>(...arrays: T[][]): T[] => {
   const result: T[] = [];
-  const maxLen = Math.max(arr1.length, arr2.length);
+  const maxLen = Math.max(...arrays.map(a => a.length));
   for (let i = 0; i < maxLen; i++) {
-    if (i < arr1.length) result.push(arr1[i]);
-    if (i < arr2.length) result.push(arr2[i]);
+    arrays.forEach(arr => {
+      if (i < arr.length) result.push(arr[i]);
+    });
   }
   return result;
 };
 
 export const fetchTrending = async (): Promise<ContentItem[]> => {
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
-    fetchFromProxy('/trending/movie/week'),
-    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc' }),
-    fetchFromProxy('/trending/tv/week'),
-    fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc' }),
-    fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc' })
+    fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
+    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false }),
+    fetchFromProxy('/trending/tv/day', { append_to_response: 'videos' }),
+    fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc', include_adult: false }),
+    fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc', include_adult: false })
   ]);
 
   const gm = mapResults(globalMovies.results || [], 'movie');
@@ -92,20 +105,25 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const an = mapResults(anime.results || [], 'anime');
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
-  const movies = interleave(gm, im);
-  const others = interleave(gt, interleave(an, kd));
+  const combined = interleave(gm, im, gt, an, kd);
   
-  const combined = interleave(movies, others);
-  
-  // Filter out duplicates by ID
+  // Filter out duplicates and items without trailers (for trending)
   const seen = new Set();
-  const unique = combined.filter(item => {
-    if (seen.has(item.id)) return false;
+  const unique = [];
+  
+  for (const item of combined) {
+    if (seen.has(item.id)) continue;
     seen.add(item.id);
-    return true;
-  });
+    
+    // Check for trailer availability
+    const videos = await fetchFromProxy(`/${item.media_type === 'movie' ? 'movie' : 'tv'}/${item.id}/videos`);
+    if (videos.results?.some((v: any) => v.type === 'Trailer' && v.site === 'YouTube')) {
+      unique.push(item);
+    }
+    if (unique.length >= 12) break;
+  }
 
-  return unique.slice(0, 12);
+  return unique;
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
@@ -139,7 +157,16 @@ export const fetchContent = async (
       ];
       results = [...results, ...personCredits];
     }
-    return mapResults(results, type);
+
+    // Sort by release date descending and prioritize exact matches
+    const mapped = mapResults(results, type, includeAdult);
+    return mapped.sort((a, b) => {
+      const aExact = a.title.toLowerCase() === query.toLowerCase();
+      const bExact = b.title.toLowerCase() === query.toLowerCase();
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
+    });
   }
 
   const currentYear = new Date().getFullYear();
@@ -168,10 +195,7 @@ export const fetchContent = async (
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
     ]);
 
-    const hResults = mapResults(hData.results || [], type);
-    const iResults = mapResults(iData.results || [], type);
-
-    return interleave(hResults, iResults);
+    return interleave(mapResults(hData.results || [], type, includeAdult), mapResults(iData.results || [], type, includeAdult));
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -191,7 +215,7 @@ export const fetchContent = async (
   }
 
   const data = await fetchFromProxy(path, params);
-  return mapResults(data.results || [], type);
+  return mapResults(data.results || [], type, includeAdult);
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
@@ -227,7 +251,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
     ]);
 
-    return interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
+    return interleave(mapResults(hData.results || [], type, includeAdult), mapResults(iData.results || [], type, includeAdult));
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -247,5 +271,5 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   }
     
   const data = await fetchFromProxy(path, params);
-  return mapResults(data.results || [], type);
+  return mapResults(data.results || [], type, includeAdult);
 };

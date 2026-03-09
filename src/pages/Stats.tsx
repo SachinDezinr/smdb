@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock } from 'lucide-react';
+import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Stats = () => {
@@ -13,61 +13,77 @@ const Stats = () => {
   const [showWrapped, setShowWrapped] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const fetchStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data: watched } = await supabase
-        .from('watched_content')
-        .select('*')
-        .eq('user_id', user.id);
+    const { data: watched } = await supabase
+      .from('watched_content')
+      .select('*')
+      .eq('user_id', user.id);
 
-      if (watched) {
-        // Filter by release year as requested
-        const yearWatched = watched.filter(i => {
-          if (!i.release_date || i.release_date === "TBA") return false;
-          return new Date(i.release_date).getFullYear() === currentYear;
-        });
-        
-        const counts = {
-          movie: yearWatched.filter(i => i.media_type === 'movie').length,
-          tv: yearWatched.filter(i => i.media_type === 'tv').length,
-          anime: yearWatched.filter(i => i.media_type === 'anime').length,
-          kdrama: yearWatched.filter(i => i.media_type === 'k-drama').length,
+    if (watched) {
+      const yearWatched = watched.filter(i => {
+        if (!i.release_date || i.release_date === "TBA") return false;
+        return new Date(i.release_date).getFullYear() === currentYear;
+      });
+      
+      const counts = {
+        movie: yearWatched.filter(i => i.media_type === 'movie').length,
+        tv: yearWatched.filter(i => i.media_type === 'tv').length,
+        anime: yearWatched.filter(i => i.media_type === 'anime').length,
+        kdrama: yearWatched.filter(i => i.media_type === 'k-drama').length,
+      };
+
+      const genres: Record<string, number> = {};
+      watched.forEach(i => {
+        const g = i.media_type === 'tv' ? 'Web Series' : i.media_type.charAt(0).toUpperCase() + i.media_type.slice(1);
+        genres[g] = (genres[g] || 0) + 1;
+      });
+
+      const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+      const monthlyData = Array.from({ length: 12 }, (_, i) => {
+        const count = yearWatched.filter(w => new Date(w.created_at).getMonth() === i).length;
+        return {
+          month: new Date(0, i).toLocaleString('default', { month: 'short' }),
+          count
         };
+      });
 
-        const genres: Record<string, number> = {};
-        watched.forEach(i => {
-          const g = i.media_type === 'tv' ? 'Web Series' : i.media_type.charAt(0).toUpperCase() + i.media_type.slice(1);
-          genres[g] = (genres[g] || 0) + 1;
-        });
+      setStats({
+        total: watched.length,
+        yearTotal: yearWatched.length,
+        topGenre,
+        avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
+        monthly: monthlyData,
+        counts
+      });
+    }
+    setLoading(false);
+  };
 
-        const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-
-        const monthlyData = Array.from({ length: 12 }, (_, i) => {
-          const count = yearWatched.filter(w => new Date(w.created_at).getMonth() === i).length;
-          return {
-            month: new Date(0, i).toLocaleString('default', { month: 'short' }),
-            count
-          };
-        });
-
-        setStats({
-          total: watched.length,
-          yearTotal: yearWatched.length,
-          topGenre,
-          avgRating: (watched.reduce((acc, i) => acc + i.vote_average, 0) / (watched.length || 1)).toFixed(1),
-          monthly: monthlyData,
-          counts
-        });
-      }
-      setLoading(false);
-    };
+  useEffect(() => {
     fetchStats();
+    
+    // Subscribe to changes in watched_content to update graph dynamically
+    const channel = supabase
+      .channel('stats_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentYear]);
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="flex min-h-screen bg-background items-center justify-center">
+      <Loader2 className="animate-spin text-primary" size={48} />
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -138,7 +154,6 @@ const Stats = () => {
           </div>
         </section>
 
-        {/* Wrapped Modal */}
         <AnimatePresence>
           {showWrapped && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">

@@ -18,10 +18,9 @@ const CATEGORIES: { label: string; value: MediaType }[] = [
 
 const REGIONS: { label: string; value: Region }[] = [
   { label: 'All', value: 'all' },
-  { label: 'Hollywood', value: 'hollywood' },
-  { label: 'Bollywood', value: 'bollywood' },
-  { label: 'Punjabi', value: 'punjabi' },
-  { label: 'South Indian', value: 'south-indian' },
+  { label: 'International', value: 'international' },
+  { label: 'Indian', value: 'indian' },
+  { label: 'Korean', value: 'korean' },
   { label: 'Animated', value: 'animated' },
 ];
 
@@ -45,7 +44,6 @@ const Upcoming = () => {
       let data: ContentItem[];
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion, false);
-        // Filter to only show future releases for the selected year
         const today = new Date().toISOString().split('T')[0];
         data = data.filter(item => item.release_date >= today);
       } else {

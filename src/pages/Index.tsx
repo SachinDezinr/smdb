@@ -42,7 +42,6 @@ const Index = () => {
   const [adultFilter, setAdultFilter] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  // Limit Home page to currentYear only (no future years like 2027)
   const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
 
   const fetchWatchedIds = async () => {
@@ -92,9 +91,13 @@ const Index = () => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
       const results = await fetchContent(activeCategory, year, page, "", activeRegion, adultFilter);
+      // Filter out upcoming content for Home page
+      const today = new Date().toISOString().split('T')[0];
+      const filtered = results.filter(item => item.release_date <= today);
+      
       setYearData(prev => ({ 
         ...prev, 
-        [year]: page === 1 ? results : [...(prev[year] || []), ...results] 
+        [year]: page === 1 ? filtered : [...(prev[year] || []), ...filtered] 
       }));
       setYearPages(prev => ({ ...prev, [year]: page }));
     } catch (error) {
@@ -164,11 +167,6 @@ const Index = () => {
   }, [activeCategory, activeRegion, isSearching, adultFilter]);
 
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
-
-  const isUpcoming = (dateStr: string) => {
-    if (!dateStr || dateStr === "TBA") return true;
-    return new Date(dateStr) > new Date();
-  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -293,7 +291,6 @@ const Index = () => {
                       item={item} 
                       isWatched={watchedIds.includes(item.id)}
                       onToggleWatched={() => toggleWatched(item)}
-                      showReleaseDate={isUpcoming(item.release_date)}
                     />
                   ))}
                 </div>
@@ -334,7 +331,6 @@ const Index = () => {
                               item={item} 
                               isWatched={watchedIds.includes(item.id)}
                               onToggleWatched={() => toggleWatched(item)}
-                              showReleaseDate={isUpcoming(item.release_date)}
                             />
                           ))}
                         </div>
