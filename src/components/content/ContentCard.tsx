@@ -29,8 +29,13 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
+  // Check if the content is released yet
+  const today = new Date().toISOString().split('T')[0];
+  const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
+
   const handlePosterClick = async () => {
-    if (!showReleaseDate) return; // Only show credits for upcoming content
+    // Show credits if it's explicitly requested (upcoming page) OR if it's a future release (search results)
+    if (!showReleaseDate && !isFuture) return;
     
     if (showCredits) {
       setShowCredits(false);
@@ -47,10 +52,6 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
   };
 
   const hasPoster = item.poster_path && item.poster_path !== "";
-  
-  // Check if the content is released yet
-  const today = new Date().toISOString().split('T')[0];
-  const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
   return (
     <motion.div
