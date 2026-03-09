@@ -43,7 +43,7 @@ const Upcoming = () => {
     try {
       let data: ContentItem[];
       if (activeYear) {
-        data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion, false);
+        data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
         const today = new Date().toISOString().split('T')[0];
         data = data.filter(item => item.release_date >= today);
       } else {
@@ -70,7 +70,7 @@ const Upcoming = () => {
     setIsSearching(true);
     setLoading(true);
     try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all', false);
+      const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {

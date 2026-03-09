@@ -5,7 +5,7 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X, Shield, ShieldOff } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -39,7 +39,6 @@ const Index = () => {
   const [yearPages, setYearPages] = useState<Record<number, number>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
-  const [adultFilter, setAdultFilter] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
@@ -66,14 +65,14 @@ const Index = () => {
     setIsSearching(true);
     setLoadingYears({ 0: true });
     try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all', adultFilter);
+      const results = await fetchContent('movie', undefined, 1, query, 'all');
       setSearchResults(results);
     } catch (error) {
       showError("Search failed. Please try again.");
     } finally {
       setLoadingYears({ 0: false });
     }
-  }, [adultFilter]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -90,8 +89,7 @@ const Index = () => {
   const loadYearContent = async (year: number, page: number = 1) => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
-      const results = await fetchContent(activeCategory, year, page, "", activeRegion, adultFilter);
-      // Filter out upcoming content for Home page
+      const results = await fetchContent(activeCategory, year, page, "", activeRegion);
       const today = new Date().toISOString().split('T')[0];
       const filtered = results.filter(item => item.release_date <= today);
       
@@ -164,7 +162,7 @@ const Index = () => {
       loadYearContent(currentYear, 1);
     }
     fetchWatchedIds();
-  }, [activeCategory, activeRegion, isSearching, adultFilter]);
+  }, [activeCategory, activeRegion, isSearching]);
 
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
@@ -180,41 +178,24 @@ const Index = () => {
               Discover <span className="text-primary">SMDB</span>
             </h1>
             
-            <div className="flex flex-col md:flex-row gap-4 max-w-2xl w-full">
-              <div className="relative group flex-1 flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Search titles, cast, or directors..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  {searchQuery && (
-                    <button 
-                      type="button"
-                      onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setAdultFilter(!adultFilter)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all border",
-                  adultFilter 
-                    ? "bg-red-500/10 border-red-500 text-red-500" 
-                    : "bg-white/5 border-white/10 text-muted-foreground"
-                )}
-              >
-                {adultFilter ? <Shield size={18} /> : <ShieldOff size={18} />}
-                Adult: {adultFilter ? "ON" : "OFF"}
-              </button>
+            <div className="relative group max-w-md w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+              <input
+                type="text"
+                placeholder="Search titles, cast, or directors..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button 
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setIsSearching(false); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              )}
             </div>
           </div>
 
