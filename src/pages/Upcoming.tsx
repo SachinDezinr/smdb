@@ -155,7 +155,13 @@ const Upcoming = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
+                  onClick={() => { 
+                    const nextYear = activeYear === 2027 ? null : 2027;
+                    setActiveYear(nextYear);
+                    if (nextYear === null && activeRegion === 'korean') {
+                      setActiveRegion('all');
+                    }
+                  }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
                     activeYear === 2027 
@@ -171,20 +177,22 @@ const Upcoming = () => {
               {showRegionFilters && (
                 <div className="flex flex-wrap gap-2 items-center">
                   <Filter size={16} className="text-primary mr-2" />
-                  {REGIONS.map((reg) => (
-                    <button
-                      key={reg.value}
-                      onClick={() => setActiveRegion(reg.value)}
-                      className={cn(
-                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                        activeRegion === reg.value 
-                          ? "border-primary bg-primary/10 text-primary" 
-                          : "border-white/10 text-muted-foreground hover:border-white/30"
-                      )}
-                    >
-                      {reg.label}
-                    </button>
-                  ))}
+                  {REGIONS
+                    .filter(reg => reg.value !== 'korean' || activeYear === 2027)
+                    .map((reg) => (
+                      <button
+                        key={reg.value}
+                        onClick={() => setActiveRegion(reg.value)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                          activeRegion === reg.value 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-white/10 text-muted-foreground hover:border-white/30"
+                        )}
+                      >
+                        {reg.label}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
