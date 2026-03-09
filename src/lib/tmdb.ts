@@ -28,7 +28,7 @@ const getRegionParams = (region: Region): Record<string, string> => {
     case "animated": return { with_genres: "16" };
     case "korean": return { with_original_language: "ko" };
     case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN" };
-    case "international": return { with_original_language: "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa" };
+    case "international": return { with_original_language: "en|fr|de|es|it|ja|ko|zh|pt|ru|tr" };
     default: return {};
   }
 };
