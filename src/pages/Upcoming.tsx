@@ -97,7 +97,7 @@ const Upcoming = () => {
     if (!isSearching) load(1);
   }, [activeCategory, activeRegion, activeYear, isSearching]);
 
-  const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv') && !activeYear;
+  const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -154,7 +154,7 @@ const Upcoming = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); setActiveRegion('all'); }}
+                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
                     activeYear === 2027 
