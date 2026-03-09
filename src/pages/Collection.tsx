@@ -4,10 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight, ChevronUp, Plus } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, ChevronUp, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
@@ -104,14 +103,14 @@ const Collection = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
-                  "px-6 py-2 rounded-full text-sm font-bold transition-all border flex items-center gap-2",
+                  "px-6 py-2 rounded-xl text-sm font-bold transition-all border flex items-center gap-2",
                   activeTab === tab.id 
                     ? "bg-primary border-primary text-black" 
                     : "bg-white/5 border-white/10 text-muted-foreground hover:text-white"
                 )}
               >
                 {tab.label}
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", activeTab === tab.id ? "bg-black/20" : "bg-white/10")}>
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-lg", activeTab === tab.id ? "bg-black/20" : "bg-white/10")}>
                   {tab.count}
                 </span>
               </button>

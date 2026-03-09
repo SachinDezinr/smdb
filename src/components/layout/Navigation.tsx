@@ -20,6 +20,8 @@ const mobileNavItems = [
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
+  { icon: Info, label: 'About', path: '/about' },
+  { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
 const footerItems = [
@@ -112,20 +114,20 @@ export const Navigation = () => {
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-4 z-50">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 z-50">
         {mobileNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "flex flex-col items-center gap-1 transition-colors relative",
+              "flex flex-col items-center gap-1 transition-colors relative flex-1",
               location.pathname === item.path ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <item.icon size={20} />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <item.icon size={18} />
+            <span className="text-[9px] font-medium">{item.label}</span>
             {item.path === '/profile' && hasPendingRequests && (
-              <span className="absolute top-0 right-2 w-2 h-2 bg-red-500 rounded-full border border-background" />
+              <span className="absolute top-0 right-1/4 w-2 h-2 bg-red-500 rounded-full border border-background" />
             )}
           </Link>
         ))}

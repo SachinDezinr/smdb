@@ -99,6 +99,7 @@ const Profile = () => {
   if (!user) return null;
 
   const initial = (username || user.email || '?')[0].toUpperCase();
+  const hasSecurityAnswer = !!user?.user_metadata?.security_answer;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -139,20 +140,29 @@ const Profile = () => {
                 />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground flex items-center gap-2">
-                  <HelpCircle size={14} /> Security Question Answer
-                </label>
-                <p className="text-xs text-muted-foreground mb-1">Question: What is your favourite movie/series?</p>
-                <input
-                  type="text"
-                  disabled={!isEditing}
-                  placeholder="Your Answer"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
-                  value={securityAnswer}
-                  onChange={(e) => setSecurityAnswer(e.target.value)}
-                />
-              </div>
+              {!hasSecurityAnswer && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground flex items-center gap-2">
+                    <HelpCircle size={14} /> Security Question Answer
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-1">Question: What is your favourite movie/series?</p>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    placeholder="Your Answer"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {hasSecurityAnswer && (
+                <div className="flex items-center gap-2 text-xs text-primary font-bold bg-primary/5 p-3 rounded-xl border border-primary/10">
+                  <Shield size={14} />
+                  Security Question Configured
+                </div>
+              )}
 
               <div className="flex justify-end">
                 {isEditing ? (
