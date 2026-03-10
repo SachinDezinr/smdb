@@ -94,7 +94,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
           {showCredits && (
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.9 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20"
             >
