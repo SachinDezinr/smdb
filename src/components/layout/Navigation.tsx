@@ -81,7 +81,7 @@ export const Navigation = () => {
               )} />
               {item.label}
               {item.path === '/profile' && hasPendingRequests && (
-                <span className="absolute right-4 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="absolute right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               )}
             </Link>
           ))}
