@@ -111,8 +111,9 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent pointer-events-none" />
+          {/* Decreased black edge intensity by reducing opacity of gradients */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
@@ -132,7 +133,7 @@ export const TrendingHero = () => {
         </button>
       </div>
 
-      <div className="absolute inset-0 p-6 lg:p-12 flex flex-col justify-end max-w-2xl z-10 pointer-events-none">
+      <div className="absolute inset-0 p-6 md:p-10 lg:p-12 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
         <motion.div
           key={`info-${current.id}`}
           initial={{ y: 20, opacity: 0 }}
@@ -148,18 +149,19 @@ export const TrendingHero = () => {
             </div>
           </div>
           
-          <h2 className="text-2xl lg:text-6xl font-serif font-bold leading-tight">
+          {/* Improved text responsiveness with intermediate md: breakpoint */}
+          <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
           
-          <p className="text-muted-foreground text-[10px] lg:text-base line-clamp-2 max-w-lg">
+          <p className="text-muted-foreground text-[10px] md:text-sm lg:text-base line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
           <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-3 py-1.5 lg:px-6 lg:py-3 rounded-xl font-bold text-[10px] lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
               <Play size={12} fill="currentColor" />
               Watch Trailer

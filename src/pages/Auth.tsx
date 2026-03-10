@@ -82,20 +82,21 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+      {/* Increased intensity of yellow glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/25 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/15 rounded-full blur-[120px]" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md glass-card p-8 border-primary/20 cinematic-glow"
+        className="w-full max-w-md glass-card p-8 border-primary/20 cinematic-glow relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
             <Film className="text-black" size={32} />
           </div>
           <h1 className="text-3xl font-serif font-bold text-primary">SMDB</h1>
-          <p className="text-muted-foreground text-sm mt-2">
+          <p className="text-muted-foreground text-sm mt-2 text-center">
             {mode === 'login' ? "Sign in to track your journey" : 
              mode === 'register' ? "Create your cinematic profile" : 
              "Reset your password"}
