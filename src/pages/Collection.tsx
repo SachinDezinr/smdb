@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3 } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -15,8 +15,10 @@ const Collection = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'movie' | 'tv' | 'anime' | 'k-drama'>('all');
+  const [activeTab, setActiveTab] = useState<string>('all');
   const navigate = useNavigate();
+
+  const currentYear = new Date().getFullYear();
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -58,11 +60,27 @@ const Collection = () => {
     tv: watchedItems.filter(i => i.media_type === 'tv').length,
     anime: watchedItems.filter(i => i.media_type === 'anime').length,
     kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
+    currentYear: watchedItems.filter(i => {
+      if (!i.release_date || i.release_date === "TBA") return false;
+      return new Date(i.release_date).getFullYear() === currentYear;
+    }).length,
   };
 
   const filteredItems = watchedItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === 'all' || item.media_type === activeTab;
+    
+    let matchesTab = false;
+    if (activeTab === 'all') {
+      matchesTab = true;
+    } else if (['movie', 'tv', 'anime', 'k-drama'].includes(activeTab)) {
+      matchesTab = item.media_type === activeTab;
+    } else if (activeTab === currentYear.toString()) {
+      const itemYear = item.release_date && item.release_date !== "TBA" 
+        ? new Date(item.release_date).getFullYear().toString() 
+        : "";
+      matchesTab = itemYear === activeTab;
+    }
+    
     return matchesSearch && matchesTab;
   });
 
@@ -74,6 +92,7 @@ const Collection = () => {
     { id: 'tv', label: 'Series', value: stats.tv, icon: Tv, color: 'text-blue-400' },
     { id: 'anime', label: 'Anime', value: stats.anime, icon: Sparkles, color: 'text-purple-400' },
     { id: 'k-drama', label: 'K-Drama', value: stats.kdrama, icon: Heart, color: 'text-pink-400' },
+    { id: currentYear.toString(), label: currentYear.toString(), value: stats.currentYear, icon: Calendar, color: 'text-emerald-400' },
   ];
 
   return (
@@ -113,14 +132,14 @@ const Collection = () => {
           </div>
 
           {/* Interactive Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {statCards.map((stat, i) => (
               <motion.button
                 key={stat.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                onClick={() => { setActiveTab(stat.id as any); setVisibleCount(12); }}
+                onClick={() => { setActiveTab(stat.id); setVisibleCount(12); }}
                 className={cn(
                   "glass-card p-4 border-white/5 flex flex-col items-center text-center group transition-all relative overflow-hidden",
                   activeTab === stat.id ? "border-primary/50 bg-primary/5 cinematic-glow" : "hover:border-white/20"
