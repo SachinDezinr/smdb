@@ -9,6 +9,7 @@ import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, ChevronUp } from 'lucide
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
+import { toast } from 'sonner';
 
 const Compare = () => {
   const { friendId } = useParams();
@@ -53,7 +54,7 @@ const Compare = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [friendId]);
 
-  const toggleWatched = async (item: any) => {
+  const toggleWatched = async (item: any, isUndo = false) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -68,7 +69,11 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
-        showSuccess("Removed from collection");
+        if (isUndo) {
+          showSuccess("Action undone");
+        } else {
+          showSuccess("Removed from collection");
+        }
       }
     } else {
       const { error } = await supabase
@@ -85,7 +90,17 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => [...prev, item]);
-        showSuccess("Added to your collection!");
+        
+        // Show toast with Undo action
+        toast.success(`Added ${item.title}`, {
+          description: "Moved to common interests",
+          action: {
+            label: 'Undo',
+            onClick: () => toggleWatched(item, true)
+          },
+        });
+      } else {
+        showError("Failed to add to collection");
       }
     }
   };
