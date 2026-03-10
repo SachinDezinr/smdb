@@ -72,8 +72,9 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  // Removed 'sexy' and 'nudity' as they are common in legitimate movie overviews
-  const adultKeywords = ['hentai', 'porn', 'erotica', 'adult'];
+  // Removed 'adult' as it's common in legitimate movie overviews (e.g. "adult film star")
+  // TMDB's 'adult: true/false' flag is sufficient for filtering pornographic content
+  const adultKeywords = ['hentai', 'porn', 'erotica'];
   const today = new Date().toISOString().split('T')[0];
 
   return (results || [])
