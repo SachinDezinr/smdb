@@ -72,9 +72,8 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  // Removed 'adult' as it's common in legitimate movie overviews (e.g. "adult film star")
-  // TMDB's 'adult: true/false' flag is sufficient for filtering pornographic content
-  const adultKeywords = ['hentai', 'porn', 'erotica'];
+  // Keywords to filter out explicit content
+  const adultKeywords = ['hentai', 'porn', 'erotica', 'erotic'];
   const today = new Date().toISOString().split('T')[0];
 
   return (results || [])
@@ -86,14 +85,13 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       const releaseDate = item.release_date || item.first_air_date || "TBA";
       const isReleased = releaseDate !== "TBA" && releaseDate < today;
       
-      // Allow movies with 0 ratings if they are recently released or searched specifically
-      // but filter them out from general discovery if they have no data
+      // Filter out items with no ratings if they are already released
       if (isReleased && item.vote_count > 10 && (!item.vote_average || item.vote_average === 0)) return false;
 
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
       
-      // Check for strictly explicit keywords
+      // Check for strictly explicit keywords in title or overview
       return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
     })
     .map((item: any) => {
