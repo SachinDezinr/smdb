@@ -26,22 +26,21 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth event:", event);
+      setSession(session);
+      setLoading(false);
+
+      if (event === 'SIGNED_IN') {
+        // No need for manual navigate here as the Route logic handles it
+      }
 
       if (event === 'PASSWORD_RECOVERY') {
         showSuccess("You can now change your password in your profile settings.");
@@ -69,14 +68,38 @@ const App = () => {
           <Routes>
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/auth" element={session ? <Navigate to="/" /> : <Auth />} />
-            <Route path="/" element={session ? <Index /> : <Navigate to="/auth" />} />
-            <Route path="/upcoming" element={session ? <Upcoming /> : <Navigate to="/auth" />} />
-            <Route path="/collection" element={session ? <Collection /> : <Navigate to="/auth" />} />
-            <Route path="/profile" element={session ? <Profile /> : <Navigate to="/auth" />} />
-            <Route path="/friends" element={session ? <Friends /> : <Navigate to="/auth" />} />
-            <Route path="/stats" element={session ? <Stats /> : <Navigate to="/auth" />} />
-            <Route path="/compare/:friendId" element={session ? <Compare /> : <Navigate to="/auth" />} />
+            <Route 
+              path="/auth" 
+              element={session ? <Navigate to="/" replace /> : <Auth />} 
+            />
+            <Route 
+              path="/" 
+              element={session ? <Index /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/upcoming" 
+              element={session ? <Upcoming /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/collection" 
+              element={session ? <Collection /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/profile" 
+              element={session ? <Profile /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/friends" 
+              element={session ? <Friends /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/stats" 
+              element={session ? <Stats /> : <Navigate to="/auth" replace />} 
+            />
+            <Route 
+              path="/compare/:friendId" 
+              element={session ? <Compare /> : <Navigate to="/auth" replace />} 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
