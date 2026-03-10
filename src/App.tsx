@@ -4,8 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase, isConfigured } from "@/lib/supabase";
-import { Loader2, AlertCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
+import { showSuccess } from "@/utils/toast";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
 import About from "./pages/About";
@@ -38,9 +39,13 @@ const App = () => {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      if (event === 'PASSWORD_RECOVERY') {
+        showSuccess("You can now change your password in your profile settings.");
+      }
     });
 
     return () => subscription.unsubscribe();

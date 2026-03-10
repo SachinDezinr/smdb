@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock, HelpCircle } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -12,7 +12,6 @@ const Profile = () => {
   const [user, setUser] = useState<any>(null);
   const [username, setUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [securityAnswer, setSecurityAnswer] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
@@ -24,7 +23,6 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       setUsername(user?.user_metadata?.username || '');
-      setSecurityAnswer(user?.user_metadata?.security_answer || '');
       
       if (user) {
         const { data } = await supabase
@@ -48,10 +46,7 @@ const Profile = () => {
     setLoading(true);
     try {
       const { error: authError } = await supabase.auth.updateUser({
-        data: { 
-          username,
-          security_answer: securityAnswer.toLowerCase().trim()
-        }
+        data: { username }
       });
       if (authError) throw authError;
 
@@ -99,7 +94,6 @@ const Profile = () => {
   if (!user) return null;
 
   const initial = (username || user.email || '?')[0].toUpperCase();
-  const hasSecurityAnswer = !!user?.user_metadata?.security_answer;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -139,30 +133,6 @@ const Profile = () => {
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
-
-              {!hasSecurityAnswer && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm text-muted-foreground flex items-center gap-2">
-                    <HelpCircle size={14} /> Security Question Answer
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-1">Question: What is your favourite movie/series?</p>
-                  <input
-                    type="text"
-                    disabled={!isEditing}
-                    placeholder="Your Answer"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
-                    value={securityAnswer}
-                    onChange={(e) => setSecurityAnswer(e.target.value)}
-                  />
-                </div>
-              )}
-
-              {hasSecurityAnswer && (
-                <div className="flex items-center gap-2 text-xs text-primary font-bold bg-primary/5 p-3 rounded-xl border border-primary/10">
-                  <Shield size={14} />
-                  Security Question Configured
-                </div>
-              )}
 
               <div className="flex justify-end">
                 {isEditing ? (
@@ -232,30 +202,6 @@ const Profile = () => {
                 <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
               </div>
             </Link>
-          </section>
-
-          {/* Mobile-only About & Contact Section */}
-          <section className="lg:hidden glass-card p-6 border-white/5">
-            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
-              <Info size={20} className="text-primary" />
-              Support & Info
-            </h2>
-            <div className="space-y-3">
-              <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
-                <div className="flex items-center gap-3">
-                  <Info size={20} className="text-primary" />
-                  <span>About SMDB</span>
-                </div>
-                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
-              </Link>
-              <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
-                <div className="flex items-center gap-3">
-                  <Mail size={20} className="text-primary" />
-                  <span>Contact Us</span>
-                </div>
-                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
-              </Link>
-            </div>
           </section>
 
           <section className="glass-card p-6 lg:p-8 border-white/5">

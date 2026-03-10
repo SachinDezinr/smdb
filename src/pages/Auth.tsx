@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Film, Mail, Lock, User, Loader2, ArrowLeft, HelpCircle } from 'lucide-react';
+import { Film, Mail, Lock, User, Loader2, ArrowLeft } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Auth = () => {
@@ -13,7 +13,6 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [securityAnswer, setSecurityAnswer] = useState('');
   const navigate = useNavigate();
 
   const validateUsername = (name: string) => {
@@ -48,19 +47,15 @@ const Auth = () => {
           email,
           password,
           options: { 
-            data: { 
-              username,
-              security_question: "What is your favourite movie/series?",
-              security_answer: securityAnswer.toLowerCase().trim()
-            } 
+            data: { username } 
           }
         });
         if (error) throw error;
         
-        showSuccess("Registration successful! Welcome to SMDB.");
-        navigate('/');
+        showSuccess("Registration successful! Please check your email for confirmation.");
+        setMode('login');
       } else if (mode === 'forgot') {
-        // Simple logic: Check if username and email match in profiles
+        // Verify username and email match in profiles
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id')
@@ -72,7 +67,9 @@ const Auth = () => {
           throw new Error("Account details do not match our records.");
         }
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/profile`,
+        });
         if (error) throw error;
         showSuccess("Details verified! A reset link has been sent to your email.");
         setMode('login');
@@ -132,26 +129,6 @@ const Auth = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-
-          {mode === 'register' && (
-            <div className="space-y-2">
-              <p className="text-xs text-primary font-bold flex items-center gap-1">
-                <HelpCircle size={12} /> Security Question:
-              </p>
-              <p className="text-sm text-white/80 mb-2">What is your favourite movie/series?</p>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Your Answer"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={securityAnswer}
-                  onChange={(e) => setSecurityAnswer(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
 
           {mode !== 'forgot' && (
             <div className="relative group">
