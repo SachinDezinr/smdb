@@ -63,7 +63,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-900 cursor-pointer",
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-800 cursor-pointer",
           isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
         )}
       >
@@ -94,7 +94,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
           {showCredits && (
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              animate={{ opacity: 0.9 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20"
             >
@@ -114,7 +114,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {credits?.cast?.map((name, i) => (
-                        <span key={i} className="text-[11px] bg-white/10 px-2 py-0.5 rounded-md text-white/90">
+                        <span key={i} className="text-[10px] bg-white/10 px-2 py-0.5 rounded-md text-white/90">
                           {name}
                         </span>
                       )) || <span className="text-xs text-white/60">N/A</span>}
