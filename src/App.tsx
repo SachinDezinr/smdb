@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { showSuccess } from "@/utils/toast";
+import { warmCache } from "@/lib/tmdb";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
 import About from "./pages/About";
@@ -30,12 +31,19 @@ const App = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
+      if (session) {
+        warmCache(); // Warm cache for authenticated users
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      if (event === 'SIGNED_IN') {
+        warmCache();
+      }
 
       if (event === 'PASSWORD_RECOVERY') {
         showSuccess("You can now change your password in your profile settings.");

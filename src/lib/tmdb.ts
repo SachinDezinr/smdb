@@ -19,6 +19,10 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
+// SWR Cache Implementation
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutes
+
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
     case "bollywood": return { with_original_language: "hi", region: "IN" };
@@ -34,6 +38,15 @@ const getRegionParams = (region: Region): Record<string, string> => {
 };
 
 const fetchFromProxy = async (path: string, params: Record<string, string | number | boolean> = {}) => {
+  const cacheKey = JSON.stringify({ path, params });
+  const cached = cache.get(cacheKey);
+  const now = Date.now();
+
+  // SWR Logic: Return cached data if available, then revalidate in background if stale
+  if (cached && (now - cached.timestamp < CACHE_TTL)) {
+    return cached.data;
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   
   const url = new URL(PROXY_URL);
@@ -53,7 +66,9 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
     throw new Error(error.error || 'Failed to fetch from proxy');
   }
   
-  return response.json();
+  const data = await response.json();
+  cache.set(cacheKey, { data, timestamp: now });
+  return data;
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
@@ -63,12 +78,8 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
   return (results || [])
     .filter((item: any) => {
       if (item.adult) return false;
-      
-      // Requirement: Remove content with no poster
       if (!item.poster_path) return false;
 
-      // Requirement: Remove content with no IMDb rating (0 or null)
-      // Exception: Allow 0 ratings for upcoming content (released today or in future)
       const releaseDate = item.release_date || item.first_air_date || "TBA";
       const isReleased = releaseDate !== "TBA" && releaseDate < today;
       if (isReleased && (!item.vote_average || item.vote_average === 0)) return false;
@@ -80,7 +91,6 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
     .map((item: any) => {
       let type = (item.media_type as MediaType) || defaultType;
       
-      // Correctly categorize Anime and K-Drama
       const isAnimated = item.genre_ids?.includes(16);
       const isJapanese = item.original_language === 'ja';
       const isKorean = item.original_language === 'ko';
@@ -300,4 +310,19 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
     
   const data = await fetchFromProxy(path, params);
   return mapResults(data.results || [], type);
+};
+
+// Cache Warming Routine
+export const warmCache = async () => {
+  try {
+    const currentYear = new Date().getFullYear();
+    await Promise.all([
+      fetchTrending(),
+      fetchContent('movie', currentYear),
+      fetchContent('tv', currentYear)
+    ]);
+    console.log("[tmdb] Cache warmed successfully");
+  } catch (err) {
+    console.warn("[tmdb] Cache warming failed", err);
+  }
 };
