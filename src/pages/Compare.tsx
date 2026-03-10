@@ -58,9 +58,11 @@ const Compare = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // If it's an undo, we explicitly want to REMOVE it
+    // Otherwise, we check if it's currently in the collection
     const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
 
-    if (isCurrentlyWatched) {
+    if (isUndo || isCurrentlyWatched) {
       const { error } = await supabase
         .from('watched_content')
         .delete()
@@ -74,6 +76,8 @@ const Compare = () => {
         } else {
           showSuccess("Removed from collection");
         }
+      } else {
+        showError("Failed to update collection");
       }
     } else {
       const { error } = await supabase
@@ -91,7 +95,6 @@ const Compare = () => {
       if (!error) {
         setMyCollection(prev => [...prev, item]);
         
-        // Show toast with Undo action
         toast.success(`Added ${item.title}`, {
           description: "Moved to common interests",
           action: {
