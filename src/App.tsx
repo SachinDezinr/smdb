@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
-import { showSuccess } from "@/utils/toast";
-import { warmCache } from "@/lib/tmdb";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
 import About from "./pages/About";
@@ -20,12 +18,11 @@ import Stats from "./pages/Stats";
 import Compare from "./pages/Compare";
 import NotFound from "./pages/NotFound";
 
-// Optimized QueryClient configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -37,27 +34,15 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
+    // Fast session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
-      if (session) {
-        warmCache(); // Warm cache for authenticated users
-      }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
-
-      if (event === 'SIGNED_IN') {
-        warmCache();
-      }
-
-      if (event === 'PASSWORD_RECOVERY') {
-        showSuccess("You can now change your password in your profile settings.");
-      }
     });
 
     return () => subscription.unsubscribe();
@@ -65,9 +50,8 @@ const App = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Loader2 className="animate-spin text-primary" size={48} />
-        <p className="text-muted-foreground animate-pulse">Initializing SMDB...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" size={32} />
       </div>
     );
   }
