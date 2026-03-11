@@ -116,6 +116,7 @@ const Profile = () => {
         </header>
 
         <div className="space-y-6">
+          {/* Account Settings Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Edit3 size={20} className="text-primary" />
@@ -187,6 +188,7 @@ const Profile = () => {
             </div>
           </section>
 
+          {/* Social Circle Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Users size={20} className="text-primary" />
@@ -204,6 +206,31 @@ const Profile = () => {
             </Link>
           </section>
 
+          {/* Help & Info Section (Mobile Only) */}
+          <section className="lg:hidden glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Info size={20} className="text-primary" />
+              Help & Information
+            </h2>
+            <div className="space-y-3">
+              <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Info size={20} className="text-primary" />
+                  <span>About SMDB</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+              <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Mail size={20} className="text-primary" />
+                  <span>Contact Support</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+            </div>
+          </section>
+
+          {/* Danger Zone Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <LogOut size={20} className="text-red-500" />
