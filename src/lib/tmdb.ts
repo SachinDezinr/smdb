@@ -333,13 +333,23 @@ export const warmCache = async () => {
   try {
     const currentYear = new Date().getFullYear();
     // Parallel pre-fetching of critical data
-    await Promise.all([
+    const [trending, movies, tv, upcomingMovies, upcomingTv] = await Promise.all([
       fetchTrending(),
       fetchContent('movie', currentYear),
       fetchContent('tv', currentYear),
       fetchUpcoming('movie'),
       fetchUpcoming('tv')
     ]);
+
+    // Proactively preload images into browser cache
+    const allItems = [...trending, ...movies, ...tv, ...upcomingMovies, ...upcomingTv];
+    const posters = [...new Set(allItems.map(i => i.poster_path).filter(Boolean))];
+    
+    // Preload the first 20 posters immediately
+    posters.slice(0, 20).forEach(url => {
+      const img = new Image();
+      img.src = url;
+    });
   } catch (err) {
     console.warn("[tmdb] Cache warming failed", err);
   }
