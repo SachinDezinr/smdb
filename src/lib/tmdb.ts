@@ -194,7 +194,7 @@ export const fetchContent = async (
       return true;
     });
 
-    // Optimized Search Relevance: Exact matches > Starts with > Popularity > Date
+    // Optimized Search Relevance: Exact matches first, then sort everything else by release date (latest to oldest)
     return unique.sort((a, b) => {
       const q = query.toLowerCase();
       const aTitle = a.title.toLowerCase();
@@ -205,17 +205,16 @@ export const fetchContent = async (
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
 
-      const aStarts = aTitle.startsWith(q);
-      const bStarts = bTitle.startsWith(q);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-
-      // If both start with the query, use popularity to decide (e.g., Scam 1992 vs Scam 2003)
-      if (aStarts && bStarts) {
-        return (b.popularity || 0) - (a.popularity || 0);
+      // For everything else, sort by release date (latest to oldest)
+      const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
+      const bDate = b.release_date && b.release_date !== "TBA" ? new Date(b.release_date).getTime() : 0;
+      
+      if (bDate !== aDate) {
+        return bDate - aDate;
       }
 
-      return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
+      // Fallback to popularity if dates are the same
+      return (b.popularity || 0) - (a.popularity || 0);
     });
   }
 
