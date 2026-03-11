@@ -174,7 +174,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             </div>
           )}
           {item.release_date && !showReleaseDate && !isFuture && (
-            <span className="text-muted-foreground text-[10px] md:text-xs">
+            <span className="text-muted-foreground text-[11px] md:text-xs">
               {new Date(item.release_date).getFullYear() || ""}
             </span>
           )}
