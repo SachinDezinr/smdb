@@ -5,6 +5,9 @@ import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
 import { Mail, Instagram, ExternalLink, Linkedin, Code } from 'lucide-react';
 
+/**
+ * Contact Page: Provides ways to connect with the developer and SMDB team.
+ */
 const Contact = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -19,6 +22,7 @@ const Contact = () => {
           <h1 className="text-5xl font-serif font-bold mb-4">Contact <span className="text-primary">SMDB</span></h1>
           <p className="text-xl text-muted-foreground mb-12">Have feedback, suggestions, or collaboration ideas? Let’s connect.</p>
 
+          {/* Contact Options Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <motion.a
               href="mailto:smdbwork@gmail.com"
@@ -77,8 +81,10 @@ const Contact = () => {
             </div>
           </div>
 
-          <footer className="mt-20 text-muted-foreground text-sm">
+          {/* Footer Section */}
+          <footer className="mt-20 text-muted-foreground text-sm space-y-1">
             <p>© 2026 SMDB. All Rights Reserved.</p>
+            <p className="text-primary/80 font-medium">Built with passion for Cinephiles</p>
           </footer>
         </motion.div>
       </main>

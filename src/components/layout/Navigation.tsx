@@ -27,10 +27,14 @@ const footerItems = [
   { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
+/**
+ * Navigation Component: Handles both Desktop Sidebar and Mobile Bottom Navigation.
+ */
 export const Navigation = () => {
   const location = useLocation();
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
+  // Check for pending friend requests to show notification dot
   useEffect(() => {
     const checkRequests = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -47,6 +51,7 @@ export const Navigation = () => {
     checkRequests();
   }, []);
 
+  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -108,7 +113,8 @@ export const Navigation = () => {
           
           <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
             <p>© 2026 SMDB. All Rights Reserved.</p>
-            <p className="mt-1">Unauthorized copying of code, design, or content is strictly prohibited.</p>
+            <p className="text-primary/60 font-medium mt-1">Built with passion for Cinephiles</p>
+            <p className="mt-2 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
           </div>
         </div>
       </aside>

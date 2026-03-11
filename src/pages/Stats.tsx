@@ -7,12 +7,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/**
+ * Stats Page: Displays user's viewing habits and the "Yearly Wrapped" summary.
+ */
 const Stats = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showWrapped, setShowWrapped] = useState(false);
   const currentYear = new Date().getFullYear();
 
+  // Fetches user statistics from Supabase
   const fetchStats = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -23,11 +27,13 @@ const Stats = () => {
       .eq('user_id', user.id);
 
     if (watched) {
+      // Filter content released in the current year
       const yearWatched = watched.filter(i => {
         if (!i.release_date || i.release_date === "TBA") return false;
         return new Date(i.release_date).getFullYear() === currentYear;
       });
       
+      // Categorize counts for different media types
       const counts = {
         movie: yearWatched.filter(i => i.media_type === 'movie').length,
         tv: yearWatched.filter(i => i.media_type === 'tv').length,
@@ -35,6 +41,7 @@ const Stats = () => {
         kdrama: yearWatched.filter(i => i.media_type === 'k-drama').length,
       };
 
+      // Determine the most watched genre/category
       const genres: Record<string, number> = {};
       watched.forEach(i => {
         const g = i.media_type === 'tv' ? 'Web Series' : i.media_type.charAt(0).toUpperCase() + i.media_type.slice(1);
@@ -57,6 +64,7 @@ const Stats = () => {
   useEffect(() => {
     fetchStats();
     
+    // Real-time updates when collection changes
     const channel = supabase
       .channel('stats_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
@@ -95,6 +103,7 @@ const Stats = () => {
           </button>
         </header>
 
+        {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {[
             { label: `Released in ${currentYear}`, value: stats?.yearTotal, icon: Calendar },
@@ -122,6 +131,7 @@ const Stats = () => {
           <p className="text-muted-foreground">Add more movies and series to see your detailed insights grow.</p>
         </section>
 
+        {/* Wrapped Modal Overlay */}
         <AnimatePresence>
           {showWrapped && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
@@ -146,13 +156,13 @@ const Stats = () => {
                   <p className="text-white/60 text-sm uppercase tracking-widest mt-2">Wrapped {currentYear}</p>
                 </div>
 
-                <div className="w-full space-y-8">
-                  <div className="text-center">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Titles Released in {currentYear}</p>
-                    <p className="text-6xl font-bold text-white">{stats.yearTotal}</p>
+                <div className="w-full flex flex-col items-center justify-center flex-1">
+                  <div className="text-center mb-10">
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Titles Watched in {currentYear}</p>
+                    <p className="text-7xl font-bold text-white leading-none">{stats.yearTotal}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
                       <PlayCircle className="text-primary mb-2" size={20} />
                       <p className="text-2xl font-bold text-white">{stats.counts.movie}</p>
