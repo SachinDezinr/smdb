@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Film, User, Users } from 'lucide-react';
+import { CheckCircle2, Film, User, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentItem, fetchCredits } from '@/lib/tmdb';
 
@@ -29,12 +29,11 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
-  // Check if the content is released yet
   const today = new Date().toISOString().split('T')[0];
   const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
   const handlePosterClick = async () => {
-    // Show credits if it's explicitly requested (upcoming page) OR if it's a future release (search results)
+    // Always allow viewing credits for unreleased content or when explicitly requested
     if (!showReleaseDate && !isFuture) return;
     
     if (showCredits) {
@@ -44,9 +43,14 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
 
     if (!credits) {
       setLoadingCredits(true);
-      const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-      setCredits(data);
-      setLoadingCredits(false);
+      try {
+        const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+        setCredits(data);
+      } catch (err) {
+        console.error("Failed to fetch credits", err);
+      } finally {
+        setLoadingCredits(false);
+      }
     }
     setShowCredits(true);
   };
@@ -58,7 +62,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02 }}
-      className="group relative flex flex-col gap-3"
+      className="group relative flex flex-col gap-3 w-full"
     >
       <div 
         onClick={handlePosterClick}
@@ -96,17 +100,17 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20"
+              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20 bg-black/40 backdrop-blur-sm"
             >
               {loadingCredits ? (
-                <div className="flex justify-center"><Film className="animate-spin text-primary" /></div>
+                <div className="flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
               ) : (
                 <>
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
                       <User size={10} /> Director
                     </p>
-                    <p className="text-sm font-bold text-white">{credits?.director || "Unknown"}</p>
+                    <p className="text-sm font-bold text-white truncate">{credits?.director || "Unknown"}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
@@ -114,7 +118,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {credits?.cast?.map((name, i) => (
-                        <span key={i} className="text-[10px] bg-white/10 px-2 py-0.5 rounded-md text-white/90">
+                        <span key={i} className="text-[10px] bg-white/10 px-2 py-0.5 rounded-md text-white/90 truncate max-w-full">
                           {name}
                         </span>
                       )) || <span className="text-xs text-white/60">N/A</span>}
@@ -126,7 +130,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
           )}
         </AnimatePresence>
         
-        {/* Watch Action Overlay - Hidden for future releases */}
+        {/* Watch Action Overlay */}
         {!showReleaseDate && !showCredits && !isFuture && (
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
             <button
@@ -154,13 +158,13 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
       </div>
 
       <div className="flex flex-col gap-1 px-1">
-        <h3 className="font-serif text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-serif text-base md:text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
           {item.title}
         </h3>
         
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-xs md:text-sm">
           {showReleaseDate || isFuture ? (
-            <p className="font-medium">
+            <p className="font-medium truncate">
               <span className="text-primary">Release:</span> {formatDate(item.release_date)}
             </p>
           ) : (
@@ -170,7 +174,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             </div>
           )}
           {item.release_date && !showReleaseDate && !isFuture && (
-            <span className="text-muted-foreground text-xs">
+            <span className="text-muted-foreground text-[10px] md:text-xs">
               {new Date(item.release_date).getFullYear() || ""}
             </span>
           )}

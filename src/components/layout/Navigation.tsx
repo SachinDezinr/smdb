@@ -47,7 +47,6 @@ export const Navigation = () => {
     checkRequests();
   }, []);
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -75,14 +74,16 @@ export const Navigation = () => {
                   : "text-muted-foreground hover:bg-white/5 hover:text-white"
               )}
             >
-              <item.icon size={20} className={cn(
-                "transition-transform duration-300 group-hover:scale-110",
-                location.pathname === item.path ? "text-black" : "text-primary"
-              )} />
+              <div className="relative">
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                {item.path === '/profile' && hasPendingRequests && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+                )}
+              </div>
               {item.label}
-              {item.path === '/profile' && hasPendingRequests && (
-                <span className="absolute right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              )}
             </Link>
           ))}
         </nav>
@@ -122,11 +123,13 @@ export const Navigation = () => {
               location.pathname === item.path ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <item.icon size={18} />
+            <div className="relative">
+              <item.icon size={18} />
+              {item.path === '/profile' && hasPendingRequests && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+              )}
+            </div>
             <span className="text-[9px] font-medium">{item.label}</span>
-            {item.path === '/profile' && hasPendingRequests && (
-              <span className="absolute top-0 right-1/4 w-2 h-2 bg-red-500 rounded-full border border-background" />
-            )}
           </Link>
         ))}
       </nav>

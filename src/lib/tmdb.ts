@@ -19,9 +19,9 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-// SWR Cache Implementation
+// SWR Cache Implementation - Increased TTL for better performance on repeat visits
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 10; // 10 minutes
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
@@ -42,7 +42,7 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   const cached = cache.get(cacheKey);
   const now = Date.now();
 
-  // SWR Logic: Return cached data if available, then revalidate in background if stale
+  // SWR Logic: Return cached data if available
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
@@ -72,26 +72,17 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  // Keywords to filter out explicit content
   const adultKeywords = ['hentai', 'porn', 'erotica', 'erotic'];
   const today = new Date().toISOString().split('T')[0];
 
   return (results || [])
     .filter((item: any) => {
-      // Rely on TMDB's adult flag first
       if (item.adult) return false;
       if (!item.poster_path) return false;
-
-      const releaseDate = item.release_date || item.first_air_date || "TBA";
-      const isReleased = releaseDate !== "TBA" && releaseDate < today;
-      
-      // Filter out items with no ratings if they are already released
-      if (isReleased && item.vote_count > 10 && (!item.vote_average || item.vote_average === 0)) return false;
 
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
       
-      // Check for strictly explicit keywords in title or overview
       return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
     })
     .map((item: any) => {
@@ -204,11 +195,22 @@ export const fetchContent = async (
       return true;
     });
 
+    // Optimized Search Relevance: Exact matches first, then "starts with", then others
     return unique.sort((a, b) => {
-      const aExact = a.title.toLowerCase() === query.toLowerCase();
-      const bExact = b.title.toLowerCase() === query.toLowerCase();
+      const q = query.toLowerCase();
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+      
+      const aExact = aTitle === q;
+      const bExact = bTitle === q;
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
+
+      const aStarts = aTitle.startsWith(q);
+      const bStarts = bTitle.startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
       return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
     });
   }
@@ -318,14 +320,16 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   return mapResults(data.results || [], type);
 };
 
-// Cache Warming Routine
+// Cache Warming Routine - Pre-fetch more data for a smoother experience
 export const warmCache = async () => {
   try {
     const currentYear = new Date().getFullYear();
     await Promise.all([
       fetchTrending(),
       fetchContent('movie', currentYear),
-      fetchContent('tv', currentYear)
+      fetchContent('tv', currentYear),
+      fetchUpcoming('movie'),
+      fetchUpcoming('tv')
     ]);
     console.log("[tmdb] Cache warmed successfully");
   } catch (err) {
