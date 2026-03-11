@@ -94,6 +94,7 @@ export const Navigation = () => {
           ))}
         </nav>
 
+        {/* Desktop Footer Section */}
         <div className="pt-6 border-t border-white/10 space-y-2">
           {footerItems.map((item) => (
             <Link
@@ -113,7 +114,7 @@ export const Navigation = () => {
           
           <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
             <p>© 2026 SMDB. All Rights Reserved.</p>
-            <p className="text-primary/60 font-medium mt-1">Built with passion for Cinephiles</p>
+            <p className="text-primary/80 font-bold mt-1">Built with passion for Cinephiles</p>
             <p className="mt-2 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
           </div>
         </div>

@@ -156,13 +156,15 @@ const Stats = () => {
                   <p className="text-white/60 text-sm uppercase tracking-widest mt-2">Wrapped {currentYear}</p>
                 </div>
 
-                <div className="w-full flex flex-col items-center justify-center flex-1">
-                  <div className="text-center mb-10">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Titles Watched in {currentYear}</p>
-                    <p className="text-7xl font-bold text-white leading-none">{stats.yearTotal}</p>
+                {/* Centered Count Section */}
+                <div className="w-full flex flex-col items-center justify-center flex-1 py-4">
+                  <div className="text-center flex flex-col items-center justify-center flex-1">
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-4">Titles Watched in {currentYear}</p>
+                    <p className="text-8xl font-bold text-white leading-none tracking-tighter">{stats.yearTotal}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 w-full">
+                  {/* Category Grid */}
+                  <div className="grid grid-cols-2 gap-4 w-full mt-auto">
                     <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col items-center">
                       <PlayCircle className="text-primary mb-2" size={20} />
                       <p className="text-2xl font-bold text-white">{stats.counts.movie}</p>
