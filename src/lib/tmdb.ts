@@ -107,7 +107,6 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       return {
         id: item.id,
         title: item.title || item.name,
-        // Using w342 instead of w500 for faster image loading without sacrificing quality on mobile/small grids
         poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
         backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
@@ -331,26 +330,20 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
 
 export const warmCache = async () => {
   try {
-    const currentYear = new Date().getFullYear();
-    // Parallel pre-fetching of critical data
-    const [trending, movies, tv, upcomingMovies, upcomingTv] = await Promise.all([
-      fetchTrending(),
-      fetchContent('movie', currentYear),
-      fetchContent('tv', currentYear),
-      fetchUpcoming('movie'),
-      fetchUpcoming('tv')
-    ]);
+    // Mild cache warming: Only pre-fetch trending content as it's the first thing users see
+    const trending = await fetchTrending();
 
-    // Proactively preload images into browser cache
-    const allItems = [...trending, ...movies, ...tv, ...upcomingMovies, ...upcomingTv];
-    const posters = [...new Set(allItems.map(i => i.poster_path).filter(Boolean))];
+    // Preload only the first few trending posters to ensure a smooth hero section
+    const posters = trending
+      .map(i => i.poster_path)
+      .filter(Boolean)
+      .slice(0, 5);
     
-    // Preload the first 20 posters immediately
-    posters.slice(0, 20).forEach(url => {
+    posters.forEach(url => {
       const img = new Image();
       img.src = url;
     });
   } catch (err) {
-    console.warn("[tmdb] Cache warming failed", err);
+    console.warn("[tmdb] Mild cache warming failed", err);
   }
 };
