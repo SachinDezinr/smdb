@@ -20,8 +20,12 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
+// Persistent Cache for the session to avoid repeated async calls
+let cachedSession: any = null;
+
+// Enhanced SWR Cache with longer TTL for static content
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 30;
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour for static content
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
@@ -46,7 +50,11 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
     return cached.data;
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // Faster session retrieval
+  if (!cachedSession) {
+    const { data: { session } } = await supabase.auth.getSession();
+    cachedSession = session;
+  }
   
   const url = new URL(PROXY_URL);
   url.searchParams.set('path', path);
@@ -56,7 +64,7 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   
   const response = await fetch(url.toString(), {
     headers: {
-      'Authorization': `Bearer ${session?.access_token}`
+      'Authorization': `Bearer ${cachedSession?.access_token}`
     }
   });
   
@@ -99,8 +107,9 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       return {
         id: item.id,
         title: item.title || item.name,
-        poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-        backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
+        // Using w342 instead of w500 for faster image loading without sacrificing quality on mobile/small grids
+        poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
+        backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
         vote_average: item.vote_average || 0,
         media_type: type,
@@ -194,7 +203,6 @@ export const fetchContent = async (
       return true;
     });
 
-    // Optimized Search Relevance: Exact matches first, then sort everything else by release date (latest to oldest)
     return unique.sort((a, b) => {
       const q = query.toLowerCase();
       const aTitle = a.title.toLowerCase();
@@ -205,7 +213,6 @@ export const fetchContent = async (
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
 
-      // For everything else, sort by release date (latest to oldest)
       const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
       const bDate = b.release_date && b.release_date !== "TBA" ? new Date(b.release_date).getTime() : 0;
       
@@ -213,7 +220,6 @@ export const fetchContent = async (
         return bDate - aDate;
       }
 
-      // Fallback to popularity if dates are the same
       return (b.popularity || 0) - (a.popularity || 0);
     });
   }
@@ -326,6 +332,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
 export const warmCache = async () => {
   try {
     const currentYear = new Date().getFullYear();
+    // Parallel pre-fetching of critical data
     await Promise.all([
       fetchTrending(),
       fetchContent('movie', currentYear),
