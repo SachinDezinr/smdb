@@ -13,15 +13,15 @@ export interface ContentItem {
   media_type: MediaType;
   genre_ids: number[];
   overview: string;
+  popularity?: number;
   adult?: boolean;
   videos?: { results: any[] };
 }
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-// SWR Cache Implementation - Increased TTL for better performance on repeat visits
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+const CACHE_TTL = 1000 * 60 * 30;
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
@@ -42,7 +42,6 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   const cached = cache.get(cacheKey);
   const now = Date.now();
 
-  // SWR Logic: Return cached data if available
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
@@ -73,7 +72,6 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
   const adultKeywords = ['hentai', 'porn', 'erotica', 'erotic'];
-  const today = new Date().toISOString().split('T')[0];
 
   return (results || [])
     .filter((item: any) => {
@@ -108,6 +106,7 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
         media_type: type,
         genre_ids: item.genre_ids || [],
         overview: item.overview,
+        popularity: item.popularity || 0,
         adult: item.adult,
         videos: item.videos
       };
@@ -195,7 +194,7 @@ export const fetchContent = async (
       return true;
     });
 
-    // Optimized Search Relevance: Exact matches first, then "starts with", then others
+    // Optimized Search Relevance: Exact matches > Starts with > Popularity > Date
     return unique.sort((a, b) => {
       const q = query.toLowerCase();
       const aTitle = a.title.toLowerCase();
@@ -210,6 +209,11 @@ export const fetchContent = async (
       const bStarts = bTitle.startsWith(q);
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
+
+      // If both start with the query, use popularity to decide (e.g., Scam 1992 vs Scam 2003)
+      if (aStarts && bStarts) {
+        return (b.popularity || 0) - (a.popularity || 0);
+      }
 
       return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
     });
@@ -320,7 +324,6 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   return mapResults(data.results || [], type);
 };
 
-// Cache Warming Routine - Pre-fetch more data for a smoother experience
 export const warmCache = async () => {
   try {
     const currentYear = new Date().getFullYear();
@@ -331,7 +334,6 @@ export const warmCache = async () => {
       fetchUpcoming('movie'),
       fetchUpcoming('tv')
     ]);
-    console.log("[tmdb] Cache warmed successfully");
   } catch (err) {
     console.warn("[tmdb] Cache warming failed", err);
   }

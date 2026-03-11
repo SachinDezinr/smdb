@@ -100,7 +100,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20 bg-black/60 backdrop-blur-md"
             >
               {loadingCredits ? (
                 <div className="flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
@@ -110,15 +110,15 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
                     <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
                       <User size={10} /> Director
                     </p>
-                    <p className="text-sm font-bold text-white truncate">{credits?.director || "Unknown"}</p>
+                    <p className="text-sm font-bold text-white truncate drop-shadow-md">{credits?.director || "Unknown"}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
                       <Users size={10} /> Main Cast
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {credits?.cast?.map((name, i) => (
-                        <span key={i} className="text-[10px] bg-white/10 px-2 py-0.5 rounded-md text-white/90 truncate max-w-full">
+                        <span key={i} className="text-[10px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-md text-white font-medium truncate max-w-full border border-white/10">
                           {name}
                         </span>
                       )) || <span className="text-xs text-white/60">N/A</span>}
