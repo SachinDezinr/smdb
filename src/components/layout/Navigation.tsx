@@ -79,7 +79,8 @@ export const Navigation = () => {
                   "transition-transform duration-300 group-hover:scale-110",
                   location.pathname === item.path ? "text-black" : "text-primary"
                 )} />
-                {item.path === '/profile' && hasPendingRequests && (
+                {/* Desktop: Dot on Friends icon */}
+                {item.path === '/friends' && hasPendingRequests && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
                 )}
               </div>
@@ -125,6 +126,7 @@ export const Navigation = () => {
           >
             <div className="relative">
               <item.icon size={18} />
+              {/* Mobile: Dot stays on Profile icon */}
               {item.path === '/profile' && hasPendingRequests && (
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
               )}

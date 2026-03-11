@@ -199,15 +199,15 @@ const Friends = () => {
                 <div className="space-y-3">
                   {searchResults.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex-shrink-0 flex items-center justify-center text-primary font-bold">
                           {user.username?.[0]?.toUpperCase() || '?'}
                         </div>
-                        <p className="font-bold">{user.username}</p>
+                        <p className="font-bold truncate">{user.username}</p>
                       </div>
                       <button 
                         onClick={() => sendRequest(user.id)}
-                        className="p-2 bg-primary text-black rounded-lg hover:scale-110 transition-transform"
+                        className="p-2 bg-primary text-black rounded-lg hover:scale-110 transition-transform flex-shrink-0"
                       >
                         <UserPlus size={18} />
                       </button>
@@ -231,13 +231,13 @@ const Friends = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {friends.map((friend) => (
                     <div key={friend.id} className="p-4 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-primary/20 rounded-full flex-shrink-0 flex items-center justify-center text-primary font-bold">
                           {friend.profiles?.username?.[0]?.toUpperCase() || '?'}
                         </div>
-                        <p className="font-bold">{friend.profiles?.username || 'Unknown'}</p>
+                        <p className="font-bold truncate">{friend.profiles?.username || 'Unknown'}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <Link 
                           to={`/compare/${friend.friend_id}`}
                           className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary hover:text-black transition-all"
@@ -271,7 +271,7 @@ const Friends = () => {
                 <div className="space-y-3">
                   {incomingRequests.map((req) => (
                     <div key={req.id} className="p-4 bg-white/5 rounded-xl border border-white/5">
-                      <p className="text-sm font-bold mb-3">{req.profiles?.username || 'Unknown'}</p>
+                      <p className="text-sm font-bold mb-3 truncate">{req.profiles?.username || 'Unknown'}</p>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => respondRequest(req.id, true)}
@@ -303,8 +303,8 @@ const Friends = () => {
                 <div className="space-y-3">
                   {sentRequests.map((req) => (
                     <div key={req.id} className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between">
-                      <p className="text-xs font-bold">{req.profiles?.username || 'Unknown'}</p>
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Pending</span>
+                      <p className="text-xs font-bold truncate mr-2">{req.profiles?.username || 'Unknown'}</p>
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground flex-shrink-0">Pending</span>
                     </div>
                   ))}
                 </div>
