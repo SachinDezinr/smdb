@@ -2,17 +2,23 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Play, Star, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 export const TrendingHero = () => {
-  const [trending, setTrending] = useState<ContentItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [direction, setDirection] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use React Query for efficient fetching and caching
+  const { data: trending = [], isLoading } = useQuery({
+    queryKey: ['trending'],
+    queryFn: fetchTrending,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
 
   const resetTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -22,19 +28,14 @@ export const TrendingHero = () => {
   };
 
   useEffect(() => {
-    const load = async () => {
-      const data = await fetchTrending();
-      setTrending(data);
-      setLoading(false);
-    };
-    load();
     resetTimer();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [trending.length]);
 
   const paginate = (newDirection: number) => {
+    if (trending.length === 0) return;
     setDirection(newDirection);
     setCurrentIndex((prevIndex) => {
       let nextIndex = prevIndex + newDirection;
@@ -55,9 +56,13 @@ export const TrendingHero = () => {
     return Math.abs(offset) * velocity;
   };
 
-  if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
+  if (isLoading) return (
+    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 flex items-center justify-center rounded-[2rem] mb-12">
+      <Loader2 className="animate-spin text-primary" size={48} />
+    </div>
   );
+
+  if (trending.length === 0) return null;
 
   const current = trending[currentIndex];
 
@@ -111,13 +116,11 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          {/* Decreased black edge intensity by reducing opacity of gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Desktop Navigation Buttons */}
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
@@ -149,7 +152,6 @@ export const TrendingHero = () => {
             </div>
           </div>
           
-          {/* Improved text responsiveness with intermediate md: breakpoint */}
           <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
@@ -170,7 +172,6 @@ export const TrendingHero = () => {
         </motion.div>
       </div>
 
-      {/* Navigation Dots */}
       <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
         {trending.map((_, i) => (
           <button
@@ -188,7 +189,6 @@ export const TrendingHero = () => {
         ))}
       </div>
 
-      {/* Trailer Modal */}
       <AnimatePresence>
         {trailerUrl && (
           <motion.div

@@ -327,23 +327,3 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   const data = await fetchFromProxy(path, params);
   return mapResults(data.results || [], type);
 };
-
-export const warmCache = async () => {
-  try {
-    // Mild cache warming: Only pre-fetch trending content as it's the first thing users see
-    const trending = await fetchTrending();
-
-    // Preload only the first few trending posters to ensure a smooth hero section
-    const posters = trending
-      .map(i => i.poster_path)
-      .filter(Boolean)
-      .slice(0, 5);
-    
-    posters.forEach(url => {
-      const img = new Image();
-      img.src = url;
-    });
-  } catch (err) {
-    console.warn("[tmdb] Mild cache warming failed", err);
-  }
-};
