@@ -165,7 +165,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
         <div className="flex items-center justify-between text-xs md:text-sm">
           {showReleaseDate || isFuture ? (
             <p className="font-medium truncate">
-              <span className="text-primary">Release:</span> {formatDate(item.release_date)}
+              <span className="text-primary font-medium">Release:</span> {formatDate(item.release_date)}
             </p>
           ) : (
             <div className="flex items-center gap-1">
