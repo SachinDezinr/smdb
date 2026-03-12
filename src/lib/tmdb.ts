@@ -107,6 +107,7 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       return {
         id: item.id,
         title: item.title || item.name,
+        // Using w342 instead of w500 for faster image loading without sacrificing quality on mobile/small grids
         poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
         backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
@@ -326,4 +327,20 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
     
   const data = await fetchFromProxy(path, params);
   return mapResults(data.results || [], type);
+};
+
+export const warmCache = async () => {
+  try {
+    const currentYear = new Date().getFullYear();
+    // Parallel pre-fetching of critical data
+    await Promise.all([
+      fetchTrending(),
+      fetchContent('movie', currentYear),
+      fetchContent('tv', currentYear),
+      fetchUpcoming('movie'),
+      fetchUpcoming('tv')
+    ]);
+  } catch (err) {
+    console.warn("[tmdb] Cache warming failed", err);
+  }
 };
