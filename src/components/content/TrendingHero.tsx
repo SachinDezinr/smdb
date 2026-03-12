@@ -141,9 +141,9 @@ export const TrendingHero = () => {
           transition={{ delay: 0.2 }}
           className="space-y-3 lg:space-y-4"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
-            <div className="flex items-center gap-0.8 text-primary">
+            <div className="flex items-center gap-1 text-primary">
               <Star size={14} fill="currentColor" />
               <span className="text-sm font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
