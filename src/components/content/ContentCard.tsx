@@ -168,8 +168,8 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
               <span className="text-primary">Release:</span> {formatDate(item.release_date)}
             </p>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold">IMDb:</span>
+            <div className="flex items-center gap-1">
+              <span className="text-primary font-bold">Rating:</span>
               <span className="text-white/90">{item.vote_average > 0 ? item.vote_average.toFixed(1) : "N/A"}</span>
             </div>
           )}
