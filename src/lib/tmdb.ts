@@ -20,12 +20,17 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-// Persistent Cache for the session to avoid repeated async calls
+// Persistent Cache for the session
 let cachedSession: any = null;
-
-// Enhanced SWR Cache with longer TTL for static content
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour for static content
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+// Stampede Prevention: Track in-flight promises
+const inFlight = new Map<string, Promise<any>>();
+
+// Traffic/Activity Monitor
+let activityScore = 0;
+const ACTIVITY_THRESHOLD = 3; // Number of requests before warming triggers
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
@@ -43,39 +48,57 @@ const getRegionParams = (region: Region): Record<string, string> => {
 
 const fetchFromProxy = async (path: string, params: Record<string, string | number | boolean> = {}) => {
   const cacheKey = JSON.stringify({ path, params });
-  const cached = cache.get(cacheKey);
   const now = Date.now();
 
+  // 1. Check Cache
+  const cached = cache.get(cacheKey);
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
 
-  // Faster session retrieval
-  if (!cachedSession) {
-    const { data: { session } } = await supabase.auth.getSession();
-    cachedSession = session;
+  // 2. Prevent Stampede: Check if request is already in flight
+  if (inFlight.has(cacheKey)) {
+    return inFlight.get(cacheKey);
   }
-  
-  const url = new URL(PROXY_URL);
-  url.searchParams.set('path', path);
-  Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.set(key, String(value));
-  });
-  
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${cachedSession?.access_token}`
+
+  // 3. Execute Request
+  const requestPromise = (async () => {
+    activityScore++; // Increment activity on every real fetch
+    
+    if (!cachedSession) {
+      const { data: { session } } = await supabase.auth.getSession();
+      cachedSession = session;
     }
-  });
+    
+    const url = new URL(PROXY_URL);
+    url.searchParams.set('path', path);
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, String(value));
+    });
+    
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${cachedSession?.access_token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch from proxy');
+    }
+    
+    const data = await response.json();
+    cache.set(cacheKey, { data, timestamp: now });
+    return data;
+  })();
+
+  inFlight.set(cacheKey, requestPromise);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch from proxy');
+  try {
+    return await requestPromise;
+  } finally {
+    inFlight.delete(cacheKey); // Clean up in-flight map
   }
-  
-  const data = await response.json();
-  cache.set(cacheKey, { data, timestamp: now });
-  return data;
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
@@ -85,29 +108,22 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
     .filter((item: any) => {
       if (item.adult) return false;
       if (!item.poster_path) return false;
-
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
-      
       return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
     })
     .map((item: any) => {
       let type = (item.media_type as MediaType) || defaultType;
-      
       const isAnimated = item.genre_ids?.includes(16);
       const isJapanese = item.original_language === 'ja';
       const isKorean = item.original_language === 'ko';
 
-      if (isJapanese && isAnimated) {
-        type = 'anime';
-      } else if (isKorean && (item.media_type === 'tv' || type === 'tv')) {
-        type = 'k-drama';
-      }
+      if (isJapanese && isAnimated) type = 'anime';
+      else if (isKorean && (item.media_type === 'tv' || type === 'tv')) type = 'k-drama';
 
       return {
         id: item.id,
         title: item.title || item.name,
-        // Using w342 instead of w500 for faster image loading without sacrificing quality on mobile/small grids
         poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
         backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
@@ -149,7 +165,6 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
   const combined = interleave(gm, im, gt, an, kd);
-  
   const seen = new Set();
   const unique = [];
   
@@ -195,7 +210,6 @@ export const fetchContent = async (
     }
 
     const mapped = mapResults(results, type);
-    
     const seen = new Set();
     const unique = mapped.filter(item => {
       if (seen.has(item.id)) return false;
@@ -207,19 +221,13 @@ export const fetchContent = async (
       const q = query.toLowerCase();
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();
-      
       const aExact = aTitle === q;
       const bExact = bTitle === q;
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
-
       const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
       const bDate = b.release_date && b.release_date !== "TBA" ? new Date(b.release_date).getTime() : 0;
-      
-      if (bDate !== aDate) {
-        return bDate - aDate;
-      }
-
+      if (bDate !== aDate) return bDate - aDate;
       return (b.popularity || 0) - (a.popularity || 0);
     });
   }
@@ -235,7 +243,6 @@ export const fetchContent = async (
       ...getRegionParams('hollywood'),
       [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
     };
-    
     const indianParams = { 
       page, 
       include_adult: false,
@@ -291,7 +298,6 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       ...getRegionParams('hollywood'),
       [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
     };
-
     const indianParams = {
       page,
       include_adult: false,
@@ -329,18 +335,26 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   return mapResults(data.results || [], type);
 };
 
-export const warmCache = async () => {
+/**
+ * Smart Warm Cache: Only triggers if user activity is high and connection is good.
+ */
+export const smartWarmCache = async () => {
+  // 1. Check for data-saving mode
+  const conn = (navigator as any).connection;
+  if (conn && (conn.saveData || conn.effectiveType === '2g')) return;
+
+  // 2. Only warm if user is active (high "traffic" in current session)
+  if (activityScore < ACTIVITY_THRESHOLD) return;
+
   try {
     const currentYear = new Date().getFullYear();
-    // Parallel pre-fetching of critical data
+    // Background pre-fetch of likely next items
     await Promise.all([
-      fetchTrending(),
       fetchContent('movie', currentYear),
-      fetchContent('tv', currentYear),
-      fetchUpcoming('movie'),
-      fetchUpcoming('tv')
+      fetchUpcoming('movie')
     ]);
+    console.log("[tmdb] Smart warming complete based on high activity.");
   } catch (err) {
-    console.warn("[tmdb] Cache warming failed", err);
+    console.warn("[tmdb] Smart warming failed", err);
   }
 };
