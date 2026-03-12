@@ -44,12 +44,16 @@ const Upcoming = () => {
     
     try {
       let data: ContentItem[];
+      const today = new Date().toISOString().split('T')[0];
+
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
-        const today = new Date().toISOString().split('T')[0];
-        data = data.filter(item => item.release_date >= today);
+        // Strictly future releases for Upcoming
+        data = data.filter(item => item.release_date > today);
       } else {
         data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+        // Ensure strictly future releases even from the upcoming endpoint
+        data = data.filter(item => item.release_date > today);
       }
       
       setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
@@ -74,6 +78,7 @@ const Upcoming = () => {
     try {
       const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
+      // Strictly future releases for search results in Upcoming page
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
       showError("Search failed");
