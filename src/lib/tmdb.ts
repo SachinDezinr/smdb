@@ -232,24 +232,33 @@ export const fetchContent = async (
     });
   }
 
+  const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
   const targetYear = year || currentYear;
 
+  // Base parameters for discovery
+  const baseParams: any = {
+    page,
+    include_adult: false,
+    sort_by: 'popularity.desc',
+    [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+  };
+
+  // If we are fetching for the current year or past years on the Home page,
+  // we should ensure we only get content that is already released.
+  if (targetYear <= currentYear) {
+    baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
+  }
+
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { 
-      page, 
-      include_adult: false,
-      sort_by: 'popularity.desc',
-      ...getRegionParams('hollywood'),
-      [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+      ...baseParams,
+      ...getRegionParams('hollywood')
     };
     const indianParams = { 
-      page, 
-      include_adult: false,
-      sort_by: 'popularity.desc',
+      ...baseParams,
       region: 'IN',
-      with_original_language: 'hi|te|ta|kn|ml|pa',
-      [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+      with_original_language: 'hi|te|ta|kn|ml|pa'
     };
 
     const [hData, iData] = await Promise.all([
@@ -262,11 +271,8 @@ export const fetchContent = async (
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
   let params: any = { 
-    page, 
-    include_adult: false,
-    sort_by: 'popularity.desc',
-    ...getRegionParams(region),
-    [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+    ...baseParams,
+    ...getRegionParams(region)
   };
 
   if (type === "anime") {
