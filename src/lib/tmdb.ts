@@ -152,38 +152,52 @@ const interleave = <T>(...arrays: T[][]): T[] => {
 };
 
 /**
- * Custom sorting logic for year sections:
- * 1. Latest release + Has Rating
- * 2. Popular/Trending Latest Release
- * 3. Latest release (no rating) mixed with Older release (with rating)
- * 4. Older release (no rating)
+ * Refined sorting logic for year sections:
+ * 1. Latest release + High Rating (Tier 1)
+ * 2. Latest release + Popular (Tier 2)
+ * 3. Mix of Latest (unrated) and Older (highly rated)
+ * 4. Older unrated content
  */
 const sortYearContent = (items: ContentItem[]) => {
+  if (items.length === 0) return items;
+
+  // Find the most recent date in the set to define the "Latest" window
+  const maxDate = Math.max(...items.map(i => i.release_date && i.release_date !== "TBA" ? new Date(i.release_date).getTime() : 0));
+  const LATEST_WINDOW = 60 * 24 * 60 * 60 * 1000; // 60 days
+
   return items.sort((a, b) => {
     const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
     const bDate = b.release_date && b.release_date !== "TBA" ? new Date(b.release_date).getTime() : 0;
     
-    const aHasRating = a.vote_average > 0;
-    const bHasRating = b.vote_average > 0;
+    const aRating = a.vote_average || 0;
+    const bRating = b.vote_average || 0;
+    const aHasRating = aRating > 0;
+    const bHasRating = bRating > 0;
 
-    // Tier 1 & 2: Latest (within 30 days of each other)
-    const dateDiff = Math.abs(aDate - bDate);
-    const isSameEra = dateDiff < (30 * 24 * 60 * 60 * 1000);
+    const isALatest = (maxDate - aDate) < LATEST_WINDOW;
+    const isBLatest = (maxDate - bDate) < LATEST_WINDOW;
 
-    if (isSameEra) {
-      // Prioritize rating within the same era
-      if (aHasRating && !bHasRating) return -1;
-      if (!aHasRating && bHasRating) return 1;
-      // Then popularity
-      return (b.popularity || 0) - (a.popularity || 0);
+    // Tier 1: Latest + Rated (Prioritize higher ratings)
+    if (isALatest && aHasRating && (!isBLatest || !bHasRating)) return -1;
+    if (isBLatest && bHasRating && (!isALatest || !aHasRating)) return 1;
+    if (isALatest && aHasRating && isBLatest && bHasRating) {
+      // If both are latest and rated, compare ratings first, then date
+      if (Math.abs(aRating - bRating) > 0.1) return bRating - aRating;
+      return bDate - aDate;
     }
 
-    // Tier 3: Mix latest (no rating) with older (with rating)
-    // We achieve this by giving a slight boost to rated content even if older
-    const aScore = aDate + (aHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
-    const bScore = bDate + (bHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
+    // Tier 2 & 3: Mix Latest (unrated) with Older (rated)
+    // We use a weighted score: Date + (Rating * Weight)
+    // This ensures that a very high rating can push an older movie above a new unrated one
+    const aScore = aDate + (aRating * 10 * 24 * 60 * 60 * 1000); // Each rating point is worth 10 days of "newness"
+    const bScore = bDate + (bRating * 10 * 24 * 60 * 60 * 1000);
 
-    return bScore - aScore;
+    if (Math.abs(aScore - bScore) > 1000) {
+      return bScore - aScore;
+    }
+
+    // Fallback to popularity
+    return (b.popularity || 0) - (a.popularity || 0);
   });
 };
 
@@ -276,12 +290,9 @@ export const fetchContent = async (
   const baseParams: any = {
     page,
     include_adult: false,
-    // Fetch by popularity to ensure we get the "good" content, then re-sort in memory
     sort_by: 'popularity.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
-
-  // Removed the 'lte: today' restriction to ensure future 2026 content is visible
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
