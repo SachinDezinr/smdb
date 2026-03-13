@@ -20,17 +20,13 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-// Persistent Cache for the session
 let cachedSession: any = null;
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+const CACHE_TTL = 1000 * 60 * 60;
 
-// Stampede Prevention: Track in-flight promises
 const inFlight = new Map<string, Promise<any>>();
-
-// Traffic/Activity Monitor
 let activityScore = 0;
-const ACTIVITY_THRESHOLD = 3; // Number of requests before warming triggers
+const ACTIVITY_THRESHOLD = 3;
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
@@ -50,20 +46,17 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   const cacheKey = JSON.stringify({ path, params });
   const now = Date.now();
 
-  // 1. Check Cache
   const cached = cache.get(cacheKey);
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
 
-  // 2. Prevent Stampede: Check if request is already in flight
   if (inFlight.has(cacheKey)) {
     return inFlight.get(cacheKey);
   }
 
-  // 3. Execute Request
   const requestPromise = (async () => {
-    activityScore++; // Increment activity on every real fetch
+    activityScore++;
     
     if (!cachedSession) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -97,16 +90,15 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   try {
     return await requestPromise;
   } finally {
-    inFlight.delete(cacheKey); // Clean up in-flight map
+    inFlight.delete(cacheKey);
   }
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  // Expanded list to filter out soft porn and specific platforms
   const adultKeywords = [
     'hentai', 'porn', 'erotica', 'erotic', 'sexy', 'hot scenes', 
     'ullu', 'altbalaji', 'kooku', 'hotshots', 'primeplay', 'voovi', 
-    'rabbit movies', 'gully movies', 'besharams', 'hunters'
+    'rabbit movies', 'gully movies', 'besharams', 'hunters', 'atrangii'
   ];
 
   return (results || [])
@@ -117,12 +109,8 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
       
-      // Filter by keywords in title or overview
       const isAdultContent = adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
       if (isAdultContent) return false;
-
-      // Filter out specific adult-oriented genres if possible (though TMDB genres are broad)
-      // 10749 is Romance, which is fine, but we rely on keywords for the "soft" stuff.
       
       return true;
     })
@@ -163,8 +151,43 @@ const interleave = <T>(...arrays: T[][]): T[] => {
   return result;
 };
 
+/**
+ * Custom sorting logic for year sections:
+ * 1. Latest release + Has Rating
+ * 2. Popular/Trending Latest Release
+ * 3. Latest release (no rating) mixed with Older release (with rating)
+ * 4. Older release (no rating)
+ */
+const sortYearContent = (items: ContentItem[]) => {
+  return items.sort((a, b) => {
+    const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
+    const bDate = b.release_date && b.release_date !== "TBA" ? new Date(b.release_date).getTime() : 0;
+    
+    const aHasRating = a.vote_average > 0;
+    const bHasRating = b.vote_average > 0;
+
+    // Tier 1 & 2: Latest (within 30 days of each other)
+    const dateDiff = Math.abs(aDate - bDate);
+    const isSameEra = dateDiff < (30 * 24 * 60 * 60 * 1000);
+
+    if (isSameEra) {
+      // Prioritize rating within the same era
+      if (aHasRating && !bHasRating) return -1;
+      if (!aHasRating && bHasRating) return 1;
+      // Then popularity
+      return (b.popularity || 0) - (a.popularity || 0);
+    }
+
+    // Tier 3: Mix latest (no rating) with older (with rating)
+    // We achieve this by giving a slight boost to rated content even if older
+    const aScore = aDate + (aHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
+    const bScore = bDate + (bHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
+
+    return bScore - aScore;
+  });
+};
+
 export const fetchTrending = async (): Promise<ContentItem[]> => {
-  // Fetching daily trending to ensure freshness
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
@@ -247,47 +270,34 @@ export const fetchContent = async (
     });
   }
 
-  const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
   const targetYear = year || currentYear;
 
-  // Base parameters for discovery
   const baseParams: any = {
     page,
     include_adult: false,
-    // Use release date descending to show newest content first for year sections
-    sort_by: type === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc',
+    // Fetch by popularity to ensure we get the "good" content, then re-sort in memory
+    sort_by: 'popularity.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  if (targetYear <= currentYear) {
-    baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
-  }
+  // Removed the 'lte: today' restriction to ensure future 2026 content is visible
 
   if (region === "all" && (type === "movie" || type === "tv")) {
-    const hollywoodParams = { 
-      ...baseParams,
-      ...getRegionParams('hollywood')
-    };
-    const indianParams = { 
-      ...baseParams,
-      region: 'IN',
-      with_original_language: 'hi|te|ta|kn|ml|pa'
-    };
+    const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
+    const indianParams = { ...baseParams, region: 'IN', with_original_language: 'hi|te|ta|kn|ml|pa' };
 
     const [hData, iData] = await Promise.all([
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, hollywoodParams),
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
     ]);
 
-    return interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
+    const combined = interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
+    return sortYearContent(combined);
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
-  let params: any = { 
-    ...baseParams,
-    ...getRegionParams(region)
-  };
+  let params: any = { ...baseParams, ...getRegionParams(region) };
 
   if (type === "anime") {
     params.with_keywords = '210024';
@@ -297,7 +307,7 @@ export const fetchContent = async (
   }
 
   const data = await fetchFromProxy(path, params);
-  return mapResults(data.results || [], type);
+  return sortYearContent(mapResults(data.results || [], type));
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
@@ -355,25 +365,17 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   return mapResults(data.results || [], type);
 };
 
-/**
- * Smart Warm Cache: Only triggers if user activity is high and connection is good.
- */
 export const smartWarmCache = async () => {
-  // 1. Check for data-saving mode
   const conn = (navigator as any).connection;
   if (conn && (conn.saveData || conn.effectiveType === '2g')) return;
-
-  // 2. Only warm if user is active (high "traffic" in current session)
   if (activityScore < ACTIVITY_THRESHOLD) return;
 
   try {
     const currentYear = new Date().getFullYear();
-    // Background pre-fetch of likely next items
     await Promise.all([
       fetchContent('movie', currentYear),
       fetchUpcoming('movie')
     ]);
-    console.log("[tmdb] Smart warming complete based on high activity.");
   } catch (err) {
     console.warn("[tmdb] Smart warming failed", err);
   }
