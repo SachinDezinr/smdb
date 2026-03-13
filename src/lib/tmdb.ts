@@ -22,7 +22,7 @@ const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-pr
 
 let cachedSession: any = null;
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 30; // Reduced to 30 mins for fresher trending data
+const CACHE_TTL = 1000 * 60 * 60;
 
 const inFlight = new Map<string, Promise<any>>();
 let activityScore = 0;
@@ -151,6 +151,9 @@ const interleave = <T>(...arrays: T[][]): T[] => {
   return result;
 };
 
+/**
+ * Utility to remove duplicate items by ID
+ */
 const uniqueById = (items: ContentItem[]): ContentItem[] => {
   const seen = new Set();
   return items.filter(item => {
@@ -160,6 +163,11 @@ const uniqueById = (items: ContentItem[]): ContentItem[] => {
   });
 };
 
+/**
+ * Refined sorting logic for year sections:
+ * 1. Uses a "Rating Bonus" to ensure rated content moves above unrated content of similar age.
+ * 2. If a content item gets a rating in the future, its score increases and it moves up.
+ */
 const sortYearContent = (items: ContentItem[]) => {
   return items.sort((a, b) => {
     const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
@@ -182,7 +190,6 @@ const sortYearContent = (items: ContentItem[]) => {
 };
 
 export const fetchTrending = async (): Promise<ContentItem[]> => {
-  // Fetching from 'day' window ensures we get the most recent trending items
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
@@ -212,11 +219,8 @@ export const fetchContent = async (
   year?: number,
   page: number = 1,
   query: string = "",
-  region: Region = "all",
-  includeFuture: boolean = false // New flag to control future content visibility
+  region: Region = "all"
 ): Promise<ContentItem[]> => {
-  const today = new Date().toISOString().split('T')[0];
-
   if (query) {
     const [multiData, personData] = await Promise.all([
       fetchFromProxy('/search/multi', { query, page, include_adult: false }),
@@ -262,11 +266,6 @@ export const fetchContent = async (
     sort_by: 'popularity.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
-
-  // If not explicitly allowing future content, filter by today's date
-  if (!includeFuture) {
-    baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
-  }
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
