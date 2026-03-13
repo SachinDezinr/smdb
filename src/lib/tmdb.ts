@@ -102,15 +102,29 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  const adultKeywords = ['hentai', 'porn', 'erotica', 'erotic'];
+  // Expanded list to filter out soft porn and specific platforms
+  const adultKeywords = [
+    'hentai', 'porn', 'erotica', 'erotic', 'sexy', 'hot scenes', 
+    'ullu', 'altbalaji', 'kooku', 'hotshots', 'primeplay', 'voovi', 
+    'rabbit movies', 'gully movies', 'besharams', 'hunters'
+  ];
 
   return (results || [])
     .filter((item: any) => {
       if (item.adult) return false;
       if (!item.poster_path) return false;
+      
       const title = (item.title || item.name || '').toLowerCase();
       const overview = (item.overview || '').toLowerCase();
-      return !adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
+      
+      // Filter by keywords in title or overview
+      const isAdultContent = adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
+      if (isAdultContent) return false;
+
+      // Filter out specific adult-oriented genres if possible (though TMDB genres are broad)
+      // 10749 is Romance, which is fine, but we rely on keywords for the "soft" stuff.
+      
+      return true;
     })
     .map((item: any) => {
       let type = (item.media_type as MediaType) || defaultType;
@@ -150,6 +164,7 @@ const interleave = <T>(...arrays: T[][]): T[] => {
 };
 
 export const fetchTrending = async (): Promise<ContentItem[]> => {
+  // Fetching daily trending to ensure freshness
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
@@ -240,12 +255,11 @@ export const fetchContent = async (
   const baseParams: any = {
     page,
     include_adult: false,
-    sort_by: 'popularity.desc',
+    // Use release date descending to show newest content first for year sections
+    sort_by: type === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  // If we are fetching for the current year or past years on the Home page,
-  // we should ensure we only get content that is already released.
   if (targetYear <= currentYear) {
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
