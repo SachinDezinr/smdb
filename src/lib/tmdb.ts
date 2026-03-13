@@ -152,11 +152,9 @@ const interleave = <T>(...arrays: T[][]): T[] => {
 };
 
 /**
- * Custom sorting logic for year sections:
- * 1. Latest release + Has Rating
- * 2. Popular/Trending Latest Release
- * 3. Latest release (no rating) mixed with Older release (with rating)
- * 4. Older release (no rating)
+ * Refined sorting logic for year sections:
+ * 1. Uses a "Rating Bonus" to ensure rated content moves above unrated content of similar age.
+ * 2. If a content item gets a rating in the future, its score increases and it moves up.
  */
 const sortYearContent = (items: ContentItem[]) => {
   return items.sort((a, b) => {
@@ -166,24 +164,19 @@ const sortYearContent = (items: ContentItem[]) => {
     const aHasRating = a.vote_average > 0;
     const bHasRating = b.vote_average > 0;
 
-    // Tier 1 & 2: Latest (within 30 days of each other)
-    const dateDiff = Math.abs(aDate - bDate);
-    const isSameEra = dateDiff < (30 * 24 * 60 * 60 * 1000);
+    // Rating Bonus: 90 days worth of milliseconds.
+    // This ensures rated content is prioritized over unrated content released within the last 3 months.
+    const RATING_BONUS = 90 * 24 * 60 * 60 * 1000;
+    
+    const aScore = aDate + (aHasRating ? RATING_BONUS : 0);
+    const bScore = bDate + (bHasRating ? RATING_BONUS : 0);
 
-    if (isSameEra) {
-      // Prioritize rating within the same era
-      if (aHasRating && !bHasRating) return -1;
-      if (!aHasRating && bHasRating) return 1;
-      // Then popularity
-      return (b.popularity || 0) - (a.popularity || 0);
+    if (bScore !== aScore) {
+      return bScore - aScore;
     }
 
-    // Tier 3: Mix latest (no rating) with older (with rating)
-    // We achieve this by giving a slight boost to rated content even if older
-    const aScore = aDate + (aHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
-    const bScore = bDate + (bHasRating ? (60 * 24 * 60 * 60 * 1000) : 0);
-
-    return bScore - aScore;
+    // Fallback to popularity if scores are identical
+    return (b.popularity || 0) - (a.popularity || 0);
   });
 };
 
@@ -276,12 +269,9 @@ export const fetchContent = async (
   const baseParams: any = {
     page,
     include_adult: false,
-    // Fetch by popularity to ensure we get the "good" content, then re-sort in memory
     sort_by: 'popularity.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
-
-  // Removed the 'lte: today' restriction to ensure future 2026 content is visible
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
