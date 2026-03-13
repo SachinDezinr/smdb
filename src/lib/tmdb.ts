@@ -151,9 +151,6 @@ const interleave = <T>(...arrays: T[][]): T[] => {
   return result;
 };
 
-/**
- * Utility to remove duplicate items by ID
- */
 const uniqueById = (items: ContentItem[]): ContentItem[] => {
   const seen = new Set();
   return items.filter(item => {
@@ -163,11 +160,6 @@ const uniqueById = (items: ContentItem[]): ContentItem[] => {
   });
 };
 
-/**
- * Refined sorting logic for year sections:
- * 1. Uses a "Rating Bonus" to ensure rated content moves above unrated content of similar age.
- * 2. If a content item gets a rating in the future, its score increases and it moves up.
- */
 const sortYearContent = (items: ContentItem[]) => {
   return items.sort((a, b) => {
     const aDate = a.release_date && a.release_date !== "TBA" ? new Date(a.release_date).getTime() : 0;
@@ -221,6 +213,8 @@ export const fetchContent = async (
   query: string = "",
   region: Region = "all"
 ): Promise<ContentItem[]> => {
+  const today = new Date().toISOString().split('T')[0];
+
   if (query) {
     const [multiData, personData] = await Promise.all([
       fetchFromProxy('/search/multi', { query, page, include_adult: false }),
@@ -266,6 +260,11 @@ export const fetchContent = async (
     sort_by: 'popularity.desc',
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
+
+  // Add release date filter to avoid future/unreleased content in year sections
+  if (targetYear <= currentYear) {
+    baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
+  }
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
