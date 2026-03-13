@@ -152,6 +152,18 @@ const interleave = <T>(...arrays: T[][]): T[] => {
 };
 
 /**
+ * Utility to remove duplicate items by ID
+ */
+const uniqueById = (items: ContentItem[]): ContentItem[] => {
+  const seen = new Set();
+  return items.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+};
+
+/**
  * Refined sorting logic for year sections:
  * 1. Uses a "Rating Bonus" to ensure rated content moves above unrated content of similar age.
  * 2. If a content item gets a rating in the future, its score increases and it moves up.
@@ -164,8 +176,6 @@ const sortYearContent = (items: ContentItem[]) => {
     const aHasRating = a.vote_average > 0;
     const bHasRating = b.vote_average > 0;
 
-    // Rating Bonus: 90 days worth of milliseconds.
-    // This ensures rated content is prioritized over unrated content released within the last 3 months.
     const RATING_BONUS = 90 * 24 * 60 * 60 * 1000;
     
     const aScore = aDate + (aHasRating ? RATING_BONUS : 0);
@@ -175,7 +185,6 @@ const sortYearContent = (items: ContentItem[]) => {
       return bScore - aScore;
     }
 
-    // Fallback to popularity if scores are identical
     return (b.popularity || 0) - (a.popularity || 0);
   });
 };
@@ -196,17 +205,7 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
   const combined = interleave(gm, im, gt, an, kd);
-  const seen = new Set();
-  const unique = [];
-  
-  for (const item of combined) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    unique.push(item);
-    if (unique.length >= 12) break;
-  }
-
-  return unique;
+  return uniqueById(combined).slice(0, 12);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
@@ -241,12 +240,7 @@ export const fetchContent = async (
     }
 
     const mapped = mapResults(results, type);
-    const seen = new Set();
-    const unique = mapped.filter(item => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    });
+    const unique = uniqueById(mapped);
 
     return unique.sort((a, b) => {
       const q = query.toLowerCase();
@@ -283,7 +277,7 @@ export const fetchContent = async (
     ]);
 
     const combined = interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
-    return sortYearContent(combined);
+    return sortYearContent(uniqueById(combined));
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -297,7 +291,7 @@ export const fetchContent = async (
   }
 
   const data = await fetchFromProxy(path, params);
-  return sortYearContent(mapResults(data.results || [], type));
+  return sortYearContent(uniqueById(mapResults(data.results || [], type)));
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
@@ -332,7 +326,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
     ]);
 
-    return interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
+    return uniqueById(interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type)));
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -352,7 +346,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   }
     
   const data = await fetchFromProxy(path, params);
-  return mapResults(data.results || [], type);
+  return uniqueById(mapResults(data.results || [], type));
 };
 
 export const smartWarmCache = async () => {

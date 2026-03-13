@@ -90,13 +90,17 @@ const Index = () => {
     setLoadingYears(prev => ({ ...prev, [year]: true }));
     try {
       const results = await fetchContent(activeCategory, year, page, "", activeRegion);
-      const today = new Date().toISOString().split('T')[0];
-      const filtered = results.filter(item => item.release_date <= today);
       
-      setYearData(prev => ({ 
-        ...prev, 
-        [year]: page === 1 ? filtered : [...(prev[year] || []), ...filtered] 
-      }));
+      setYearData(prev => {
+        const existing = prev[year] || [];
+        const existingIds = new Set(existing.map(item => item.id));
+        const uniqueNew = results.filter(item => !existingIds.has(item.id));
+        
+        return { 
+          ...prev, 
+          [year]: page === 1 ? results : [...existing, ...uniqueNew] 
+        };
+      });
       setYearPages(prev => ({ ...prev, [year]: page }));
     } catch (error) {
       console.error(`Failed to fetch content for ${year}:`, error);
