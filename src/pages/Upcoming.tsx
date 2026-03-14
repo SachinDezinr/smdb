@@ -80,39 +80,6 @@ const Upcoming = () => {
     }
   };
 
-  const toggleWatched = async (item: ContentItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const isCurrentlyWatched = watchedIds.includes(item.id);
-
-    if (isCurrentlyWatched) {
-      const { error } = await supabase.from('watched_content').delete().eq('user_id', user.id).eq('content_id', item.id);
-      if (!error) {
-        setWatchedIds(prev => prev.filter(id => id !== item.id));
-        showSuccess("Removed from collection");
-      }
-    } else {
-      const { error } = await supabase.from('watched_content').insert({
-        user_id: user.id,
-        content_id: item.id,
-        title: item.title,
-        poster_path: item.poster_path,
-        release_date: item.release_date,
-        vote_average: item.vote_average,
-        media_type: item.media_type
-      });
-      if (!error) {
-        setWatchedIds(prev => [...prev, item.id]);
-        if (watchlistIds.includes(item.id)) {
-          await supabase.from('watchlist').delete().eq('user_id', user.id).eq('content_id', item.id);
-          setWatchlistIds(prev => prev.filter(id => id !== item.id));
-        }
-        showSuccess("Marked as watched!");
-      }
-    }
-  };
-
   const toggleWatchlist = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -288,7 +255,7 @@ const Upcoming = () => {
                   item={item} 
                   isWatched={watchedIds.includes(item.id)}
                   isInWatchlist={watchlistIds.includes(item.id)}
-                  onToggleWatched={() => toggleWatched(item)}
+                  showWatchedButton={false}
                   onToggleWatchlist={() => toggleWatchlist(item)}
                 />
               ))}

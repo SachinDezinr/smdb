@@ -47,10 +47,6 @@ export const Navigation = () => {
     showSuccess("Logged out successfully");
   };
 
-  const getUsername = (email: string) => {
-    return email ? email.split('@')[0] : 'User';
-  };
-
   return (
     <>
       {/* Desktop Sidebar */}
@@ -134,15 +130,7 @@ export const Navigation = () => {
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
           {user ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
-                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center border border-primary/30">
-                  <User className="text-primary" size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate">{getUsername(user.email)}</p>
-                </div>
-              </div>
+            <div className="space-y-4">
               <button 
                 onClick={handleLogout}
                 className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-red-400 hover:bg-red-400/10 transition-all font-bold text-sm"
@@ -150,6 +138,15 @@ export const Navigation = () => {
                 <LogOut size={20} />
                 <span>Logout</span>
               </button>
+              
+              <div className="px-4 space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  © {new Date().getFullYear()} SMDB. All rights reserved.
+                </p>
+                <p className="text-[10px] text-red-400/60 font-medium italic">
+                  Unauthorized reproduction is prohibited.
+                </p>
+              </div>
             </div>
           ) : (
             <Link

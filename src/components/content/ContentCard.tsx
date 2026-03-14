@@ -11,6 +11,7 @@ interface ContentCardProps {
   isWatched?: boolean;
   isInWatchlist?: boolean;
   showWatchlistButton?: boolean;
+  showWatchedButton?: boolean;
   onToggleWatched?: () => void;
   onToggleWatchlist?: () => void;
 }
@@ -20,6 +21,7 @@ export const ContentCard = ({
   isWatched, 
   isInWatchlist,
   showWatchlistButton = true,
+  showWatchedButton = true,
   onToggleWatched, 
   onToggleWatchlist 
 }: ContentCardProps) => {
@@ -84,18 +86,20 @@ export const ContentCard = ({
         
         <div className="absolute inset-0 flex flex-col justify-end p-4 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
           <div className="flex flex-col gap-2">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
-                isWatched 
-                  ? "bg-green-500 text-white" 
-                  : "bg-white text-black hover:bg-primary hover:text-black"
-              )}
-            >
-              {isWatched ? <Check size={14} /> : <Play size={14} fill="currentColor" />}
-              {isWatched ? "Watched" : "Mark Watched"}
-            </button>
+            {showWatchedButton && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
+                  isWatched 
+                    ? "bg-green-500 text-white" 
+                    : "bg-white text-black hover:bg-primary hover:text-black"
+                )}
+              >
+                {isWatched ? <Check size={14} /> : <Play size={14} fill="currentColor" />}
+                {isWatched ? "Watched" : "Mark Watched"}
+              </button>
+            )}
             
             {showWatchlistButton && (
               <button 
