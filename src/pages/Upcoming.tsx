@@ -82,27 +82,44 @@ const Upcoming = () => {
 
   const toggleWatchlist = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      showError("Please sign in to use watchlist");
+      return;
+    }
 
     const isCurrentlyInWatchlist = watchlistIds.includes(item.id);
 
     if (isCurrentlyInWatchlist) {
-      const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('content_id', item.id);
-      if (!error) {
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.id);
+
+      if (error) {
+        console.error("Watchlist delete error:", error);
+        showError("Failed to remove from watchlist");
+      } else {
         setWatchlistIds(prev => prev.filter(id => id !== item.id));
         showSuccess("Removed from watchlist");
       }
     } else {
-      const { error } = await supabase.from('watchlist').insert({
-        user_id: user.id,
-        content_id: item.id,
-        title: item.title,
-        poster_path: item.poster_path,
-        release_date: item.release_date,
-        vote_average: item.vote_average,
-        media_type: item.media_type
-      });
-      if (!error) {
+      const { error } = await supabase
+        .from('watchlist')
+        .insert({
+          user_id: user.id,
+          content_id: item.id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (error) {
+        console.error("Watchlist insert error:", error);
+        showError("Failed to add to watchlist. Make sure the table exists.");
+      } else {
         setWatchlistIds(prev => [...prev, item.id]);
         showSuccess("Added to watchlist!");
       }

@@ -1,9 +1,9 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar, User as UserIcon } from 'lucide-react';
-import { ContentItem } from '@/lib/tmdb';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar, User as UserIcon, Loader2 } from 'lucide-react';
+import { ContentItem, fetchCredits } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
 interface ContentCardProps {
@@ -25,6 +25,30 @@ export const ContentCard = ({
   onToggleWatched, 
   onToggleWatchlist 
 }: ContentCardProps) => {
+  const [showCredits, setShowCredits] = useState(false);
+  const [credits, setCredits] = useState<{ director?: string, cast?: string[] } | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+
+  const handlePosterClick = async () => {
+    if (showCredits) {
+      setShowCredits(false);
+      return;
+    }
+
+    setShowCredits(true);
+    if (!credits && !loadingCredits) {
+      setLoadingCredits(true);
+      try {
+        const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+        setCredits(data);
+      } catch (err) {
+        console.error("Failed to fetch credits", err);
+      } finally {
+        setLoadingCredits(false);
+      }
+    }
+  };
+
   const getCategoryLabel = (type: string) => {
     switch (type) {
       case 'movie': return 'Movie';
@@ -66,7 +90,10 @@ export const ContentCard = ({
       viewport={{ once: true }}
       className="group relative flex flex-col gap-3"
     >
-      <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-neutral-900 shadow-xl transition-all duration-500 group-hover:shadow-primary/10 group-hover:-translate-y-2">
+      <div 
+        onClick={handlePosterClick}
+        className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-neutral-900 shadow-xl transition-all duration-500 group-hover:shadow-primary/10 group-hover:-translate-y-2 cursor-pointer"
+      >
         <img
           src={item.poster_path}
           alt={item.title}
@@ -74,6 +101,47 @@ export const ContentCard = ({
           loading="lazy"
         />
         
+        {/* Credits Overlay */}
+        <AnimatePresence>
+          {showCredits && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md z-20 p-4 flex flex-col justify-center items-center text-center"
+            >
+              {loadingCredits ? (
+                <Loader2 className="animate-spin text-primary" size={24} />
+              ) : (
+                <div className="space-y-4">
+                  {credits?.director && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Directed By</p>
+                      <p className="text-sm font-bold text-white">{credits.director}</p>
+                    </div>
+                  )}
+                  {credits?.cast && credits.cast.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Starring</p>
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {credits.cast.map((name, i) => (
+                          <span key={i} className="text-xs text-white/80">
+                            {name}{i < credits.cast.length - 1 ? ',' : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!credits?.director && !credits?.cast && (
+                    <p className="text-xs text-muted-foreground">No credit information available</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground pt-4">Click to close</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Category Pill */}
         <div className={cn(
           "absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold text-white backdrop-blur-md z-10 shadow-lg",
@@ -84,7 +152,7 @@ export const ContentCard = ({
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
-        <div className="absolute inset-0 flex flex-col justify-end p-4 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div className="absolute inset-0 flex flex-col justify-end p-4 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
           <div className="flex flex-col gap-2">
             {showWatchedButton && (
               <button 
@@ -131,20 +199,6 @@ export const ContentCard = ({
           {item.title}
         </h3>
         
-        {/* Director & Cast */}
-        <div className="space-y-0.5">
-          {item.director && (
-            <p className="text-[10px] text-muted-foreground line-clamp-1">
-              <span className="text-primary/70 font-bold">Dir:</span> {item.director}
-            </p>
-          )}
-          {item.cast && item.cast.length > 0 && (
-            <p className="text-[10px] text-muted-foreground line-clamp-1">
-              <span className="text-primary/70 font-bold">Cast:</span> {item.cast.join(', ')}
-            </p>
-          )}
-        </div>
-
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium pt-1">
           <span>{item.release_date.split('-')[0]}</span>
           {item.status === "Upcoming" && (
