@@ -135,7 +135,7 @@ export const ContentCard = ({
                   {!credits?.director && !credits?.cast && (
                     <p className="text-xs text-muted-foreground">No credit information available</p>
                   )}
-                  <p className="text-[10px] text-muted-foreground pt-4">Click to close</p>
+                  <p className="text-[9px] text-muted-foreground pt-4">Click to close</p>
                 </div>
               )}
             </motion.div>
