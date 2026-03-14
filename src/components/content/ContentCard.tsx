@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar } from 'lucide-react';
+import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar, User as UserIcon } from 'lucide-react';
 import { ContentItem } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
@@ -130,7 +130,22 @@ export const ContentCard = ({
         <h3 className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors">
           {item.title}
         </h3>
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
+        
+        {/* Director & Cast */}
+        <div className="space-y-0.5">
+          {item.director && (
+            <p className="text-[10px] text-muted-foreground line-clamp-1">
+              <span className="text-primary/70 font-bold">Dir:</span> {item.director}
+            </p>
+          )}
+          {item.cast && item.cast.length > 0 && (
+            <p className="text-[10px] text-muted-foreground line-clamp-1">
+              <span className="text-primary/70 font-bold">Cast:</span> {item.cast.join(', ')}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium pt-1">
           <span>{item.release_date.split('-')[0]}</span>
           {item.status === "Upcoming" && (
             <div className="flex items-center gap-1 text-primary font-bold text-[11px]">

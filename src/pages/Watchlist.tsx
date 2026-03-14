@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
@@ -170,9 +171,9 @@ const Watchlist = () => {
             <Bookmark className="mx-auto text-muted-foreground mb-4 opacity-20" size={64} />
             <h2 className="text-2xl font-bold mb-2">Your watchlist is empty</h2>
             <p className="text-muted-foreground mb-8">Start adding movies and series you want to watch!</p>
-            <a href="/" className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform inline-block">
+            <Link to="/" className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform inline-block">
               Explore Content
-            </a>
+            </Link>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-20 opacity-50">

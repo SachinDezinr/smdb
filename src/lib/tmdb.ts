@@ -17,6 +17,8 @@ export interface ContentItem {
   adult?: boolean;
   videos?: { results: any[] };
   status?: "Released" | "Upcoming";
+  director?: string;
+  cast?: string[];
 }
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
