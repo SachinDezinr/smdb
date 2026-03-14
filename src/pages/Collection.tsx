@@ -8,9 +8,11 @@ import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
+  const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
@@ -20,22 +22,22 @@ const Collection = () => {
 
   const currentYear = new Date().getFullYear();
 
-  const fetchWatched = async () => {
+  const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('watched_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const [watchedRes, watchlistRes] = await Promise.all([
+      supabase.from('watched_content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('watchlist').select('content_id').eq('user_id', user.id)
+    ]);
 
-    if (!error) setWatchedItems(data || []);
+    if (watchedRes.data) setWatchedItems(watchedRes.data);
+    if (watchlistRes.data) setWatchlistIds(watchlistRes.data.map(i => i.content_id));
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchWatched();
+    fetchData();
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -51,6 +53,44 @@ const Collection = () => {
 
     if (!error) {
       setWatchedItems(prev => prev.filter(item => item.content_id !== id));
+      showSuccess("Removed from collection");
+    }
+  };
+
+  const toggleWatchlist = async (item: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isCurrentlyInWatchlist = watchlistIds.includes(item.content_id);
+
+    if (isCurrentlyInWatchlist) {
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.content_id);
+
+      if (!error) {
+        setWatchlistIds(prev => prev.filter(id => id !== item.content_id));
+        showSuccess("Removed from watchlist");
+      }
+    } else {
+      const { error } = await supabase
+        .from('watchlist')
+        .insert({
+          user_id: user.id,
+          content_id: item.content_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (!error) {
+        setWatchlistIds(prev => [...prev, item.content_id]);
+        showSuccess("Added to watchlist!");
+      }
     }
   };
 
@@ -120,7 +160,6 @@ const Collection = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              {/* Detailed Stats Button - Mobile Only */}
               <button 
                 onClick={() => navigate('/stats')}
                 className="lg:hidden flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
@@ -131,7 +170,6 @@ const Collection = () => {
             </div>
           </div>
 
-          {/* Interactive Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {statCards.map((stat, i) => (
               <motion.button
@@ -183,13 +221,10 @@ const Collection = () => {
                       overview: ""
                     }} 
                     isWatched={true}
+                    isInWatchlist={watchlistIds.includes(item.content_id)}
+                    onToggleWatched={() => removeWatched(item.content_id)}
+                    onToggleWatchlist={() => toggleWatchlist(item)}
                   />
-                  <button
-                    onClick={() => removeWatched(item.content_id)}
-                    className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               ))}
             </div>

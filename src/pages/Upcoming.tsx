@@ -7,7 +7,8 @@ import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/l
 import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
+import { supabase } from '@/lib/supabase';
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -31,12 +32,27 @@ const Upcoming = () => {
   const [activeRegion, setActiveRegion] = useState<Region>('all');
   const [activeYear, setActiveYear] = useState<number | null>(null);
   const [items, setItems] = useState<ContentItem[]>([]);
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
+  const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
+
+  const fetchUserContent = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [watchedRes, watchlistRes] = await Promise.all([
+      supabase.from('watched_content').select('content_id').eq('user_id', user.id),
+      supabase.from('watchlist').select('content_id').eq('user_id', user.id)
+    ]);
+    
+    if (watchedRes.data) setWatchedIds(watchedRes.data.map(i => i.content_id));
+    if (watchlistRes.data) setWatchlistIds(watchlistRes.data.map(i => i.content_id));
+  };
 
   const load = async (pageNum: number = 1) => {
     if (pageNum === 1) setLoading(true);
@@ -48,11 +64,9 @@ const Upcoming = () => {
 
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
-        // Strictly future releases for Upcoming
         data = data.filter(item => item.release_date > today);
       } else {
         data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
-        // Ensure strictly future releases even from the upcoming endpoint
         data = data.filter(item => item.release_date > today);
       }
       
@@ -63,6 +77,68 @@ const Upcoming = () => {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+    }
+  };
+
+  const toggleWatched = async (item: ContentItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isCurrentlyWatched = watchedIds.includes(item.id);
+
+    if (isCurrentlyWatched) {
+      const { error } = await supabase.from('watched_content').delete().eq('user_id', user.id).eq('content_id', item.id);
+      if (!error) {
+        setWatchedIds(prev => prev.filter(id => id !== item.id));
+        showSuccess("Removed from collection");
+      }
+    } else {
+      const { error } = await supabase.from('watched_content').insert({
+        user_id: user.id,
+        content_id: item.id,
+        title: item.title,
+        poster_path: item.poster_path,
+        release_date: item.release_date,
+        vote_average: item.vote_average,
+        media_type: item.media_type
+      });
+      if (!error) {
+        setWatchedIds(prev => [...prev, item.id]);
+        if (watchlistIds.includes(item.id)) {
+          await supabase.from('watchlist').delete().eq('user_id', user.id).eq('content_id', item.id);
+          setWatchlistIds(prev => prev.filter(id => id !== item.id));
+        }
+        showSuccess("Marked as watched!");
+      }
+    }
+  };
+
+  const toggleWatchlist = async (item: ContentItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isCurrentlyInWatchlist = watchlistIds.includes(item.id);
+
+    if (isCurrentlyInWatchlist) {
+      const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('content_id', item.id);
+      if (!error) {
+        setWatchlistIds(prev => prev.filter(id => id !== item.id));
+        showSuccess("Removed from watchlist");
+      }
+    } else {
+      const { error } = await supabase.from('watchlist').insert({
+        user_id: user.id,
+        content_id: item.id,
+        title: item.title,
+        poster_path: item.poster_path,
+        release_date: item.release_date,
+        vote_average: item.vote_average,
+        media_type: item.media_type
+      });
+      if (!error) {
+        setWatchlistIds(prev => [...prev, item.id]);
+        showSuccess("Added to watchlist!");
+      }
     }
   };
 
@@ -78,7 +154,6 @@ const Upcoming = () => {
     try {
       const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
-      // Strictly future releases for search results in Upcoming page
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
       showError("Search failed");
@@ -89,18 +164,17 @@ const Upcoming = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery) {
-        performSearch(searchQuery);
-      } else {
-        setIsSearching(false);
-      }
+      if (searchQuery) performSearch(searchQuery);
+      else setIsSearching(false);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery, performSearch]);
 
   useEffect(() => {
-    if (!isSearching) load(1);
+    if (!isSearching) {
+      load(1);
+      fetchUserContent();
+    }
   }, [activeCategory, activeRegion, activeYear, isSearching]);
 
   const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
@@ -163,9 +237,6 @@ const Upcoming = () => {
                   onClick={() => { 
                     const nextYear = activeYear === 2027 ? null : 2027;
                     setActiveYear(nextYear);
-                    if (nextYear === null && activeRegion === 'korean') {
-                      setActiveRegion('all');
-                    }
                   }}
                   className={cn(
                     "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
@@ -212,27 +283,16 @@ const Upcoming = () => {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {(isSearching ? searchResults : items).map((item) => (
-                <ContentCard key={item.id} item={item} showReleaseDate />
+                <ContentCard 
+                  key={item.id} 
+                  item={item} 
+                  isWatched={watchedIds.includes(item.id)}
+                  isInWatchlist={watchlistIds.includes(item.id)}
+                  onToggleWatched={() => toggleWatched(item)}
+                  onToggleWatchlist={() => toggleWatchlist(item)}
+                />
               ))}
             </div>
-            
-            {isSearching && searchResults.length === 0 && (
-              <div className="text-center py-20 opacity-50">
-                <p className="text-xl">No result found.</p>
-              </div>
-            )}
-
-            {!isSearching && items.length === 0 && (
-              <div className="text-center py-32 opacity-50 flex flex-col items-center justify-center">
-                <CalendarIcon size={64} className="mb-4 text-primary/20" />
-                <h2 className="text-2xl font-serif font-bold">No Upcoming Content</h2>
-                <p className="text-muted-foreground mt-2">
-                  {activeRegion !== 'all' 
-                    ? `No ${activeRegion} content announced yet${activeYear ? ` for ${activeYear}` : ''}.` 
-                    : `Nothing announced for this category yet${activeYear ? ` for ${activeYear}` : ''}.`}
-                </p>
-              </div>
-            )}
             
             {!isSearching && items.length > 0 && (
               <div className="mt-12 flex justify-center">
