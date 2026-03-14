@@ -342,7 +342,7 @@ const Index = () => {
                   className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-2xl font-serif font-bold text-primary">{year}</span>
+                    <span className="text-3xl font-serif font-bold text-primary">{year}</span>
                     <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
                       {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
                     </span>

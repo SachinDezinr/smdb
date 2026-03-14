@@ -12,7 +12,6 @@ import { showSuccess, showError } from '@/utils/toast';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
-  const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
@@ -26,13 +25,13 @@ const Collection = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [watchedRes, watchlistRes] = await Promise.all([
-      supabase.from('watched_content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('watchlist').select('content_id').eq('user_id', user.id)
-    ]);
+    const { data, error } = await supabase
+      .from('watched_content')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (watchedRes.data) setWatchedItems(watchedRes.data);
-    if (watchlistRes.data) setWatchlistIds(watchlistRes.data.map(i => i.content_id));
+    if (data) setWatchedItems(data);
     setLoading(false);
   };
 
@@ -54,43 +53,6 @@ const Collection = () => {
     if (!error) {
       setWatchedItems(prev => prev.filter(item => item.content_id !== id));
       showSuccess("Removed from collection");
-    }
-  };
-
-  const toggleWatchlist = async (item: any) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const isCurrentlyInWatchlist = watchlistIds.includes(item.content_id);
-
-    if (isCurrentlyInWatchlist) {
-      const { error } = await supabase
-        .from('watchlist')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('content_id', item.content_id);
-
-      if (!error) {
-        setWatchlistIds(prev => prev.filter(id => id !== item.content_id));
-        showSuccess("Removed from watchlist");
-      }
-    } else {
-      const { error } = await supabase
-        .from('watchlist')
-        .insert({
-          user_id: user.id,
-          content_id: item.content_id,
-          title: item.title,
-          poster_path: item.poster_path,
-          release_date: item.release_date,
-          vote_average: item.vote_average,
-          media_type: item.media_type
-        });
-
-      if (!error) {
-        setWatchlistIds(prev => [...prev, item.content_id]);
-        showSuccess("Added to watchlist!");
-      }
     }
   };
 
@@ -221,9 +183,8 @@ const Collection = () => {
                       overview: ""
                     }} 
                     isWatched={true}
-                    isInWatchlist={watchlistIds.includes(item.content_id)}
+                    showWatchlistButton={false}
                     onToggleWatched={() => removeWatched(item.content_id)}
-                    onToggleWatchlist={() => toggleWatchlist(item)}
                   />
                 </div>
               ))}
@@ -250,7 +211,7 @@ const Collection = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+              className="fixed bottom-24 lg:bottom-10 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
             >
               <ChevronUp size={24} />
             </motion.button>

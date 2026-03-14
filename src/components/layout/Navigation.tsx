@@ -2,16 +2,30 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Film, Tv, Heart, Clock, Settings, LogOut, User, Bookmark } from 'lucide-react';
+import { 
+  Home, Film, Tv, Heart, Clock, Settings, LogOut, 
+  User, Bookmark, Users, BarChart3, Info, Mail 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { showSuccess } from '@/utils/toast';
 
-const NAV_ITEMS = [
+const MAIN_NAV = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
   { icon: Heart, label: 'Collection', path: '/collection' },
   { icon: Clock, label: 'Upcoming', path: '/upcoming' },
+];
+
+const SECONDARY_NAV = [
+  { icon: Users, label: 'Friends', path: '/friends' },
+  { icon: BarChart3, label: 'Stats', path: '/stats' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+const FOOTER_NAV = [
+  { icon: Info, label: 'About', path: '/about' },
+  { icon: Mail, label: 'Contact Us', path: '/contact' },
 ];
 
 export const Navigation = () => {
@@ -33,10 +47,14 @@ export const Navigation = () => {
     showSuccess("Logged out successfully");
   };
 
+  const getUsername = (email: string) => {
+    return email ? email.split('@')[0] : 'User';
+  };
+
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-72 bg-background border-r border-white/5 p-6 sticky top-0 h-screen">
+      <aside className="hidden lg:flex flex-col w-72 bg-background border-r border-white/5 p-6 sticky top-0 h-screen overflow-y-auto">
         <div className="mb-10 px-4">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
@@ -46,26 +64,72 @@ export const Navigation = () => {
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-2">
-          <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu</div>
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                location.pathname === item.path 
-                  ? "bg-primary text-black shadow-lg shadow-primary/10" 
-                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <item.icon size={20} className={cn(
-                "transition-transform duration-300 group-hover:scale-110",
-                location.pathname === item.path ? "text-black" : "text-primary"
-              )} />
-              <span className="font-bold text-sm">{item.label}</span>
-            </Link>
-          ))}
+        <nav className="flex-1 space-y-8">
+          <div className="space-y-2">
+            <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu</div>
+            {MAIN_NAV.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  location.pathname === item.path 
+                    ? "bg-primary text-black shadow-lg shadow-primary/10" 
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                <span className="font-bold text-sm">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Social & Stats</div>
+            {SECONDARY_NAV.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  location.pathname === item.path 
+                    ? "bg-primary text-black shadow-lg shadow-primary/10" 
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                <span className="font-bold text-sm">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Support</div>
+            {FOOTER_NAV.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  location.pathname === item.path 
+                    ? "bg-primary text-black shadow-lg shadow-primary/10" 
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                <span className="font-bold text-sm">{item.label}</span>
+              </Link>
+            ))}
+          </div>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
@@ -76,8 +140,7 @@ export const Navigation = () => {
                   <User className="text-primary" size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate">{user.email}</p>
-                  <p className="text-[10px] text-muted-foreground">Premium Member</p>
+                  <p className="text-xs font-bold truncate">{getUsername(user.email)}</p>
                 </div>
               </div>
               <button 
@@ -102,7 +165,7 @@ export const Navigation = () => {
 
       {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex justify-between items-center z-50">
-        {NAV_ITEMS.map((item) => (
+        {MAIN_NAV.map((item) => (
           <Link
             key={item.path}
             to={item.path}

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, Play, Check, Plus, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar } from 'lucide-react';
 import { ContentItem } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ interface ContentCardProps {
   item: ContentItem;
   isWatched?: boolean;
   isInWatchlist?: boolean;
+  showWatchlistButton?: boolean;
   onToggleWatched?: () => void;
   onToggleWatchlist?: () => void;
 }
@@ -18,6 +19,7 @@ export const ContentCard = ({
   item, 
   isWatched, 
   isInWatchlist,
+  showWatchlistButton = true,
   onToggleWatched, 
   onToggleWatchlist 
 }: ContentCardProps) => {
@@ -38,6 +40,20 @@ export const ContentCard = ({
       case 'anime': return 'bg-orange-500/80';
       case 'k-drama': return 'bg-pink-500/80';
       default: return 'bg-primary/80';
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr || dateStr === "TBA") return "TBA";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+      });
+    } catch (e) {
+      return dateStr;
     }
   };
 
@@ -81,18 +97,20 @@ export const ContentCard = ({
               {isWatched ? "Watched" : "Mark Watched"}
             </button>
             
-            <button 
-              onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all border backdrop-blur-md",
-                isInWatchlist 
-                  ? "bg-primary/20 border-primary text-primary" 
-                  : "bg-black/40 border-white/20 text-white hover:bg-white/10"
-              )}
-            >
-              {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
-              {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
-            </button>
+            {showWatchlistButton && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all border backdrop-blur-md",
+                  isInWatchlist 
+                    ? "bg-primary/20 border-primary text-primary" 
+                    : "bg-black/40 border-white/20 text-white hover:bg-white/10"
+                )}
+              >
+                {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
+                {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -111,7 +129,10 @@ export const ContentCard = ({
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
           <span>{item.release_date.split('-')[0]}</span>
           {item.status === "Upcoming" && (
-            <span className="text-primary font-bold uppercase tracking-tighter">Upcoming</span>
+            <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
+              <Calendar size={10} />
+              <span>{formatDate(item.release_date)}</span>
+            </div>
           )}
         </div>
       </div>
