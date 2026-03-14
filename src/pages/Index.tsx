@@ -65,15 +65,14 @@ const Index = () => {
     setIsSearching(true);
     setLoadingYears({ 0: true });
     try {
-      // Search now respects the active category
-      const results = await fetchContent(activeCategory, undefined, 1, query, 'all');
+      const results = await fetchContent('movie', undefined, 1, query, 'all');
       setSearchResults(results);
     } catch (error) {
       showError("Search failed. Please try again.");
     } finally {
       setLoadingYears({ 0: false });
     }
-  }, [activeCategory]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -190,7 +189,7 @@ const Index = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
                 <input
                   type="text"
-                  placeholder={`Search ${activeCategory === 'tv' ? 'series' : activeCategory}...`}
+                  placeholder="Search titles, cast, or directors..."
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -208,44 +207,46 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => setActiveCategory(cat.value)}
-                  className={cn(
-                    "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                    activeCategory === cat.value 
-                      ? "bg-primary text-black" 
-                      : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            {showRegionFilters && !isSearching && (
-              <div className="flex flex-wrap gap-2 items-center">
-                <Filter size={16} className="text-primary mr-2" />
-                {REGIONS.map((reg) => (
+          {!isSearching && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                {CATEGORIES.map((cat) => (
                   <button
-                    key={reg.value}
-                    onClick={() => setActiveRegion(reg.value as Region)}
+                    key={cat.value}
+                    onClick={() => setActiveCategory(cat.value)}
                     className={cn(
-                      "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                      activeRegion === reg.value 
-                        ? "border-primary bg-primary/10 text-primary" 
-                        : "border-white/10 text-muted-foreground hover:border-white/30"
+                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
+                      activeCategory === cat.value 
+                        ? "bg-primary text-black" 
+                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
                     )}
                   >
-                    {reg.label}
+                    {cat.label}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+
+              {showRegionFilters && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Filter size={16} className="text-primary mr-2" />
+                  {REGIONS.map((reg) => (
+                    <button
+                      key={reg.value}
+                      onClick={() => setActiveRegion(reg.value as Region)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                        activeRegion === reg.value 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-white/10 text-muted-foreground hover:border-white/30"
+                      )}
+                    >
+                      {reg.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {!isSearching && <TrendingHero />}
