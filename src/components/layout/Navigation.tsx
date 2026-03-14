@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
+import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 
 const desktopNavItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: BarChart3, label: 'Stats', path: '/stats' },
   { icon: Users, label: 'Friends', path: '/friends' },
@@ -18,6 +19,7 @@ const desktopNavItems = [
 const mobileNavItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
@@ -27,14 +29,10 @@ const footerItems = [
   { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
-/**
- * Navigation Component: Handles both Desktop Sidebar and Mobile Bottom Navigation.
- */
 export const Navigation = () => {
   const location = useLocation();
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
-  // Check for pending friend requests to show notification dot
   useEffect(() => {
     const checkRequests = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -51,14 +49,12 @@ export const Navigation = () => {
     checkRequests();
   }, []);
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r border-white/10 bg-background/50 backdrop-blur-xl p-6">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -84,7 +80,6 @@ export const Navigation = () => {
                   "transition-transform duration-300 group-hover:scale-110",
                   location.pathname === item.path ? "text-black" : "text-primary"
                 )} />
-                {/* Desktop: Dot on Friends icon */}
                 {item.path === '/friends' && hasPendingRequests && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
                 )}
@@ -94,7 +89,6 @@ export const Navigation = () => {
           ))}
         </nav>
 
-        {/* Desktop Footer Section */}
         <div className="pt-6 border-t border-white/10 space-y-2">
           {footerItems.map((item) => (
             <Link
@@ -119,7 +113,6 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 z-50">
         {mobileNavItems.map((item) => (
           <Link
@@ -132,7 +125,6 @@ export const Navigation = () => {
           >
             <div className="relative">
               <item.icon size={18} />
-              {/* Mobile: Dot stays on Profile icon */}
               {item.path === '/profile' && hasPendingRequests && (
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
               )}

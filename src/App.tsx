@@ -14,6 +14,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
 import Collection from "./pages/Collection";
+import Watchlist from "./pages/Watchlist";
 import Profile from "./pages/Profile";
 import Friends from "./pages/Friends";
 import Stats from "./pages/Stats";
@@ -49,7 +50,6 @@ const App = () => {
       }
     });
 
-    // Smart warming: Check activity after a short delay
     const timer = setTimeout(() => {
       if (session) smartWarmCache();
     }, 5000);
@@ -82,6 +82,7 @@ const App = () => {
             <Route path="/" element={session ? <Index /> : <Navigate to="/auth" replace />} />
             <Route path="/upcoming" element={session ? <Upcoming /> : <Navigate to="/auth" replace />} />
             <Route path="/collection" element={session ? <Collection /> : <Navigate to="/auth" replace />} />
+            <Route path="/watchlist" element={session ? <Watchlist /> : <Navigate to="/auth" replace />} />
             <Route path="/profile" element={session ? <Profile /> : <Navigate to="/auth" replace />} />
             <Route path="/friends" element={session ? <Friends /> : <Navigate to="/auth" replace />} />
             <Route path="/stats" element={session ? <Stats /> : <Navigate to="/auth" replace />} />
