@@ -1,203 +1,226 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { fetchTrending, fetchTrailers, ContentItem } from '@/lib/tmdb';
-import { Play, Info, Volume2, VolumeX, Loader2, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
 export const TrendingHero = () => {
-  const [items, setItems] = useState<ContentItem[]>([]);
+  const [trending, setTrending] = useState<ContentItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
-  const [showTrailer, setShowTrailer] = useState(false);
-  const [isFetchingTrailer, setIsFetchingTrailer] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [direction, setDirection] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const loadTrending = async () => {
-      try {
-        const data = await fetchTrending();
-        setItems(data);
-      } catch (error) {
-        console.error('Failed to fetch trending:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadTrending();
-  }, []);
-
-  useEffect(() => {
-    if (items.length === 0 || showTrailer) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % items.length);
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      paginate(1);
     }, 8000);
-    return () => clearInterval(timer);
-  }, [items.length, showTrailer]);
-
-  const handleWatchTrailer = useCallback(async (e?: React.MouseEvent | React.TouchEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    const currentItem = items[currentIndex];
-    if (!currentItem) return;
-
-    if (trailerUrl && showTrailer) return;
-
-    setIsFetchingTrailer(true);
-    try {
-      const url = await fetchTrailers(currentItem.id, currentItem.media_type === 'movie' ? 'movie' : 'tv');
-      if (url) {
-        setTrailerUrl(url);
-        setShowTrailer(true);
-      }
-    } catch (error) {
-      console.error('Failed to fetch trailer:', error);
-    } finally {
-      setIsFetchingTrailer(false);
-    }
-  }, [items, currentIndex, trailerUrl, showTrailer]);
-
-  // Pre-fetch trailer on hover or touch start for instant feel
-  const prefetchTrailer = async () => {
-    const currentItem = items[currentIndex];
-    if (!currentItem || trailerUrl) return;
-    try {
-      const url = await fetchTrailers(currentItem.id, currentItem.media_type === 'movie' ? 'movie' : 'tv');
-      if (url) setTrailerUrl(url);
-    } catch (e) {}
   };
 
-  if (loading || items.length === 0) {
-    return (
-      <div className="relative h-[60vh] lg:h-[85vh] w-full rounded-3xl overflow-hidden bg-white/5 animate-pulse flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary/20" size={48} />
-      </div>
-    );
-  }
+  useEffect(() => {
+    const load = async () => {
+      const data = await fetchTrending();
+      setTrending(data);
+      setLoading(false);
+    };
+    load();
+    resetTimer();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
-  const currentItem = items[currentIndex];
+  const paginate = (newDirection: number) => {
+    setDirection(newDirection);
+    setCurrentIndex((prevIndex) => {
+      let nextIndex = prevIndex + newDirection;
+      if (nextIndex < 0) nextIndex = trending.length - 1;
+      if (nextIndex >= trending.length) nextIndex = 0;
+      return nextIndex;
+    });
+    resetTimer();
+  };
+
+  const handleWatchTrailer = async (item: ContentItem) => {
+    const url = await fetchTrailers(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+    setTrailerUrl(url);
+  };
+
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
+
+  if (loading || trending.length === 0) return (
+    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
+  );
+
+  const current = trending[currentIndex];
+
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0
+    })
+  };
 
   return (
-    <section className="relative h-[65vh] lg:h-[85vh] w-full rounded-3xl overflow-hidden mb-12 group">
-      <AnimatePresence mode="wait">
+    <div className="relative w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
+      <AnimatePresence initial={false} custom={direction}>
         <motion.div
-          key={currentItem.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
-          className="absolute inset-0"
+          key={current.id}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.4 }
+          }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={1}
+          onDragEnd={(e, { offset, velocity }) => {
+            const swipe = swipePower(offset.x, velocity.x);
+
+            if (swipe < -swipeConfidenceThreshold) {
+              paginate(1);
+            } else if (swipe > swipeConfidenceThreshold) {
+              paginate(-1);
+            }
+          }}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
         >
-          <img
-            src={currentItem.backdrop_path}
-            alt={currentItem.title}
-            className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]"
+          <img 
+            src={current.backdrop_path || current.poster_path} 
+            alt={current.title}
+            className="w-full h-full object-cover pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+          {/* Decreased black edge intensity by reducing opacity of gradients */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute inset-0 flex flex-col justify-center px-8 lg:px-16 max-w-3xl">
+      {/* Desktop Navigation Buttons */}
+      <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
+        <button 
+          onClick={() => paginate(-1)}
+          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <button 
+          onClick={() => paginate(1)}
+          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
+        >
+          <ChevronRight size={24} />
+        </button>
+      </div>
+
+      <div className="absolute inset-0 p-6 md:p-10 lg:p-12 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
         <motion.div
+          key={`info-${current.id}`}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="space-y-6"
+          className="space-y-3 lg:space-y-4"
         >
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-primary text-black text-xs font-black rounded-full uppercase tracking-tighter">
-              Trending Now
-            </span>
-            <span className="text-sm font-bold text-white/60">
-              {new Date(currentItem.release_date).getFullYear()}
-            </span>
+          <div className="flex items-center gap-2">
+            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
+            <div className="flex items-center gap-1 text-primary">
+              <Star size={14} fill="currentColor" />
+              <span className="text-sm font-bold">{current.vote_average.toFixed(1)}</span>
+            </div>
           </div>
-
-          <h2 className="text-5xl lg:text-7xl font-serif font-bold leading-tight">
-            {currentItem.title}
+          
+          {/* Improved text responsiveness with intermediate md: breakpoint */}
+          <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
+            {current.title}
           </h2>
-
-          <p className="text-lg text-white/70 line-clamp-3 max-w-xl font-medium leading-relaxed">
-            {currentItem.overview}
+          
+          <p className="text-muted-foreground text-[10px] md:text-sm lg:text-base line-clamp-2 max-w-lg">
+            {current.overview}
           </p>
 
-          <div className="flex flex-wrap items-center gap-4 pt-4">
-            <button
-              onClick={handleWatchTrailer}
-              onTouchStart={prefetchTrailer}
-              onMouseEnter={prefetchTrailer}
-              disabled={isFetchingTrailer}
-              className="flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-black rounded-2xl font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-70"
+          <div className="flex items-center gap-4 pt-2 pointer-events-auto">
+            <button 
+              onClick={() => handleWatchTrailer(current)}
+              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              {isFetchingTrailer ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : (
-                <Play fill="currentColor" size={24} />
-              )}
-              <span className="uppercase tracking-tight">Watch Trailer</span>
-            </button>
-            
-            <button className="flex items-center gap-3 px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black transition-all backdrop-blur-md border border-white/10">
-              <Info size={24} />
-              <span className="uppercase tracking-tight">More Info</span>
+              <Play size={12} fill="currentColor" />
+              Watch Trailer
             </button>
           </div>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-10 right-10 flex items-center gap-4">
-        <button
-          onClick={() => setIsMuted(!isMuted)}
-          className="p-4 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-xl border border-white/10 transition-all"
-        >
-          {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-        </button>
-        
-        <div className="flex gap-2">
-          {items.slice(0, 5).map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentIndex(idx)}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-500",
-                currentIndex === idx ? "w-8 bg-primary" : "w-2 bg-white/20"
-              )}
-            />
-          ))}
-        </div>
+      {/* Navigation Dots */}
+      <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
+        {trending.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => {
+              setDirection(i > currentIndex ? 1 : -1);
+              setCurrentIndex(i);
+              resetTimer();
+            }}
+            className={cn(
+              "h-1 rounded-full transition-all duration-500",
+              currentIndex === i ? "w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/20 hover:bg-white/40"
+            )}
+          />
+        ))}
       </div>
 
+      {/* Trailer Modal */}
       <AnimatePresence>
-        {showTrailer && trailerUrl && (
+        {trailerUrl && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 lg:p-10"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+            onClick={() => setTrailerUrl(null)}
           >
-            <button
-              onClick={() => setShowTrailer(false)}
-              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-[101]"
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={32} />
-            </button>
-            <div className="relative w-full max-w-6xl aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10">
               <iframe
-                src={`${trailerUrl}?autoplay=1&mute=${isMuted ? 1 : 0}`}
+                src={`${trailerUrl}?autoplay=1`}
                 className="w-full h-full"
                 allow="autoplay; encrypted-media"
                 allowFullScreen
               />
-            </div>
+              <button 
+                onClick={() => setTrailerUrl(null)}
+                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </div>
   );
 };
