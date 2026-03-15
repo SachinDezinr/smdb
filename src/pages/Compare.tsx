@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Users, ArrowLeft, Star, Check, Plus } from 'lucide-react';
+import { Loader2, Users, ArrowLeft, Check, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { showSuccess } from '@/utils/toast';
 import { ContentCard } from '@/components/content/ContentCard';
 
@@ -25,7 +24,6 @@ const Compare = () => {
   const [friend, setFriend] = useState<any>(null);
   const [similar, setSimilar] = useState<CompareItem[]>([]);
   const [unique, setUnique] = useState<CompareItem[]>([]);
-  const [userWatchedIds, setUserWatchedIds] = useState<number[]>([]);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,7 +39,6 @@ const Compare = () => {
     
     const userItems = userWatched.data || [];
     const friendItems = friendWatched.data || [];
-    setUserWatchedIds(userItems.map(i => i.content_id));
 
     const similarItems = userItems.filter(u => friendItems.some(f => f.content_id === u.content_id));
     const uniqueItems = friendItems.filter(f => !userItems.some(u => u.content_id === f.content_id));
@@ -62,7 +59,6 @@ const Compare = () => {
     await supabase.from('watched_content').delete().eq('user_id', user.id).eq('content_id', item.content_id);
     setSimilar(prev => prev.filter(i => i.content_id !== item.content_id));
     setUnique(prev => [item, ...prev]);
-    setUserWatchedIds(prev => prev.filter(id => id !== item.content_id));
     showSuccess("Moved to unique category");
   };
 
@@ -79,7 +75,6 @@ const Compare = () => {
     });
     setUnique(prev => prev.filter(i => i.content_id !== item.content_id));
     setSimilar(prev => [item, ...prev]);
-    setUserWatchedIds(prev => [...prev, item.content_id]);
     showSuccess("Added to your watched list");
   };
 
@@ -122,15 +117,10 @@ const Compare = () => {
           </Link>
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/30">
-              {friend?.avatar_url ? (
-                <img src={friend.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <Users size={32} className="text-primary" />
-              )}
+              <Users size={32} className="text-primary" />
             </div>
             <div>
               <h1 className="text-4xl font-serif font-bold">Comparing with <span className="text-primary">{friend?.full_name}</span></h1>
-              <p className="text-muted-foreground mt-1">See what you both have watched</p>
             </div>
           </div>
         </header>
@@ -138,9 +128,7 @@ const Compare = () => {
         <div className="space-y-16">
           <section>
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <Check className="text-green-500" size={20} />
-              </div>
+              <Check className="text-green-500" size={24} />
               <h2 className="text-2xl font-bold">Similar Taste ({similar.length})</h2>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -168,9 +156,7 @@ const Compare = () => {
 
           <section>
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Plus className="text-primary" size={20} />
-              </div>
+              <Plus className="text-primary" size={24} />
               <h2 className="text-2xl font-bold">Unique to {friend?.full_name} ({unique.length})</h2>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">

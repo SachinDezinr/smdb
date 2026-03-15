@@ -20,7 +20,6 @@ export interface ContentItem {
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
 
-// Simple cache to speed up repeated requests
 const cache = new Map();
 
 async function fetchFromProxy(path: string, params: Record<string, string | number> = {}) {

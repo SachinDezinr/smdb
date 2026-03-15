@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Play, Check, Plus, BookmarkCheck, Calendar, Loader2 } from 'lucide-react';
+import { Star, Play, Check, Plus, BookmarkCheck, Calendar, Loader2, Info } from 'lucide-react';
 import { ContentItem, fetchCredits } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +42,6 @@ export const ContentCard = ({
 
       setShowOverlay(true);
       
-      // Only show credits for upcoming content on mobile
       if (isUpcoming && !credits && !loadingCredits) {
         setLoadingCredits(true);
         try {
@@ -119,7 +118,7 @@ export const ContentCard = ({
                 <Loader2 className="animate-spin text-primary" size={24} />
               ) : (
                 <div className="space-y-4 w-full">
-                  {/* Credits only for upcoming content */}
+                  {/* Credits only for upcoming content on mobile */}
                   {isUpcoming && credits && (
                     <div className="mb-4">
                       <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Credits</p>
@@ -128,32 +127,56 @@ export const ContentCard = ({
                   )}
                   
                   <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
-                    {/* Watched button only for released content */}
-                    {showWatchedButton && !isUpcoming && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
-                        className={cn(
-                          "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
-                          isWatched ? "bg-green-500 text-white" : "bg-white text-black hover:bg-primary"
+                    {/* Released Content Buttons */}
+                    {!isUpcoming && (
+                      <>
+                        {showWatchedButton && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
+                            className={cn(
+                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
+                              isWatched ? "bg-green-500 text-white" : "bg-white text-black hover:bg-primary"
+                            )}
+                          >
+                            {isWatched ? <Check size={14} /> : <Play size={14} fill="currentColor" />}
+                            {isWatched ? "Watched" : "Mark Watched"}
+                          </button>
                         )}
-                      >
-                        {isWatched ? <Check size={14} /> : <Play size={14} fill="currentColor" />}
-                        {isWatched ? "Watched" : "Mark Watched"}
-                      </button>
+                        {showWatchlistButton && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
+                            className={cn(
+                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md bg-black/40 border-white/20 text-white hover:bg-white/10",
+                              isInWatchlist && "bg-primary/20 border-primary text-primary"
+                            )}
+                          >
+                            {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
+                            {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
+                          </button>
+                        )}
+                      </>
                     )}
-                    
-                    {/* Watchlist button for upcoming, or released if not on mobile */}
-                    {(isUpcoming || window.innerWidth >= 1024) && showWatchlistButton && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
-                        className={cn(
-                          "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md",
-                          isInWatchlist ? "bg-primary/20 border-primary text-primary" : "bg-black/40 border-white/20 text-white hover:bg-white/10"
+
+                    {/* Upcoming Content Buttons */}
+                    {isUpcoming && (
+                      <>
+                        {showWatchlistButton && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
+                            className={cn(
+                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md bg-black/40 border-white/20 text-white hover:bg-white/10",
+                              isInWatchlist && "bg-primary/20 border-primary text-primary"
+                            )}
+                          >
+                            {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
+                            {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
+                          </button>
                         )}
-                      >
-                        {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
-                        {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
-                      </button>
+                        <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-white/10 border border-white/20 text-white">
+                          <Info size={14} />
+                          Details
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -190,9 +213,8 @@ export const ContentCard = ({
                 {item.release_date.split('-')[0]}
               </span>
             </div>
-            <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
-              <Calendar size={10} />
-              <span>{formatDate(item.release_date)}</span>
+            <div className="text-primary font-bold text-[11px]">
+              {formatDate(item.release_date)}
             </div>
           </>
         ) : variant === 'compare' ? (
