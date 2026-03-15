@@ -4,222 +4,241 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Users, ArrowLeft, Star, Check, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, ChevronUp } from 'lucide-react';
+import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
-import { showSuccess } from '@/utils/toast';
-
-interface CompareItem {
-  content_id: number;
-  title: string;
-  poster_path: string;
-  media_type: string;
-  release_date?: string;
-  vote_average?: number;
-}
+import { showSuccess, showError } from '@/utils/toast';
+import { toast } from 'sonner';
 
 const Compare = () => {
   const { friendId } = useParams();
   const [loading, setLoading] = useState(true);
-  const [friend, setFriend] = useState<any>(null);
-  const [similar, setSimilar] = useState<CompareItem[]>([]);
-  const [unique, setUnique] = useState<CompareItem[]>([]);
-  const [userWatchedIds, setUserWatchedIds] = useState<number[]>([]);
+  const [friendProfile, setFriendProfile] = useState<any>(null);
+  const [myCollection, setMyCollection] = useState<any[]>([]);
+  const [friendCollection, setFriendCollection] = useState<any[]>([]);
+  const [filter, setFilter] = useState<'all' | 'common' | 'unique'>('all');
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !friendId) return;
 
-    const [friendRes, userWatched, friendWatched] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', friendId).single(),
-      supabase.from('watched_content').select('*').eq('user_id', user.id),
-      supabase.from('watched_content').select('*').eq('user_id', friendId)
-    ]);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', friendId)
+        .single();
+      setFriendProfile(profile);
 
-    setFriend(friendRes.data);
-    
-    const userItems = userWatched.data || [];
-    const friendItems = friendWatched.data || [];
-    setUserWatchedIds(userItems.map(i => i.content_id));
+      const [myRes, friendRes] = await Promise.all([
+        supabase.from('watched_content').select('*').eq('user_id', user.id),
+        supabase.from('watched_content').select('*').eq('user_id', friendId)
+      ]);
 
-    const similarItems = userItems.filter(u => friendItems.some(f => f.content_id === u.content_id));
-    const uniqueItems = friendItems.filter(f => !userItems.some(u => u.content_id === f.content_id));
-
-    setSimilar(similarItems);
-    setUnique(uniqueItems);
-    setLoading(false);
+      setMyCollection(myRes.data || []);
+      setFriendCollection(friendRes.data || []);
+    } catch (err) {
+      console.error("Comparison fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchData();
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [friendId]);
 
-  const moveToUnique = async (item: CompareItem) => {
+  const toggleWatched = async (item: any, isUndo = false) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('watched_content').delete().eq('user_id', user.id).eq('content_id', item.content_id);
-    setSimilar(prev => prev.filter(i => i.content_id !== item.content_id));
-    setUnique(prev => [item, ...prev]);
-    setUserWatchedIds(prev => prev.filter(id => id !== item.content_id));
-    showSuccess("Moved to unique category");
+    // If it's an undo, we explicitly want to REMOVE it
+    // Otherwise, we check if it's currently in the collection
+    const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
+
+    if (isUndo || isCurrentlyWatched) {
+      const { error } = await supabase
+        .from('watched_content')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.content_id);
+
+      if (!error) {
+        setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
+        if (isUndo) {
+          showSuccess("Action undone");
+        } else {
+          showSuccess("Removed from collection");
+        }
+      } else {
+        showError("Failed to update collection");
+      }
+    } else {
+      const { error } = await supabase
+        .from('watched_content')
+        .insert({
+          user_id: user.id,
+          content_id: item.content_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (!error) {
+        setMyCollection(prev => [...prev, item]);
+        
+        toast.success(`Added ${item.title}`, {
+          description: "Moved to common interests",
+          action: {
+            label: 'Undo',
+            onClick: () => toggleWatched(item, true)
+          },
+        });
+      } else {
+        showError("Failed to add to collection");
+      }
+    }
   };
 
-  const addToWatched = async (item: CompareItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="animate-spin text-primary" size={48} /></div>;
 
-    await supabase.from('watched_content').insert({
-      user_id: user.id,
-      content_id: item.content_id,
-      title: item.title,
-      poster_path: item.poster_path,
-      media_type: item.media_type
-    });
-    setUnique(prev => prev.filter(i => i.content_id !== item.content_id));
-    setSimilar(prev => [item, ...prev]);
-    setUserWatchedIds(prev => [...prev, item.content_id]);
-    showSuccess("Added to your watched list");
-  };
+  const myIds = new Set(myCollection.map(i => i.content_id));
+  const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
+  const uniqueToFriend = friendCollection.filter(i => !myIds.has(i.content_id));
 
-  const addToWatchlist = async (item: CompareItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase.from('watchlist').insert({
-      user_id: user.id,
-      content_id: item.content_id,
-      title: item.title,
-      poster_path: item.poster_path,
-      media_type: item.media_type
-    });
-    showSuccess("Added to watchlist");
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-background items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={48} />
-      </div>
-    );
-  }
+  const displayedItems = (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).slice(0, visibleCount);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex min-h-screen bg-background text-foreground"
-    >
+    <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-12">
-          <Link to="/friends" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-6 group">
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            Back to Friends
+        <header className="mb-10">
+          <Link to="/friends" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-6">
+            <ArrowLeft size={18} /> Back to Friends
           </Link>
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/30">
-              {friend?.avatar_url ? (
-                <img src={friend.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <Users size={32} className="text-primary" />
-              )}
-            </div>
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-serif font-bold">Comparing with <span className="text-primary">{friend?.full_name}</span></h1>
-              <p className="text-muted-foreground mt-1">See what you both have watched</p>
+              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+                Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
+              </h1>
+              <p className="text-muted-foreground mt-2">Discover shared tastes and new recommendations.</p>
+            </div>
+
+            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'common', label: 'Common' },
+                { id: 'unique', label: 'Unique' }
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
+                  className={cn(
+                    "px-6 py-2 rounded-lg text-sm font-bold transition-all",
+                    filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  {btn.label}
+                </button>
+              ))}
             </div>
           </div>
         </header>
 
-        <div className="space-y-16">
-          <section>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <Check className="text-green-500" size={20} />
-              </div>
-              <h2 className="text-2xl font-bold">Similar Taste ({similar.length})</h2>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {similar.map((item) => (
-                <div key={item.content_id} className="group relative flex flex-col gap-3 border-l-4 border-green-500 pl-4 py-2 bg-white/5 rounded-r-2xl">
-                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden">
-                    <img src={item.poster_path} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 bg-primary/90 text-black text-[10px] font-bold px-2 py-1 rounded">
-                      {item.media_type.toUpperCase()}
-                    </div>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
-                      <button 
-                        onClick={() => moveToUnique(item)}
-                        className="w-full py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-primary transition-colors"
-                      >
-                        Mark Unwatched
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-sm line-clamp-1">{item.title}</h3>
-                      <span className="text-xs font-bold text-muted-foreground">{item.release_date?.split('-')[0]}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star size={10} className="text-primary" fill="currentColor" />
-                      <span className="text-[10px] font-bold">{item.vote_average?.toFixed(1) || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Plus className="text-primary" size={20} />
-              </div>
-              <h2 className="text-2xl font-bold">Unique to {friend?.full_name} ({unique.length})</h2>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {unique.map((item) => (
-                <div key={item.content_id} className="group relative flex flex-col gap-3">
-                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-neutral-900">
-                    <img src={item.poster_path} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 bg-primary/90 text-black text-[10px] font-bold px-2 py-1 rounded">
-                      {item.media_type.toUpperCase()}
-                    </div>
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4">
-                      <button 
-                        onClick={() => addToWatched(item)}
-                        className="w-full py-2 bg-primary text-black rounded-lg text-xs font-bold hover:scale-105 transition-transform"
-                      >
-                        Add to Watched
-                      </button>
-                      <button 
-                        onClick={() => addToWatchlist(item)}
-                        className="w-full py-2 bg-white/10 border border-white/20 text-white rounded-lg text-xs font-bold hover:bg-white/20 transition-colors"
-                      >
-                        Add to Watchlist
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-sm line-clamp-1">{item.title}</h3>
-                      <span className="text-xs font-bold text-muted-foreground">{item.release_date?.split('-')[0]}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star size={10} className="text-primary" fill="currentColor" />
-                      <span className="text-[10px] font-bold">{item.vote_average?.toFixed(1) || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="glass-card p-6 border-primary/20 cinematic-glow text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Common Interests</p>
+            <p className="text-4xl font-bold text-primary">{commonItems.length}</p>
+            <p className="text-xs text-muted-foreground mt-2">Titles you both watched</p>
+          </div>
+          <div className="glass-card p-6 border-white/5 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Friend's Unique</p>
+            <p className="text-4xl font-bold text-white">{uniqueToFriend.length}</p>
+            <p className="text-xs text-muted-foreground mt-2">Recommendations for you</p>
+          </div>
+          <div className="glass-card p-6 border-white/5 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Compatibility</p>
+            <p className="text-4xl font-bold text-white">
+              {friendCollection.length > 0 
+                ? Math.round((commonItems.length / friendCollection.length) * 100) 
+                : 0}%
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Based on {friendProfile?.username || 'their'} list</p>
+          </div>
         </div>
+
+        {displayedItems.length === 0 ? (
+          <div className="text-center py-20 opacity-50">
+            <Users size={64} className="mx-auto mb-4" />
+            <p className="text-xl">No items found for this filter.</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayedItems.map((item) => (
+                <div key={item.content_id} className="relative group">
+                  <ContentCard 
+                    item={{
+                      id: item.content_id,
+                      title: item.title,
+                      poster_path: item.poster_path,
+                      release_date: item.release_date,
+                      vote_average: item.vote_average,
+                      media_type: item.media_type,
+                      genre_ids: [],
+                      overview: ""
+                    }} 
+                    isWatched={myIds.has(item.content_id)}
+                    onToggleWatched={() => toggleWatched(item)}
+                  />
+                  {myIds.has(item.content_id) && (
+                    <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
+                      <CheckCircle2 size={10} /> Shared
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {visibleCount < (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).length && (
+              <div className="mt-12 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 12)}
+                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
+                >
+                  <Plus size={20} />
+                  Load More
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        <AnimatePresence>
+          {showScrollTop && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+            >
+              <ChevronUp size={24} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </main>
-    </motion.div>
+    </div>
   );
 };
 
