@@ -2,181 +2,145 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Calendar, 
-  Library, 
-  Bookmark, 
-  User, 
-  Users
-} from 'lucide-react';
+import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { motion } from 'framer-motion';
 
+const desktopNavItems = [
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Library, label: 'Collection', path: '/collection' },
+  { icon: BarChart3, label: 'Stats', path: '/stats' },
+  { icon: Users, label: 'Friends', path: '/friends' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+const mobileNavItems = [
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Library, label: 'Collection', path: '/collection' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+const footerItems = [
+  { icon: Info, label: 'About', path: '/about' },
+  { icon: Mail, label: 'Contact', path: '/contact' },
+];
+
+/**
+ * Navigation Component: Handles both Desktop Sidebar and Mobile Bottom Navigation.
+ */
 export const Navigation = () => {
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-  const [hasNotifications, setHasNotifications] = useState(false);
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
+  // Check for pending friend requests to show notification dot
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) checkNotifications(user.id);
-    });
+    const checkRequests = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) checkNotifications(session.user.id);
-    });
-
-    return () => subscription.unsubscribe();
+      const { data } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('friend_id', user.id)
+        .eq('status', 'pending');
+      
+      setHasPendingRequests(data && data.length > 0);
+    };
+    checkRequests();
   }, []);
 
-  const checkNotifications = async (userId: string) => {
-    const { count } = await supabase
-      .from('friends')
-      .select('*', { count: 'exact', head: true })
-      .eq('friend_id', userId)
-      .eq('status', 'pending');
-    
-    setHasNotifications((count || 0) > 0);
-  };
-
-  const navItems = [
-    { icon: Home, label: 'Home', path: '/' },
-    { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
-    { icon: Library, label: 'Collection', path: '/collection' },
-    { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
-  ];
-
-  const isActive = (path: string) => location.pathname === path;
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-72 bg-neutral-950 border-r border-white/5 h-screen sticky top-0 p-8">
-        <div className="mb-12">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
-              <span className="text-black font-black text-xl">S</span>
-            </div>
-            <span className="text-2xl font-serif font-bold tracking-tight">SMDB</span>
-          </Link>
+      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r border-white/10 bg-background/50 backdrop-blur-xl p-6">
+        <div className="flex items-center gap-3 mb-10 px-2">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <Film className="text-black" size={24} />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary">SMDB</h1>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-4 px-4">Menu</p>
-          {navItems.map((item) => (
+          {desktopNavItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                isActive(item.path) 
-                  ? "bg-primary text-black shadow-lg shadow-primary/10" 
+                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group relative",
+                location.pathname === item.path 
+                  ? "bg-primary text-black font-semibold" 
                   : "text-muted-foreground hover:bg-white/5 hover:text-white"
               )}
             >
-              <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive(item.path) ? "text-black" : "text-primary")} />
-              <span className="font-bold text-sm">{item.label}</span>
+              <div className="relative">
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                {/* Desktop: Dot on Friends icon */}
+                {item.path === '/friends' && hasPendingRequests && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+                )}
+              </div>
+              {item.label}
             </Link>
           ))}
-
-          <div className="pt-8 space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mb-4 px-4">Social</p>
-            <Link
-              to="/friends"
-              className={cn(
-                "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
-                isActive('/friends') 
-                  ? "bg-primary text-black shadow-lg shadow-primary/10" 
-                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <Users size={20} className={cn("transition-transform group-hover:scale-110", isActive('/friends') ? "text-black" : "text-primary")} />
-              <span className="font-bold text-sm">Friends</span>
-              {hasNotifications && (
-                <span className="absolute right-4 w-2 h-2 bg-primary rounded-full animate-pulse" />
-              )}
-            </Link>
-          </div>
         </nav>
 
-        <div className="mt-auto pt-8 border-t border-white/5">
-          {user ? (
+        {/* Desktop Footer Section */}
+        <div className="pt-6 border-t border-white/10 space-y-2">
+          {footerItems.map((item) => (
             <Link
-              to="/profile"
+              key={item.path}
+              to={item.path}
               className={cn(
-                "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                isActive('/profile') 
-                  ? "bg-primary text-black shadow-lg shadow-primary/10" 
-                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 text-sm",
+                location.pathname === item.path 
+                  ? "text-primary" 
+                  : "text-muted-foreground hover:text-white"
               )}
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/20">
-                <User size={16} className="text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{user.user_metadata?.username || 'Profile'}</p>
-                <p className="text-[10px] text-muted-foreground truncate">View Account</p>
-              </div>
+              <item.icon size={18} />
+              {item.label}
             </Link>
-          ) : (
-            <Link
-              to="/auth"
-              className="flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-primary text-black font-bold text-sm hover:scale-[1.02] transition-all active:scale-[0.98]"
-            >
-              <User size={20} />
-              Sign In
-            </Link>
-          )}
+          ))}
+          
+          <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
+            <p>© 2026 SMDB. All Rights Reserved.</p>
+            <p className="mt-2 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile Pill Navigation - Medium Size */}
-      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[80%] max-w-sm">
-        <nav className="bg-black/80 backdrop-blur-2xl border border-white/10 rounded-full px-3 py-2.5 flex items-center justify-between shadow-2xl">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "relative p-3 rounded-full transition-all duration-300",
-                isActive(item.path) ? "bg-primary text-black scale-110" : "text-muted-foreground"
-              )}
-            >
-              <item.icon size={20} />
-              {isActive(item.path) && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 bg-primary rounded-full -z-10"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-            </Link>
-          ))}
+      {/* Mobile Bottom Nav */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 z-50">
+        {mobileNavItems.map((item) => (
           <Link
-            to="/profile"
+            key={item.path}
+            to={item.path}
             className={cn(
-              "relative p-3 rounded-full transition-all duration-300",
-              isActive('/profile') ? "bg-primary text-black scale-110" : "text-muted-foreground"
+              "flex flex-col items-center gap-1 transition-colors relative flex-1",
+              location.pathname === item.path ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <User size={20} />
-            {hasNotifications && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primary border-2 border-black rounded-full" />
-            )}
-            {isActive('/profile') && (
-              <motion.div
-                layoutId="activeNav"
-                className="absolute inset-0 bg-primary rounded-full -z-10"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
+            <div className="relative">
+              <item.icon size={18} />
+              {/* Mobile: Dot stays on Profile icon */}
+              {item.path === '/profile' && hasPendingRequests && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+              )}
+            </div>
+            <span className="text-[9px] font-medium">{item.label}</span>
           </Link>
-        </nav>
-      </div>
+        ))}
+      </nav>
     </>
   );
 };

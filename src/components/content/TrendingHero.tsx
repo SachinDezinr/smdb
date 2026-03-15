@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,6 @@ export const TrendingHero = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingTrailer, setLoadingTrailer] = useState(false);
   const [direction, setDirection] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -47,18 +46,13 @@ export const TrendingHero = () => {
   };
 
   const handleWatchTrailer = async (item: ContentItem) => {
-    if (loadingTrailer) return;
-    setLoadingTrailer(true);
-    try {
-      const url = await fetchTrailers(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-      if (url) {
-        setTrailerUrl(url);
-      }
-    } catch (err) {
-      console.error("Failed to fetch trailer", err);
-    } finally {
-      setLoadingTrailer(false);
-    }
+    const url = await fetchTrailers(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+    setTrailerUrl(url);
+  };
+
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
   };
 
   if (loading || trending.length === 0) return (
@@ -84,11 +78,6 @@ export const TrendingHero = () => {
     })
   };
 
-  const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset: number, velocity: number) => {
-    return Math.abs(offset) * velocity;
-  };
-
   return (
     <div className="relative w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
       <AnimatePresence initial={false} custom={direction}>
@@ -108,6 +97,7 @@ export const TrendingHero = () => {
           dragElastic={1}
           onDragEnd={(e, { offset, velocity }) => {
             const swipe = swipePower(offset.x, velocity.x);
+
             if (swipe < -swipeConfidenceThreshold) {
               paginate(1);
             } else if (swipe > swipeConfidenceThreshold) {
@@ -121,11 +111,13 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
+          {/* Decreased black edge intensity by reducing opacity of gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
+      {/* Desktop Navigation Buttons */}
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
@@ -157,6 +149,7 @@ export const TrendingHero = () => {
             </div>
           </div>
           
+          {/* Improved text responsiveness with intermediate md: breakpoint */}
           <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
@@ -168,16 +161,16 @@ export const TrendingHero = () => {
           <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              disabled={loadingTrailer}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20 disabled:opacity-70"
+              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              {loadingTrailer ? <Loader2 className="animate-spin" size={12} /> : <Play size={12} fill="currentColor" />}
+              <Play size={12} fill="currentColor" />
               Watch Trailer
             </button>
           </div>
         </motion.div>
       </div>
 
+      {/* Navigation Dots */}
       <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
         {trending.map((_, i) => (
           <button
@@ -195,6 +188,7 @@ export const TrendingHero = () => {
         ))}
       </div>
 
+      {/* Trailer Modal */}
       <AnimatePresence>
         {trailerUrl && (
           <motion.div

@@ -2,252 +2,183 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Play, Check, Plus, BookmarkCheck, Calendar, Loader2, Info } from 'lucide-react';
-import { ContentItem, fetchCredits } from '@/lib/tmdb';
+import { CheckCircle2, Film, User, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ContentItem, fetchCredits } from '@/lib/tmdb';
 
 interface ContentCardProps {
   item: ContentItem;
   isWatched?: boolean;
-  isInWatchlist?: boolean;
-  showWatchlistButton?: boolean;
-  showWatchedButton?: boolean;
-  onToggleWatched?: () => void;
-  onToggleWatchlist?: () => void;
-  variant?: 'default' | 'upcoming' | 'watchlist' | 'compare';
+  onToggleWatched?: (id: number) => void;
+  showReleaseDate?: boolean;
 }
 
-export const ContentCard = ({ 
-  item, 
-  isWatched, 
-  isInWatchlist,
-  showWatchlistButton = true,
-  showWatchedButton = true,
-  onToggleWatched, 
-  onToggleWatchlist,
-  variant = 'default'
-}: ContentCardProps) => {
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [credits, setCredits] = useState<{ director?: string, cast?: string[] } | null>(null);
+export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate }: ContentCardProps) => {
+  const [showCredits, setShowCredits] = useState(false);
+  const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
-
-  const isUpcoming = item.status === "Upcoming" || new Date(item.release_date) > new Date();
-
-  const handlePosterClick = async () => {
-    if (window.innerWidth < 1024) {
-      if (showOverlay) {
-        setShowOverlay(false);
-        return;
-      }
-
-      setShowOverlay(true);
-      
-      if (isUpcoming && !credits && !loadingCredits) {
-        setLoadingCredits(true);
-        try {
-          const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-          setCredits(data);
-        } catch (err) {
-          console.error("Failed to fetch credits", err);
-        } finally {
-          setLoadingCredits(false);
-        }
-      }
-    }
-  };
-
-  const getCategoryLabel = (type: string) => {
-    switch (type) {
-      case 'movie': return 'Movie';
-      case 'tv': return 'Series';
-      case 'anime': return 'Anime';
-      case 'k-drama': return 'K-Drama';
-      default: return 'Content';
-    }
-  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr === "TBA") return "TBA";
     try {
       const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    } catch (e) { return dateStr; }
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    } catch {
+      return "TBA";
+    }
   };
 
-  const getBorderClass = () => {
-    if (variant === 'default' && isWatched) return "ring-2 ring-green-500 ring-offset-2 ring-offset-background";
-    if (variant === 'upcoming' && isInWatchlist) return "ring-2 ring-primary ring-offset-2 ring-offset-background";
-    if (variant === 'watchlist' && isInWatchlist) return "ring-2 ring-primary ring-offset-2 ring-offset-background";
-    if (variant === 'compare' && isWatched) return "border-l-4 border-green-500 pl-1";
-    return "";
+  const today = new Date().toISOString().split('T')[0];
+  const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
+
+  const handlePosterClick = async () => {
+    // Always allow viewing credits for unreleased content or when explicitly requested
+    if (!showReleaseDate && !isFuture) return;
+    
+    if (showCredits) {
+      setShowCredits(false);
+      return;
+    }
+
+    if (!credits) {
+      setLoadingCredits(true);
+      try {
+        const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+        setCredits(data);
+      } catch (err) {
+        console.error("Failed to fetch credits", err);
+      } finally {
+        setLoadingCredits(false);
+      }
+    }
+    setShowCredits(true);
   };
+
+  const hasPoster = item.poster_path && item.poster_path !== "";
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className="group relative flex flex-col gap-3"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02 }}
+      className="group relative flex flex-col gap-3 w-full"
     >
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] rounded-2xl overflow-hidden bg-neutral-900 shadow-xl transition-all duration-500 group-hover:shadow-primary/10 group-hover:-translate-y-2 cursor-pointer",
-          getBorderClass()
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-neutral-800 cursor-pointer",
+          isWatched ? "border-primary cinematic-glow" : "border-transparent group-hover:border-white/20"
         )}
       >
-        <img
-          src={item.poster_path}
-          alt={item.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          loading="lazy"
-        />
-        
+        {hasPoster ? (
+          <img
+            src={item.poster_path}
+            alt={item.title}
+            className={cn(
+              "w-full h-full object-cover transition-all duration-700",
+              showCredits ? "blur-xl scale-110 opacity-40" : "group-hover:scale-110"
+            )}
+            loading="lazy"
+          />
+        ) : (
+          <div className={cn(
+            "w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative",
+            showCredits && "blur-md opacity-40"
+          )}>
+            <Film className="text-primary/20 mb-4" size={48} strokeWidth={1} />
+            <span className="text-sm font-serif font-bold text-white/80 line-clamp-4 relative z-10">
+              {item.title}
+            </span>
+          </div>
+        )}
+
+        {/* Credits Overlay */}
         <AnimatePresence>
-          {(showOverlay || (window.innerWidth >= 1024)) && (
-            <motion.div
+          {showCredits && (
+            <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={cn(
-                "absolute inset-0 bg-black/80 backdrop-blur-md z-20 p-4 flex flex-col justify-center items-center text-center",
-                window.innerWidth >= 1024 && "opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              )}
+              className="absolute inset-0 p-4 flex flex-col justify-center gap-4 z-20 bg-black/50 backdrop-blur-md"
             >
-              {isUpcoming && loadingCredits ? (
-                <Loader2 className="animate-spin text-primary" size={24} />
+              {loadingCredits ? (
+                <div className="flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
               ) : (
-                <div className="space-y-4 w-full">
-                  {/* Credits only for upcoming content on mobile */}
-                  {isUpcoming && credits && (
-                    <div className="mb-4">
-                      <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Credits</p>
-                      <p className="text-xs text-white line-clamp-2">{credits.director || credits.cast?.slice(0, 2).join(', ')}</p>
-                    </div>
-                  )}
-                  
-                  <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
-                    {/* Released Content Buttons */}
-                    {!isUpcoming && (
-                      <>
-                        {showWatchedButton && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
-                            className={cn(
-                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
-                              isWatched ? "bg-green-500 text-white" : "bg-white text-black hover:bg-primary"
-                            )}
-                          >
-                            {isWatched ? <Check size={14} /> : <Play size={14} fill="currentColor" />}
-                            {isWatched ? "Watched" : "Mark Watched"}
-                          </button>
-                        )}
-                        {showWatchlistButton && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
-                            className={cn(
-                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md bg-black/40 border-white/20 text-white hover:bg-white/10",
-                              isInWatchlist && "bg-primary/20 border-primary text-primary"
-                            )}
-                          >
-                            {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
-                            {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
-                          </button>
-                        )}
-                      </>
-                    )}
-
-                    {/* Upcoming Content Buttons */}
-                    {isUpcoming && (
-                      <>
-                        {showWatchlistButton && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
-                            className={cn(
-                              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md bg-black/40 border-white/20 text-white hover:bg-white/10",
-                              isInWatchlist && "bg-primary/20 border-primary text-primary"
-                            )}
-                          >
-                            {isInWatchlist ? <BookmarkCheck size={14} /> : <Plus size={14} />}
-                            {isInWatchlist ? "In Watchlist" : "Add Watchlist"}
-                          </button>
-                        )}
-                        <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-white/10 border border-white/20 text-white">
-                          <Info size={14} />
-                          Details
-                        </button>
-                      </>
-                    )}
+                <>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
+                      <User size={10} /> Director
+                    </p>
+                    <p className="text-sm font-bold text-white truncate drop-shadow-md">{credits?.director || "Unknown"}</p>
                   </div>
-                </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1">
+                      <Users size={10} /> Main Cast
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {credits?.cast?.map((name, i) => (
+                        <span key={i} className="text-[10px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-md text-white font-medium truncate max-w-full border border-white/10">
+                          {name}
+                        </span>
+                      )) || <span className="text-xs text-white/60">N/A</span>}
+                    </div>
+                  </div>
+                </>
               )}
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Category & Rating Pills (Same Size) */}
-        <div className={cn(
-          "absolute top-3 flex items-center gap-2 z-10",
-          variant === 'compare' ? "right-3" : "left-3"
-        )}>
-          <div className="h-7 px-3 rounded-md text-[10px] font-bold text-white bg-primary/80 backdrop-blur-md flex items-center justify-center shadow-lg min-w-[65px]">
-            {getCategoryLabel(item.media_type)}
+        
+        {/* Watch Action Overlay */}
+        {!showReleaseDate && !showCredits && !isFuture && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWatched?.(item.id);
+              }}
+              className={cn(
+                "px-4 py-2 rounded-full font-bold text-sm transition-all transform translate-y-4 group-hover:translate-y-0",
+                isWatched 
+                  ? "bg-primary text-black" 
+                  : "bg-white text-black hover:bg-primary"
+              )}
+            >
+              {isWatched ? "Watched" : "Add to Watched"}
+            </button>
           </div>
-          {item.vote_average > 0 && variant !== 'compare' && (
-            <div className="h-7 px-3 rounded-md text-[10px] font-bold text-white bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center gap-1 min-w-[65px]">
-              <Star size={10} className="text-primary" fill="currentColor" />
-              <span>{item.vote_average.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
+        )}
+
+        {isWatched && (
+          <div className="absolute top-3 right-3 bg-primary text-black p-1.5 rounded-full shadow-lg z-10">
+            <CheckCircle2 size={16} />
+          </div>
+        )}
       </div>
 
-      <div className="space-y-1 px-1">
-        {variant === 'upcoming' ? (
-          <>
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors flex-1">
-                {item.title}
-              </h3>
-              <span className="text-base font-bold text-muted-foreground shrink-0">
-                {item.release_date.split('-')[0]}
-              </span>
+      <div className="flex flex-col gap-1 px-1">
+        <h3 className="font-serif text-base md:text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+          {item.title}
+        </h3>
+        
+        <div className="flex items-center justify-between text-xs md:text-sm">
+          {showReleaseDate || isFuture ? (
+            <p className="font-medium truncate">
+              <span className="text-primary font-medium">Release:</span> {formatDate(item.release_date)}
+            </p>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-primary font-bold">Rating:</span>
+              <span className="text-white/90">{item.vote_average > 0 ? item.vote_average.toFixed(1) : "N/A"}</span>
             </div>
-            <div className="text-primary font-bold text-[11px]">
-              {formatDate(item.release_date)}
-            </div>
-          </>
-        ) : variant === 'compare' ? (
-          <>
-            <div className="flex items-start justify-start gap-2">
-              <span className="text-base font-bold text-muted-foreground shrink-0">
-                {item.release_date?.split('-')[0]}
-              </span>
-              <h3 className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors flex-1">
-                {item.title}
-              </h3>
-            </div>
-            <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
-              <Star size={10} fill="currentColor" />
-              <span>{item.vote_average.toFixed(1)}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors flex-1">
-                {item.title}
-              </h3>
-              <span className="text-base font-bold text-muted-foreground shrink-0">
-                {item.release_date.split('-')[0]}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
-              <Star size={10} fill="currentColor" />
-              <span>{item.vote_average.toFixed(1)}</span>
-            </div>
-          </>
-        )}
+          )}
+          {item.release_date && !showReleaseDate && !isFuture && (
+            <span className="text-muted-foreground text-[12px] md:text-xs">
+              {new Date(item.release_date).getFullYear() || ""}
+            </span>
+          )}
+        </div>
       </div>
     </motion.div>
   );
