@@ -150,7 +150,7 @@ export const TrendingHero = () => {
           </div>
           
           {/* Improved text responsiveness with intermediate md: breakpoint */}
-          <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
+          <h2 className="text-2.2xl md:text-4.1xl lg:text-6.1xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
           
