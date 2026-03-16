@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Play, Check, Plus, BookmarkCheck, Calendar, Loader2 } from 'lucide-react';
 import { ContentItem, fetchCredits } from '@/lib/tmdb';
@@ -35,25 +35,33 @@ export const ContentCard = ({
   const [credits, setCredits] = useState<{ director?: string, cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
-  const isUpcoming = item.status === "Upcoming" || new Date(item.release_date) > new Date();
+  const isUpcoming = item.status === "Upcoming" || (item.release_date && new Date(item.release_date) > new Date());
+  
+  // Logic for showing credits: Show for upcoming content or when explicitly requested
   const shouldShowCredits = isUpcoming || variant === 'upcoming' || variant === 'watchlist';
 
-  const handleInteraction = async (e: React.MouseEvent | React.TouchEvent) => {
+  // Fetch credits automatically for upcoming content to show director/cast
+  useEffect(() => {
+    if (shouldShowCredits && !credits && !loadingCredits) {
+      const loadCredits = async () => {
+        setLoadingCredits(true);
+        try {
+          const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+          setCredits(data);
+        } catch (err) {
+          console.error("Failed to fetch credits", err);
+        } finally {
+          setLoadingCredits(false);
+        }
+      };
+      loadCredits();
+    }
+  }, [shouldShowCredits, item.id, item.media_type]);
+
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
     if (isMobile) {
       e.preventDefault();
       setShowMobileControls(!showMobileControls);
-    }
-    
-    if (shouldShowCredits && !credits && !loadingCredits) {
-      setLoadingCredits(true);
-      try {
-        const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-        setCredits(data);
-      } catch (err) {
-        console.error("Failed to fetch credits", err);
-      } finally {
-        setLoadingCredits(false);
-      }
     }
   };
 
@@ -81,6 +89,10 @@ export const ContentCard = ({
                     (variant === 'upcoming' && isInWatchlist) ||
                     (variant === 'compare' && (isWatched || isSimilar));
 
+  // Determine if we should show the watched button
+  // Hide it if the content is unreleased (upcoming)
+  const canShowWatched = showWatchedButton && !isUpcoming;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -106,7 +118,7 @@ export const ContentCard = ({
           loading="lazy"
         />
         
-        {/* Category Pill - Top Left */}
+        {/* Category Pill */}
         <div className={cn(
           "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-black text-white backdrop-blur-md z-10 shadow-lg min-w-[55px] flex items-center justify-center uppercase tracking-tighter",
           getCategoryColor(item.media_type)
@@ -114,7 +126,7 @@ export const ContentCard = ({
           {getCategoryLabel(item.media_type)}
         </div>
 
-        {/* Rating Pill - Top Right (Default) or Top Left (Compare - below category) */}
+        {/* Rating Pill */}
         {item.vote_average > 0 && (
           <div className={cn(
             "absolute flex items-center justify-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 min-w-[55px] z-10",
@@ -133,7 +145,7 @@ export const ContentCard = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               className={cn(
-                "absolute inset-0 flex flex-col justify-end p-4 z-20 rounded-2xl", // Added rounded-2xl here
+                "absolute inset-0 flex flex-col justify-end p-4 z-20 rounded-2xl",
                 !isMobile && "opacity-0 group-hover:opacity-100 transition-all duration-300",
                 isMobile && "bg-black/70 backdrop-blur-sm"
               )}
@@ -156,7 +168,7 @@ export const ContentCard = ({
               )}
 
               <div className="flex flex-col gap-2">
-                {showWatchedButton && (
+                {canShowWatched && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
                     className={cn(
@@ -171,7 +183,6 @@ export const ContentCard = ({
                   </button>
                 )}
                 
-                {/* Hide watchlist button if content is watched */}
                 {showWatchlistButton && !isWatched && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
@@ -199,11 +210,12 @@ export const ContentCard = ({
             {item.title}
           </h3>
           <span className="text-sm font-black text-primary/80 whitespace-nowrap">
-            {item.release_date.split('-')[0]}
+            {item.release_date ? item.release_date.split('-')[0] : 'TBA'}
           </span>
         </div>
         
-        {variant === 'upcoming' && (
+        {/* Always show release date for upcoming content */}
+        {isUpcoming && item.release_date && (
           <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
             <Calendar size={10} />
             <span>{item.release_date}</span>
