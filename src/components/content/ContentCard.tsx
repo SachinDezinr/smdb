@@ -37,7 +37,6 @@ export const ContentCard = ({
 
   const isUpcoming = item.status === "Upcoming" || (item.release_date && new Date(item.release_date) > new Date());
   
-  // Only show credits for upcoming content
   const shouldShowCredits = isUpcoming;
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export const ContentCard = ({
                     (variant === 'upcoming' && isInWatchlist) ||
                     (variant === 'compare' && (isWatched || isSimilar));
 
-  // Logic: Only show watched button if content is released
   const canShowWatched = showWatchedButton && !isUpcoming;
 
   return (
@@ -116,7 +114,7 @@ export const ContentCard = ({
           loading="lazy"
         />
         
-        {/* Category Pill */}
+        {/* Category Pill - Always Top Left */}
         <div className={cn(
           "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-black text-white backdrop-blur-md z-10 shadow-lg min-w-[55px] flex items-center justify-center uppercase tracking-tighter",
           getCategoryColor(item.media_type)
@@ -124,12 +122,9 @@ export const ContentCard = ({
           {getCategoryLabel(item.media_type)}
         </div>
 
-        {/* Rating Pill */}
+        {/* Rating Pill - Always Top Right */}
         {item.vote_average > 0 && (
-          <div className={cn(
-            "absolute flex items-center justify-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 min-w-[55px] z-10",
-            variant === 'compare' ? "top-7 left-2" : "top-2 right-2"
-          )}>
+          <div className="absolute top-2 right-2 flex items-center justify-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 min-w-[55px] z-10">
             <Star size={10} className="text-primary" fill="currentColor" />
             <span className="text-[9px] font-black text-white">{item.vote_average.toFixed(1)}</span>
           </div>
