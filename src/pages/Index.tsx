@@ -39,20 +39,22 @@ const Index = () => {
   const [yearPages, setYearPages] = useState<Record<number, number>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
+  const [watchlistIds, setWatchlistIds] = useState<number[]>([]);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
 
-  const fetchWatchedIds = async () => {
+  const fetchUserContent = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
-      .from('watched_content')
-      .select('content_id')
-      .eq('user_id', user.id);
+    const [watchedRes, watchlistRes] = await Promise.all([
+      supabase.from('watched_content').select('content_id').eq('user_id', user.id),
+      supabase.from('watchlist').select('content_id').eq('user_id', user.id)
+    ]);
     
-    if (data) setWatchedIds(data.map(item => item.content_id));
+    if (watchedRes.data) setWatchedIds(watchedRes.data.map(item => item.content_id));
+    if (watchlistRes.data) setWatchlistIds(watchlistRes.data.map(item => item.content_id));
   };
 
   const performSearch = useCallback(async (query: string) => {
@@ -153,7 +155,52 @@ const Index = () => {
 
       if (!error) {
         setWatchedIds(prev => [...prev, item.id]);
-        showSuccess("Added to your collection!");
+        // If it was in watchlist, remove it
+        if (watchlistIds.includes(item.id)) {
+          await supabase.from('watchlist').delete().eq('user_id', user.id).eq('content_id', item.id);
+          setWatchlistIds(prev => prev.filter(id => id !== item.id));
+        }
+        showSuccess("Marked as watched!");
+      }
+    }
+  };
+
+  const toggleWatchlist = async (item: ContentItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      showError("Please sign in to use watchlist");
+      return;
+    }
+
+    const isCurrentlyInWatchlist = watchlistIds.includes(item.id);
+
+    if (isCurrentlyInWatchlist) {
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.id);
+
+      if (!error) {
+        setWatchlistIds(prev => prev.filter(id => id !== item.id));
+        showSuccess("Removed from watchlist");
+      }
+    } else {
+      const { error } = await supabase
+        .from('watchlist')
+        .insert({
+          user_id: user.id,
+          content_id: item.id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type
+        });
+
+      if (!error) {
+        setWatchlistIds(prev => [...prev, item.id]);
+        showSuccess("Added to watchlist!");
       }
     }
   };
@@ -165,7 +212,7 @@ const Index = () => {
       setExpandedYears([currentYear]);
       loadYearContent(currentYear, 1);
     }
-    fetchWatchedIds();
+    fetchUserContent();
   }, [activeCategory, activeRegion, isSearching]);
 
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
@@ -279,7 +326,9 @@ const Index = () => {
                       key={item.id} 
                       item={item} 
                       isWatched={watchedIds.includes(item.id)}
+                      isInWatchlist={watchlistIds.includes(item.id)}
                       onToggleWatched={() => toggleWatched(item)}
+                      onToggleWatchlist={() => toggleWatchlist(item)}
                     />
                   ))}
                 </div>
@@ -293,7 +342,7 @@ const Index = () => {
                   className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-2xl font-serif font-bold text-primary">{year}</span>
+                    <span className="text-3xl font-serif font-bold text-primary">{year}</span>
                     <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
                       {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
                     </span>
@@ -319,7 +368,9 @@ const Index = () => {
                               key={item.id} 
                               item={item} 
                               isWatched={watchedIds.includes(item.id)}
+                              isInWatchlist={watchlistIds.includes(item.id)}
                               onToggleWatched={() => toggleWatched(item)}
+                              onToggleWatchlist={() => toggleWatchlist(item)}
                             />
                           ))}
                         </div>

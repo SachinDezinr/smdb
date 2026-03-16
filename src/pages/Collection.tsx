@@ -8,6 +8,7 @@ import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
@@ -20,7 +21,7 @@ const Collection = () => {
 
   const currentYear = new Date().getFullYear();
 
-  const fetchWatched = async () => {
+  const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -30,12 +31,12 @@ const Collection = () => {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (!error) setWatchedItems(data || []);
+    if (data) setWatchedItems(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchWatched();
+    fetchData();
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -51,6 +52,7 @@ const Collection = () => {
 
     if (!error) {
       setWatchedItems(prev => prev.filter(item => item.content_id !== id));
+      showSuccess("Removed from collection");
     }
   };
 
@@ -120,7 +122,6 @@ const Collection = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              {/* Detailed Stats Button - Mobile Only */}
               <button 
                 onClick={() => navigate('/stats')}
                 className="lg:hidden flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
@@ -131,7 +132,6 @@ const Collection = () => {
             </div>
           </div>
 
-          {/* Interactive Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {statCards.map((stat, i) => (
               <motion.button
@@ -183,13 +183,9 @@ const Collection = () => {
                       overview: ""
                     }} 
                     isWatched={true}
+                    showWatchlistButton={false}
+                    onToggleWatched={() => removeWatched(item.content_id)}
                   />
-                  <button
-                    onClick={() => removeWatched(item.content_id)}
-                    className="absolute top-2 left-2 p-2 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               ))}
             </div>
@@ -215,7 +211,7 @@ const Collection = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+              className="fixed bottom-24 lg:bottom-10 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
             >
               <ChevronUp size={24} />
             </motion.button>
