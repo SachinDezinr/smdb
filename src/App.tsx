@@ -13,11 +13,13 @@ import Stats from './pages/Stats';
 import Auth from './pages/Auth';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import ScrollToTopOnNav from './components/layout/ScrollToTopOnNav';
 import { Toaster } from 'sonner';
 
 function App() {
   return (
     <Router>
+      <ScrollToTopOnNav />
       <Toaster position="top-center" richColors />
       <Routes>
         <Route path="/" element={<Index />} />
