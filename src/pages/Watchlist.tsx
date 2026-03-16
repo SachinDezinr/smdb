@@ -6,20 +6,17 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
 import { ContentItem } from '@/lib/tmdb';
-import { Bookmark, Loader2, Search, X, Plus, ChevronUp, Filter } from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
+import { Bookmark, Loader2, Search } from 'lucide-react';
+import { showSuccess } from '@/utils/toast';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const Watchlist = () => {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [watchedIds, setWatchedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [visibleCount, setVisibleCount] = useState(12);
-  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -28,13 +25,14 @@ const Watchlist = () => {
       return;
     }
 
-    const [watchlistRes, watchedRes] = await Promise.all([
-      supabase.from('watchlist').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('watched_content').select('content_id').eq('user_id', user.id)
-    ]);
+    const { data } = await supabase
+      .from('watchlist')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (watchlistRes.data) {
-      setItems(watchlistRes.data.map(item => ({
+    if (data) {
+      setItems(data.map(item => ({
         id: item.content_id,
         title: item.title,
         poster_path: item.poster_path,
@@ -46,19 +44,11 @@ const Watchlist = () => {
         status: new Date(item.release_date) > new Date() ? "Upcoming" : "Released"
       })));
     }
-    
-    if (watchedRes.data) {
-      setWatchedIds(watchedRes.data.map(item => item.content_id));
-    }
-    
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const removeFromWatchlist = async (id: number) => {
@@ -94,7 +84,6 @@ const Watchlist = () => {
       });
 
     if (!error) {
-      setWatchedIds(prev => [...prev, item.id]);
       await removeFromWatchlist(item.id);
       showSuccess("Marked as watched!");
     }
@@ -108,8 +97,6 @@ const Watchlist = () => {
     });
   }, [items, searchQuery, activeFilter]);
 
-  const displayedItems = filteredItems.slice(0, visibleCount);
-
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
@@ -122,14 +109,11 @@ const Watchlist = () => {
           className="mb-10 space-y-8"
         >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-2xl">
-                <Bookmark className="text-primary" size={32} />
-              </div>
-              <div>
-                <h1 className="text-4xl lg:text-5xl font-serif font-bold">My Watchlist</h1>
-                <p className="text-muted-foreground">Content you've saved to watch later.</p>
-              </div>
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+                My <span className="text-primary">Watchlist</span>
+              </h1>
+              <p className="text-muted-foreground mt-2">Content you've saved to watch later.</p>
             </div>
 
             <div className="relative group max-w-md w-full">
@@ -176,7 +160,7 @@ const Watchlist = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {displayedItems.map((item) => {
+            {filteredItems.map((item) => {
               const isReleased = new Date(item.release_date) <= new Date();
               return (
                 <ContentCard 

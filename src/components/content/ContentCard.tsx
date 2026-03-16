@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Play, Check, Plus, Bookmark, BookmarkCheck, Calendar, Loader2 } from 'lucide-react';
+import { Star, Play, Check, Plus, BookmarkCheck, Calendar, Loader2 } from 'lucide-react';
 import { ContentItem, fetchCredits } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,7 +16,7 @@ interface ContentCardProps {
   onToggleWatched?: () => void;
   onToggleWatchlist?: () => void;
   variant?: 'default' | 'compare' | 'upcoming' | 'watchlist';
-  isSimilar?: boolean; // For compare page
+  isSimilar?: boolean;
 }
 
 export const ContentCard = ({ 
@@ -36,9 +36,7 @@ export const ContentCard = ({
   const [loadingCredits, setLoadingCredits] = useState(false);
 
   const isUpcoming = item.status === "Upcoming" || new Date(item.release_date) > new Date();
-  
-  // Logic for showing credits: Only for upcoming content
-  const shouldShowCredits = isUpcoming;
+  const shouldShowCredits = isUpcoming || variant === 'upcoming' || variant === 'watchlist';
 
   const handleInteraction = async (e: React.MouseEvent | React.TouchEvent) => {
     if (isMobile) {
@@ -79,17 +77,6 @@ export const ContentCard = ({
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr || dateStr === "TBA") return "TBA";
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    } catch (e) {
-      return dateStr;
-    }
-  };
-
-  // Border logic
   const hasBorder = (variant === 'default' && isWatched) || 
                     (variant === 'upcoming' && isInWatchlist) ||
                     (variant === 'compare' && (isWatched || isSimilar));
@@ -119,20 +106,22 @@ export const ContentCard = ({
           loading="lazy"
         />
         
-        {/* Category Pill - Top Left (Default) or Top Right (Compare) */}
+        {/* Category Pill - Top Left */}
         <div className={cn(
-          "absolute top-3 px-3 py-1 rounded-md text-[10px] font-bold text-white backdrop-blur-md z-10 shadow-lg min-w-[65px] flex items-center justify-center",
-          variant === 'compare' ? "right-3" : "left-3",
+          "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-black text-white backdrop-blur-md z-10 shadow-lg min-w-[55px] flex items-center justify-center uppercase tracking-tighter",
           getCategoryColor(item.media_type)
         )}>
           {getCategoryLabel(item.media_type)}
         </div>
 
-        {/* Rating Pill - Top Right (Default) */}
-        {item.vote_average > 0 && variant !== 'compare' && (
-          <div className="absolute top-3 right-3 flex items-center justify-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 min-w-[65px]">
-            <Star size={12} className="text-primary" fill="currentColor" />
-            <span className="text-[10px] font-bold text-white">{item.vote_average.toFixed(1)}</span>
+        {/* Rating Pill - Top Right (Default) or Top Left (Compare - below category) */}
+        {item.vote_average > 0 && (
+          <div className={cn(
+            "absolute flex items-center justify-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 min-w-[55px] z-10",
+            variant === 'compare' ? "top-7 left-2" : "top-2 right-2"
+          )}>
+            <Star size={10} className="text-primary" fill="currentColor" />
+            <span className="text-[9px] font-black text-white">{item.vote_average.toFixed(1)}</span>
           </div>
         )}
 
@@ -144,24 +133,24 @@ export const ContentCard = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               className={cn(
-                "absolute inset-0 flex flex-col justify-end p-4 z-20",
+                "absolute inset-0 flex flex-col justify-end p-4 z-20 rounded-2xl", // Added rounded-2xl here
                 !isMobile && "opacity-0 group-hover:opacity-100 transition-all duration-300",
-                isMobile && "bg-black/60 backdrop-blur-sm"
+                isMobile && "bg-black/70 backdrop-blur-sm"
               )}
             >
               {shouldShowCredits && (
-                <div className="mb-4 text-center">
+                <div className="mb-4 text-center space-y-1">
                   {loadingCredits ? (
                     <Loader2 className="animate-spin text-primary mx-auto" size={16} />
                   ) : credits ? (
-                    <div className="space-y-2">
+                    <>
                       {credits.director && (
-                        <p className="text-[9px] text-white/80 line-clamp-1">Dir: {credits.director}</p>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest line-clamp-1">Dir: {credits.director}</p>
                       )}
                       {credits.cast && (
-                        <p className="text-[9px] text-white/60 line-clamp-1">{credits.cast.join(', ')}</p>
+                        <p className="text-[10px] font-medium text-white/80 line-clamp-2 leading-tight">{credits.cast.join(', ')}</p>
                       )}
-                    </div>
+                    </>
                   ) : null}
                 </div>
               )}
@@ -171,7 +160,7 @@ export const ContentCard = ({
                   <button 
                     onClick={(e) => { e.stopPropagation(); onToggleWatched?.(); }}
                     className={cn(
-                      "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
+                      "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all uppercase tracking-tight",
                       isWatched 
                         ? "bg-green-500 text-white" 
                         : "bg-white text-black hover:bg-primary"
@@ -182,11 +171,12 @@ export const ContentCard = ({
                   </button>
                 )}
                 
-                {showWatchlistButton && (
+                {/* Hide watchlist button if content is watched */}
+                {showWatchlistButton && !isWatched && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onToggleWatchlist?.(); }}
                     className={cn(
-                      "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-md",
+                      "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all border backdrop-blur-md uppercase tracking-tight",
                       isInWatchlist 
                         ? "bg-primary/20 border-primary text-primary" 
                         : "bg-black/40 border-white/20 text-white hover:bg-white/10"
@@ -208,26 +198,17 @@ export const ContentCard = ({
           <h3 className="font-bold text-sm line-clamp-1 flex-1 group-hover:text-primary transition-colors">
             {item.title}
           </h3>
-          <span className="text-xs font-bold text-primary/80 whitespace-nowrap">
+          <span className="text-sm font-black text-primary/80 whitespace-nowrap">
             {item.release_date.split('-')[0]}
           </span>
         </div>
         
-        <div className="flex flex-col gap-1">
-          {variant === 'upcoming' && (
-            <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
-              <Calendar size={10} />
-              <span>{formatDate(item.release_date)}</span>
-            </div>
-          )}
-          
-          {variant === 'compare' && item.vote_average > 0 && (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Star size={10} className="text-primary" fill="currentColor" />
-              <span className="text-[10px] font-bold">{item.vote_average.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
+        {variant === 'upcoming' && (
+          <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
+            <Calendar size={10} />
+            <span>{item.release_date}</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -4,12 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, ChevronUp } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Users, ArrowLeft, Loader2, BarChart3, Target, Zap } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
-import { showSuccess, showError } from '@/utils/toast';
-import { toast } from 'sonner';
+import { showSuccess } from '@/utils/toast';
 
 const Compare = () => {
   const { friendId } = useParams();
@@ -18,7 +17,6 @@ const Compare = () => {
   const [myCollection, setMyCollection] = useState<any[]>([]);
   const [friendCollection, setFriendCollection] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'common' | 'unique'>('all');
-  const [visibleCount, setVisibleCount] = useState(12);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,7 +63,7 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
-        showSuccess("Moved to unique category");
+        showSuccess("Removed from your collection");
       }
     } else {
       const { error } = await supabase
@@ -82,7 +80,7 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => [...prev, item]);
-        showSuccess("Moved to similar interests");
+        showSuccess("Added to your collection");
       }
     }
   };
@@ -111,8 +109,12 @@ const Compare = () => {
   const myIds = new Set(myCollection.map(i => i.content_id));
   const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
   const uniqueToFriend = friendCollection.filter(i => !myIds.has(i.content_id));
+  
+  const compatibility = friendCollection.length > 0 
+    ? Math.round((commonItems.length / friendCollection.length) * 100) 
+    : 0;
 
-  const displayedItems = (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).slice(0, visibleCount);
+  const displayedItems = filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -128,18 +130,19 @@ const Compare = () => {
             <ArrowLeft size={18} /> Back to Friends
           </Link>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div>
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
+              <p className="text-muted-foreground mt-2">Discover what you both love and what's unique.</p>
             </div>
 
             <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
               {['all', 'common', 'unique'].map((btn) => (
                 <button
                   key={btn}
-                  onClick={() => { setFilter(btn as any); setVisibleCount(12); }}
+                  onClick={() => setFilter(btn as any)}
                   className={cn(
                     "px-6 py-2 rounded-lg text-sm font-bold transition-all",
                     filter === btn ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
@@ -151,6 +154,31 @@ const Compare = () => {
             </div>
           </div>
         </motion.header>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="glass-card p-6 border-white/5 flex items-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-xl text-primary"><Target size={24} /></div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Compatibility</p>
+              <p className="text-2xl font-serif font-bold">{compatibility}%</p>
+            </div>
+          </div>
+          <div className="glass-card p-6 border-white/5 flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Zap size={24} /></div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Similar Interests</p>
+              <p className="text-2xl font-serif font-bold">{commonItems.length} Items</p>
+            </div>
+          </div>
+          <div className="glass-card p-6 border-white/5 flex items-center gap-4">
+            <div className="p-3 bg-purple-500/10 rounded-xl text-purple-500"><Users size={24} /></div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique to {friendProfile?.username}</p>
+              <p className="text-2xl font-serif font-bold">{uniqueToFriend.length} Items</p>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {displayedItems.map((item) => {
