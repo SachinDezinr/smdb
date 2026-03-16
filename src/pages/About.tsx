@@ -3,90 +3,58 @@
 import React from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
-import { Film, CheckCircle2, Users, BarChart3, Calendar } from 'lucide-react';
+import { Film, Heart, Shield, Zap } from 'lucide-react';
 
-const features = [
-  { icon: Calendar, title: "Year-based Browsing", desc: "Explore content organized by release year from 1950 to the future." },
-  { icon: CheckCircle2, title: "Watch Tracking", desc: "Keep a personal log of every movie and series you've watched." },
-  { icon: BarChart3, title: "Live Statistics", desc: "Get detailed insights into your viewing habits and yearly wrapped." },
-  { icon: Users, title: "Friend System", desc: "Compare collections and see what your friends are watching." },
-];
-
-/**
- * About Page: Explains the purpose and features of SMDB.
- */
 const About = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
-      
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-4xl mx-auto w-full">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
+          className="space-y-12"
         >
-          <h1 className="text-5xl lg:text-6xl font-serif font-bold mb-4">About <span className="text-primary">SMDB</span></h1>
-          <p className="text-xl text-muted-foreground">Track what you watch. Discover what’s next.</p>
-        </motion.div>
-
-        <div className="space-y-12">
-          {/* Mission Statement */}
-          <section className="glass-card p-8 border-primary/20 cinematic-glow">
-            <h2 className="text-2xl font-serif font-bold mb-4 text-primary">What is SMDB?</h2>
-            <p className="text-lg leading-relaxed text-white/80 mb-6">
-              SMDB (Shows & Movies Database) is a premium content tracking and statistics platform designed for true cinema lovers. 
-              It is <span className="text-primary font-bold">NOT</span> a streaming service. We provide the tools 
-              to organize your cinematic journey, from Hollywood blockbusters to niche Anime and K-Dramas.
-            </p>
-            <p className="text-sm text-muted-foreground italic">
-              SMDB uses the TMDB API for content information and metadata.
-            </p>
-          </section>
-
-          {/* Feature Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {features.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-card p-6 hover:border-primary/50 transition-colors group"
-              >
-                <f.icon className="text-primary mb-4 group-hover:scale-110 transition-transform" size={32} />
-                <h3 className="text-xl font-serif font-bold mb-2">{f.title}</h3>
-                <p className="text-muted-foreground">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Workflow Steps */}
-          <section className="text-center py-12">
-            <h2 className="text-3xl font-serif font-bold mb-8">How It Works</h2>
-            <div className="flex flex-col md:flex-row justify-between gap-8">
-              {[
-                "Browse by Year",
-                "Add to Watched",
-                "View Collection",
-                "Compare with Friends"
-              ].map((step, i) => (
-                <div key={i} className="flex-1 relative">
-                  <div className="w-12 h-12 bg-primary text-black rounded-full flex items-center justify-center font-bold text-xl mx-auto mb-4">
-                    {i + 1}
-                  </div>
-                  <p className="font-medium">{step}</p>
-                </div>
-              ))}
+          <header className="text-center space-y-4">
+            <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-primary/20">
+              <Film size={40} className="text-black" />
             </div>
-          </section>
-
-          <div className="text-center pt-10">
-            <p className="text-2xl font-serif font-bold text-primary italic">
-              "SMDB helps you build your cinematic journey."
+            <h1 className="text-4xl lg:text-5xl font-serif font-bold">About <span className="text-primary">SMDB</span></h1>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Your personal cinematic companion for tracking, discovering, and sharing your love for movies and series.
             </p>
+          </header>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="glass-card p-8 border-white/5 space-y-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                <Heart size={24} />
+              </div>
+              <h3 className="text-xl font-bold">Our Mission</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                We built SMDB to solve the "what should we watch?" dilemma. By connecting friends and comparing collections, we make discovery social and fun.
+              </p>
+            </div>
+
+            <div className="glass-card p-8 border-white/5 space-y-4">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
+                <Zap size={24} />
+              </div>
+              <h3 className="text-xl font-bold">Fast & Fluid</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Experience a cinematic interface that's as smooth as the movies you watch. No clutter, just your content front and center.
+              </p>
+            </div>
           </div>
-        </div>
+
+          <section className="glass-card p-8 border-white/5 text-center space-y-6">
+            <Shield className="mx-auto text-primary" size={48} />
+            <h2 className="text-2xl font-bold">Privacy First</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Your data is yours. We use secure industry-standard encryption to ensure your watchlist and profile remain private and safe.
+            </p>
+          </section>
+        </motion.div>
       </main>
     </div>
   );

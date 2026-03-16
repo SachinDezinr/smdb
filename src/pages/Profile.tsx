@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, LogOut, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock, ShieldCheck, MessageSquare } from 'lucide-react';
+import { User, LogOut, Edit3, Check, Loader2, Info, MessageSquare, ChevronRight, Users, ShieldCheck } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -78,114 +78,100 @@ const Profile = () => {
       <Navigation />
       
       <motion.main 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10 max-w-4xl mx-auto w-full"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10 max-w-2xl mx-auto w-full"
       >
-        <header className="mb-12 text-center">
-          <div className="relative inline-block mb-6">
-            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-primary/20 rounded-full flex items-center justify-center border-2 border-primary/40 cinematic-glow text-4xl lg:text-5xl font-serif font-bold text-primary">
+        <header className="mb-8 text-center">
+          <div className="relative inline-block mb-4">
+            <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center border-2 border-primary/40 cinematic-glow text-4xl font-serif font-bold text-primary">
               {(username || user.email || '?')[0].toUpperCase()}
             </div>
             {pendingCount > 0 && (
-              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
+              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">
                 {pendingCount}
               </div>
             )}
           </div>
-          <h1 className="text-3xl lg:text-4xl font-serif font-bold mb-2 truncate px-4">{username || user.email}</h1>
-          <p className="text-muted-foreground text-sm">{user.email}</p>
+          
+          <div className="space-y-1 mb-6">
+            <h1 className="text-2xl font-serif font-bold truncate">{username || user.email}</h1>
+            <p className="text-muted-foreground text-xs">{user.email}</p>
+          </div>
+
+          <div className="flex justify-center gap-3">
+            {isEditing ? (
+              <button onClick={updateUsername} disabled={loading} className="bg-primary text-black px-6 py-2 rounded-xl font-bold text-sm hover:scale-105 transition-all flex items-center gap-2">
+                {loading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                Save Name
+              </button>
+            ) : (
+              <button onClick={() => setIsEditing(true)} className="bg-white/10 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center gap-2">
+                <Edit3 size={16} />
+                Edit Profile
+              </button>
+            )}
+          </div>
         </header>
 
-        <div className="grid gap-6">
-          {/* Account Settings */}
-          <section className="glass-card p-6 lg:p-8 border-white/5 space-y-8">
-            <div className="flex items-center gap-3 mb-2">
-              <User size={20} className="text-primary" />
-              <h2 className="text-xl font-serif font-bold">Account Settings</h2>
-            </div>
+        <div className="space-y-4">
+          {/* Quick Actions */}
+          <section className="glass-card p-4 border-white/5 space-y-3">
+            <Link to="/friends" className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+              <div className="flex items-center gap-3">
+                <Users size={18} className="text-primary" />
+                <span className="text-sm font-bold">Friends & Requests</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {pendingCount > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingCount}</span>}
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </div>
+            </Link>
 
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest">Username</label>
-              <div className="flex gap-3">
+            {isEditing && (
+              <div className="p-3 bg-white/5 rounded-xl space-y-3">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Change Username</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  disabled={!isEditing}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                  className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                 />
-                {isEditing ? (
-                  <button onClick={updateUsername} disabled={loading} className="bg-primary text-black px-6 rounded-xl font-bold hover:scale-105 transition-all flex items-center gap-2">
-                    {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-                    Save
-                  </button>
-                ) : (
-                  <button onClick={() => setIsEditing(true)} className="bg-white/10 text-white px-6 rounded-xl font-bold hover:bg-white/20 transition-all flex items-center gap-2">
-                    <Edit3 size={18} />
-                    Edit
-                  </button>
-                )}
               </div>
-            </div>
+            )}
 
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest">Change Password</label>
-              <div className="flex gap-3">
+            <div className="p-3 bg-white/5 rounded-xl space-y-3">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Update Password</label>
+              <div className="flex gap-2">
                 <input
                   type="password"
                   placeholder="New password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                 />
-                <button onClick={updatePassword} disabled={passLoading || !newPassword} className="bg-white/10 text-white px-6 rounded-xl font-bold hover:bg-white/20 transition-all disabled:opacity-50">
-                  {passLoading ? <Loader2 className="animate-spin" size={18} /> : "Update"}
+                <button onClick={updatePassword} disabled={passLoading || !newPassword} className="bg-primary/10 text-primary px-4 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all">
+                  {passLoading ? <Loader2 className="animate-spin" size={14} /> : "Update"}
                 </button>
               </div>
             </div>
           </section>
 
-          {/* Social & Support */}
-          <section className="glass-card p-6 lg:p-8 border-white/5 space-y-4">
-            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
-              <ShieldCheck size={20} className="text-primary" />
-              Support & Info
-            </h2>
-            
-            <Link to="/friends" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
-              <div className="flex items-center gap-3">
-                <Users size={20} className="text-primary" />
-                <span className="font-bold">Friends & Requests</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {pendingCount > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingCount}</span>}
-                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
-              </div>
+          {/* Support Links */}
+          <section className="grid grid-cols-2 gap-4">
+            <Link to="/about" className="glass-card p-4 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
+              <Info size={20} className="text-primary mx-auto" />
+              <p className="text-sm font-bold">About Us</p>
             </Link>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button className="flex items-center gap-3 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
-                <Info size={20} className="text-primary" />
-                <div>
-                  <p className="font-bold">About SMDB</p>
-                  <p className="text-xs text-muted-foreground">Version 2.0.4</p>
-                </div>
-              </button>
-              <button className="flex items-center gap-3 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
-                <MessageSquare size={20} className="text-primary" />
-                <div>
-                  <p className="font-bold">Contact Us</p>
-                  <p className="text-xs text-muted-foreground">Get help or give feedback</p>
-                </div>
-              </button>
-            </div>
+            <Link to="/contact" className="glass-card p-4 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
+              <MessageSquare size={20} className="text-primary mx-auto" />
+              <p className="text-sm font-bold">Contact Us</p>
+            </Link>
           </section>
 
           <button
             onClick={handleLogout}
-            className="w-full py-4 border border-red-500/20 text-red-500 rounded-2xl hover:bg-red-500/10 transition-all font-black uppercase tracking-widest"
+            className="w-full py-3 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-all font-bold text-sm uppercase tracking-widest"
           >
             Sign Out
           </button>

@@ -37,10 +37,9 @@ export const ContentCard = ({
 
   const isUpcoming = item.status === "Upcoming" || (item.release_date && new Date(item.release_date) > new Date());
   
-  // Logic for showing credits: Show for upcoming content or when explicitly requested
-  const shouldShowCredits = isUpcoming || variant === 'upcoming' || variant === 'watchlist';
+  // Only show credits for upcoming content
+  const shouldShowCredits = isUpcoming;
 
-  // Fetch credits automatically for upcoming content to show director/cast
   useEffect(() => {
     if (shouldShowCredits && !credits && !loadingCredits) {
       const loadCredits = async () => {
@@ -89,8 +88,7 @@ export const ContentCard = ({
                     (variant === 'upcoming' && isInWatchlist) ||
                     (variant === 'compare' && (isWatched || isSimilar));
 
-  // Determine if we should show the watched button
-  // Hide it if the content is unreleased (upcoming)
+  // Logic: Only show watched button if content is released
   const canShowWatched = showWatchedButton && !isUpcoming;
 
   return (
@@ -209,12 +207,11 @@ export const ContentCard = ({
           <h3 className="font-bold text-sm line-clamp-1 flex-1 group-hover:text-primary transition-colors">
             {item.title}
           </h3>
-          <span className="text-sm font-black text-primary/80 whitespace-nowrap">
+          <span className="text-base font-black text-primary whitespace-nowrap">
             {item.release_date ? item.release_date.split('-')[0] : 'TBA'}
           </span>
         </div>
         
-        {/* Always show release date for upcoming content */}
         {isUpcoming && item.release_date && (
           <div className="flex items-center gap-1 text-primary font-bold text-[11px]">
             <Calendar size={10} />
