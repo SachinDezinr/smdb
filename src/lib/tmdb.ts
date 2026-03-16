@@ -16,9 +16,6 @@ export interface ContentItem {
   popularity?: number;
   adult?: boolean;
   videos?: { results: any[] };
-  status?: "Released" | "Upcoming";
-  director?: string;
-  cast?: string[];
 }
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
@@ -104,8 +101,6 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
     'rabbit movies', 'gully movies', 'besharams', 'hunters', 'atrangii'
   ];
 
-  const today = new Date().toISOString().split('T')[0];
-
   return (results || [])
     .filter((item: any) => {
       if (item.adult) return false;
@@ -128,23 +123,19 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       if (isJapanese && isAnimated) type = 'anime';
       else if (isKorean && (item.media_type === 'tv' || type === 'tv')) type = 'k-drama';
 
-      const releaseDate = item.release_date || item.first_air_date || "TBA";
-      const status = (releaseDate !== "TBA" && releaseDate > today) ? "Upcoming" : "Released";
-
       return {
         id: item.id,
         title: item.title || item.name,
         poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
         backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
-        release_date: releaseDate,
+        release_date: item.release_date || item.first_air_date || "TBA",
         vote_average: item.vote_average || 0,
         media_type: type,
         genre_ids: item.genre_ids || [],
         overview: item.overview,
         popularity: item.popularity || 0,
         adult: item.adult,
-        videos: item.videos,
-        status
+        videos: item.videos
       };
     });
 };
@@ -206,20 +197,13 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
   const combined = interleave(gm, im, gt, an, kd);
-  return uniqueById(combined).filter(item => item.status === "Released").slice(0, 12);
+  return uniqueById(combined).slice(0, 12);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
   const data = await fetchFromProxy(`/${type}/${id}/videos`);
   const trailer = data.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
   return trailer ? `https://www.youtube.com/embed/${trailer.key}` : null;
-};
-
-export const fetchContentDetails = async (id: number, type: MediaType): Promise<ContentItem> => {
-  const tmdbType = (type === 'anime' || type === 'k-drama') ? 'tv' : type;
-  const data = await fetchFromProxy(`/${tmdbType}/${id}`);
-  const mapped = mapResults([data], type);
-  return mapped[0];
 };
 
 export const fetchContent = async (
@@ -277,6 +261,7 @@ export const fetchContent = async (
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
+  // Add release date filter to avoid future/unreleased content in year sections
   if (targetYear <= currentYear) {
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }

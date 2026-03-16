@@ -1,176 +1,91 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
-import { Mail, Instagram, Linkedin, Send, MessageSquare, User, AtSign } from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
+import { Mail, Instagram, ExternalLink, Linkedin, Code } from 'lucide-react';
 
+/**
+ * Contact Page: Provides ways to connect with the developer and SMDB team.
+ */
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      // Constructing the mailto link to ensure it goes to the specified email
-      const subject = `SMDB Contact from ${formData.name}`;
-      const body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
-      const mailtoLink = `mailto:smdbwork@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      // Open the user's email client
-      window.location.href = mailtoLink;
-      
-      showSuccess("Opening your email client to send the message!");
-      setFormData({ name: '', email: '', message: '' });
-    } catch (error) {
-      showError("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const socialLinks = [
-    {
-      name: 'Email',
-      icon: <Mail size={20} />,
-      href: 'mailto:smdbwork@gmail.com',
-      color: 'hover:text-red-400'
-    },
-    {
-      name: 'Instagram',
-      icon: <Instagram size={20} />,
-      href: 'https://instagram.com/sachinpanwar.in',
-      color: 'hover:text-pink-400'
-    },
-    {
-      name: 'LinkedIn',
-      icon: <Linkedin size={20} />,
-      href: 'https://linkedin.com/in/sachinpanwar-in',
-      color: 'hover:text-blue-400'
-    }
-  ];
-
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
       
-      <main className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10 flex flex-col items-center justify-center">
+      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-4xl mx-auto w-full flex flex-col items-center justify-center">
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-4xl w-full grid md:grid-cols-2 gap-10 items-start"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-2xl text-center"
         >
-          {/* Left Side: Info & Socials */}
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-5xl font-serif font-bold mb-4">Get in <span className="text-primary">Touch</span></h1>
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                Have a suggestion, found a bug, or just want to say hi? We'd love to hear from you.
-              </p>
-            </div>
+          <h1 className="text-5xl font-serif font-bold mb-4">Contact <span className="text-primary">SMDB</span></h1>
+          <p className="text-xl text-muted-foreground mb-12">Have feedback, suggestions, or collaboration ideas? Let’s connect.</p>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Connect with us</h3>
-              <div className="flex gap-4">
-                {socialLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-4 bg-white/5 border border-white/10 rounded-2xl transition-all ${link.color} hover:bg-white/10 hover:scale-110`}
-                    title={link.name}
-                  >
-                    {link.icon}
-                  </a>
-                ))}
+          {/* Contact Options Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.a
+              href="mailto:smdbwork@gmail.com"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+            >
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Mail size={24} />
               </div>
-            </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">Email Us</h3>
+                <p className="text-muted-foreground text-xs">smdbwork@gmail.com</p>
+              </div>
+            </motion.a>
 
-            <div className="pt-10 border-t border-white/5">
-              <p className="text-sm text-muted-foreground">
-                Developed by <span className="text-white font-bold">Sachin Panwar</span>
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-2">
-                © {new Date().getFullYear()} SMDB. All rights reserved.
-              </p>
+            <motion.a
+              href="https://www.linkedin.com/in/sachin-panwar-dezinr"
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+            >
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Linkedin size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">LinkedIn</h3>
+                <p className="text-muted-foreground text-xs">Connect professionally</p>
+              </div>
+            </motion.a>
+
+            <motion.a
+              href="https://www.instagram.com/isachin.panwar"
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02, y: -5 }}
+              className="glass-card p-6 flex flex-col items-center gap-4 border-primary/10 hover:border-primary/50 transition-all group"
+            >
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <Instagram size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">Instagram</h3>
+                <p className="text-muted-foreground text-xs">@isachin.panwar</p>
+              </div>
+            </motion.a>
+
+            <div className="glass-card p-6 flex flex-col items-center gap-4 border-primary/20 cinematic-glow">
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-black">
+                <Code size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-bold mb-1">Developed By</h3>
+                <p className="text-primary font-bold">Sachin Panwar</p>
+              </div>
             </div>
           </div>
 
-          {/* Right Side: Contact Form */}
-          <div className="glass-card p-8 border-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <MessageSquare size={120} />
-            </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <User size={14} /> Full Name
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                  placeholder="John Doe"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <AtSign size={14} /> Email Address
-                </label>
-                <input
-                  required
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                  placeholder="john@example.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <MessageSquare size={14} /> Your Message
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/50 outline-none transition-all resize-none"
-                  placeholder="How can we help you?"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-primary text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                    <Send size={20} />
-                  </motion.div>
-                ) : (
-                  <>
-                    <Send size={20} />
-                    Send Message
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+          {/* Footer Section */}
+          <footer className="mt-20 text-muted-foreground text-sm space-y-1">
+            <p>© 2026 SMDB. All Rights Reserved.</p>
+            <p className="text-primary/80 font-medium">Built with passion for Cinephiles</p>
+          </footer>
         </motion.div>
       </main>
     </div>

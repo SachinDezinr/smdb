@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, LogOut, Edit3, Check, Loader2, Info, MessageSquare, ChevronRight, Users, ShieldCheck, Lock } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -36,34 +36,54 @@ const Profile = () => {
     getUser();
   }, []);
 
-  const updateUsername = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({
-      data: { username }
-    });
-    if (error) showError(error.message);
-    else {
-      showSuccess("Username updated!");
-      setIsEditing(false);
+  const handleUpdateProfile = async () => {
+    const usernameRegex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
+    if (!usernameRegex.test(username)) {
+      showError("Username must start/end with letters, and only contain letters, numbers, _ or .");
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { username }
+      });
+      if (authError) throw authError;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+      
+      if (profileError) throw profileError;
+
+      showSuccess("Profile updated successfully!");
+      setIsEditing(false);
+    } catch (error: any) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updatePassword = async () => {
-    if (newPassword.length < 6) {
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
       showError("Password must be at least 6 characters");
       return;
     }
     setPassLoading(true);
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    if (error) showError(error.message);
-    else {
-      showSuccess("Password updated!");
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      showSuccess("Password updated successfully!");
       setNewPassword('');
+    } catch (error: any) {
+      showError(error.message);
+    } finally {
+      setPassLoading(false);
     }
-    setPassLoading(false);
   };
 
   const handleLogout = async () => {
@@ -73,117 +93,158 @@ const Profile = () => {
 
   if (!user) return null;
 
+  const initial = (username || user.email || '?')[0].toUpperCase();
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
       
-      <motion.main 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10 max-w-2xl mx-auto w-full"
-      >
-        <header className="mb-8 text-center">
-          <div className="relative inline-block mb-4">
-            <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center border-2 border-primary/40 cinematic-glow text-4xl font-serif font-bold text-primary">
-              {(username || user.email || '?')[0].toUpperCase()}
+      <main className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10 max-w-4xl mx-auto w-full">
+        <header className="mb-12 text-center">
+          <div className="relative inline-block mb-6">
+            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-primary/20 rounded-full flex items-center justify-center border-2 border-primary/40 cinematic-glow text-4xl lg:text-5xl font-serif font-bold text-primary">
+              {initial}
             </div>
             {pendingCount > 0 && (
-              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
                 {pendingCount}
               </div>
             )}
           </div>
-          
-          <div className="space-y-1 mb-6">
-            <h1 className="text-2xl font-serif font-bold truncate">{username || user.email}</h1>
-            <p className="text-muted-foreground text-xs">{user.email}</p>
-          </div>
-
-          <div className="flex justify-center gap-3">
-            {isEditing ? (
-              <button onClick={updateUsername} disabled={loading} className="bg-primary text-black px-8 py-2.5 rounded-xl font-bold text-sm hover:scale-105 transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
-                {loading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                Save Changes
-              </button>
-            ) : (
-              <button onClick={() => setIsEditing(true)} className="bg-white/10 text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center gap-2">
-                <Edit3 size={16} />
-                Edit Profile
-              </button>
-            )}
-          </div>
+          <h1 className="text-3xl lg:text-4xl font-serif font-bold mb-2 truncate px-4">{username || user.email}</h1>
+          <p className="text-muted-foreground text-sm">{user.email}</p>
         </header>
 
-        <div className="space-y-4">
-          {/* Quick Actions */}
-          <section className="glass-card p-4 border-white/5 space-y-3">
-            <Link to="/friends" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
-              <div className="flex items-center gap-3">
-                <Users size={18} className="text-primary" />
-                <span className="text-sm font-bold">Friends & Requests</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {pendingCount > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingCount}</span>}
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </div>
-            </Link>
-
-            {isEditing && (
-              <div className="p-4 bg-white/5 rounded-xl space-y-3">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Change Username</label>
+        <div className="space-y-6">
+          {/* Account Settings Section */}
+          <section className="glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Edit3 size={20} className="text-primary" />
+              Account Settings
+            </h2>
+            
+            <div className="space-y-8">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm text-muted-foreground">Username</label>
                 <input
                   type="text"
+                  disabled={!isEditing}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Enter new username"
                 />
               </div>
-            )}
 
-            <div className="p-4 bg-white/5 rounded-xl space-y-3">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <Lock size={12} /> Update Password
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="password"
-                  placeholder="New password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
-                />
-                <button 
-                  onClick={updatePassword} 
-                  disabled={passLoading || !newPassword} 
-                  className="bg-primary text-black px-6 py-2.5 rounded-lg text-xs font-bold hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100"
-                >
-                  {passLoading ? <Loader2 className="animate-spin mx-auto" size={14} /> : "Update"}
-                </button>
+              <div className="flex justify-end">
+                {isEditing ? (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-6 py-3 rounded-xl font-bold text-white/60 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUpdateProfile}
+                      disabled={loading}
+                      className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform flex items-center gap-2"
+                    >
+                      {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                      Save Changes
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-white/10 text-white px-8 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                )}
+              </div>
+
+              <div className="pt-8 border-t border-white/5">
+                <label className="text-sm text-muted-foreground block mb-2">Change Password</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                    <input
+                      type="password"
+                      placeholder="Enter new password"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    onClick={handleUpdatePassword}
+                    disabled={passLoading || !newPassword}
+                    className="bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {passLoading ? <Loader2 className="animate-spin" size={18} /> : "Update"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Support Links */}
-          <section className="grid grid-cols-2 gap-4">
-            <Link to="/about" className="glass-card p-5 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
-              <Info size={20} className="text-primary mx-auto" />
-              <p className="text-sm font-bold">About Us</p>
-            </Link>
-            <Link to="/contact" className="glass-card p-5 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
-              <MessageSquare size={20} className="text-primary mx-auto" />
-              <p className="text-sm font-bold">Contact Us</p>
+          {/* Social Circle Section */}
+          <section className="glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Users size={20} className="text-primary" />
+              Social Circle
+            </h2>
+            <Link to="/friends" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+              <div className="flex items-center gap-3">
+                <Users size={20} className="text-primary" />
+                <span>Manage Friends & Requests</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {pendingCount > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingCount}</span>}
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </div>
             </Link>
           </section>
 
-          <button
-            onClick={handleLogout}
-            className="w-full py-4 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-all font-bold text-sm uppercase tracking-widest mt-4"
-          >
-            Sign Out
-          </button>
+          {/* Help & Info Section (Mobile Only) */}
+          <section className="lg:hidden glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Info size={20} className="text-primary" />
+              Help & Information
+            </h2>
+            <div className="space-y-3">
+              <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Info size={20} className="text-primary" />
+                  <span>About SMDB</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+              <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <Mail size={20} className="text-primary" />
+                  <span>Contact Support</span>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
+              </Link>
+            </div>
+          </section>
+
+          {/* Danger Zone Section */}
+          <section className="glass-card p-6 lg:p-8 border-white/5">
+            <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <LogOut size={20} className="text-red-500" />
+              Danger Zone
+            </h2>
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-colors font-bold"
+            >
+              Sign Out of SMDB
+            </button>
+          </section>
         </div>
-      </motion.main>
+      </main>
     </div>
   );
 };
