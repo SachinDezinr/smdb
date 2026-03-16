@@ -6,16 +6,18 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
 import { ContentItem } from '@/lib/tmdb';
-import { Bookmark, Loader2, Search, X, Plus, ChevronUp } from 'lucide-react';
+import { Bookmark, Loader2, Search, X, Plus, ChevronUp, Filter } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const Watchlist = () => {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -38,9 +40,10 @@ const Watchlist = () => {
         poster_path: item.poster_path,
         release_date: item.release_date,
         vote_average: item.vote_average,
-        media_type: item.media_type,
+        media_type: item.media_type as any,
         genre_ids: [],
-        overview: ""
+        overview: "",
+        status: new Date(item.release_date) > new Date() ? "Upcoming" : "Released"
       })));
     }
     
@@ -71,8 +74,6 @@ const Watchlist = () => {
     if (!error) {
       setItems(prev => prev.filter(item => item.id !== id));
       showSuccess("Removed from watchlist");
-    } else {
-      showError("Failed to remove item");
     }
   };
 
@@ -80,46 +81,32 @@ const Watchlist = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const isCurrentlyWatched = watchedIds.includes(item.id);
+    const { error } = await supabase
+      .from('watched_content')
+      .insert({
+        user_id: user.id,
+        content_id: item.id,
+        title: item.title,
+        poster_path: item.poster_path,
+        release_date: item.release_date,
+        vote_average: item.vote_average,
+        media_type: item.media_type
+      });
 
-    if (isCurrentlyWatched) {
-      const { error } = await supabase
-        .from('watched_content')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('content_id', item.id);
-
-      if (!error) {
-        setWatchedIds(prev => prev.filter(id => id !== item.id));
-        showSuccess("Removed from collection");
-      }
-    } else {
-      const { error } = await supabase
-        .from('watched_content')
-        .insert({
-          user_id: user.id,
-          content_id: item.id,
-          title: item.title,
-          poster_path: item.poster_path,
-          release_date: item.release_date,
-          vote_average: item.vote_average,
-          media_type: item.media_type
-        });
-
-      if (!error) {
-        setWatchedIds(prev => [...prev, item.id]);
-        // Remove from watchlist since it's now watched
-        await removeFromWatchlist(item.id);
-        showSuccess("Marked as watched!");
-      }
+    if (!error) {
+      setWatchedIds(prev => [...prev, item.id]);
+      await removeFromWatchlist(item.id);
+      showSuccess("Marked as watched!");
     }
   };
 
   const filteredItems = useMemo(() => {
-    return items.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [items, searchQuery]);
+    return items.filter(item => {
+      const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = activeFilter === 'all' || item.media_type === activeFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [items, searchQuery, activeFilter]);
 
   const displayedItems = filteredItems.slice(0, visibleCount);
 
@@ -129,7 +116,11 @@ const Watchlist = () => {
       <ScrollToTop />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10 space-y-6">
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 space-y-8"
+        >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary/10 rounded-2xl">
@@ -150,17 +141,26 @@ const Watchlist = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                >
-                  <X size={18} />
-                </button>
-              )}
             </div>
           </div>
-        </header>
+
+          <div className="flex flex-wrap gap-3">
+            {['all', 'movie', 'tv', 'anime', 'k-drama'].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={cn(
+                  "px-6 py-2 rounded-full text-sm font-bold transition-all",
+                  activeFilter === filter 
+                    ? "bg-primary text-black" 
+                    : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                )}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
+        </motion.header>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -170,58 +170,28 @@ const Watchlist = () => {
           <div className="glass-card p-20 text-center border-dashed border-white/10">
             <Bookmark className="mx-auto text-muted-foreground mb-4 opacity-20" size={64} />
             <h2 className="text-2xl font-bold mb-2">Your watchlist is empty</h2>
-            <p className="text-muted-foreground mb-8">Start adding movies and series you want to watch!</p>
-            <Link to="/" className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform inline-block">
+            <Link to="/" className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform inline-block mt-4">
               Explore Content
             </Link>
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="text-center py-20 opacity-50">
-            <p className="text-xl">No items match your search.</p>
-          </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {displayedItems.map((item) => (
-                <div key={item.id} className="relative group">
-                  <ContentCard 
-                    item={item} 
-                    isWatched={watchedIds.includes(item.id)}
-                    isInWatchlist={true}
-                    onToggleWatched={() => toggleWatched(item)}
-                    onToggleWatchlist={() => removeFromWatchlist(item.id)}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {visibleCount < filteredItems.length && (
-              <div className="mt-12 flex justify-center">
-                <button
-                  onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
-                >
-                  <Plus size={20} />
-                  Load More
-                </button>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {displayedItems.map((item) => {
+              const isReleased = new Date(item.release_date) <= new Date();
+              return (
+                <ContentCard 
+                  key={item.id} 
+                  item={item} 
+                  isInWatchlist={true}
+                  showWatchedButton={isReleased}
+                  onToggleWatched={() => toggleWatched(item)}
+                  onToggleWatchlist={() => removeFromWatchlist(item.id)}
+                  variant="watchlist"
+                />
+              );
+            })}
+          </div>
         )}
-
-        <AnimatePresence>
-          {showScrollTop && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 lg:bottom-10 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
-            >
-              <ChevronUp size={24} />
-            </motion.button>
-          )}
-        </AnimatePresence>
       </main>
     </div>
   );

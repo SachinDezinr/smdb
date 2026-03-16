@@ -19,7 +19,6 @@ const Compare = () => {
   const [friendCollection, setFriendCollection] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'common' | 'unique'>('all');
   const [visibleCount, setVisibleCount] = useState(12);
-  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -49,20 +48,15 @@ const Compare = () => {
 
   useEffect(() => {
     fetchData();
-    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [friendId]);
 
-  const toggleWatched = async (item: any, isUndo = false) => {
+  const toggleWatched = async (item: any) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // If it's an undo, we explicitly want to REMOVE it
-    // Otherwise, we check if it's currently in the collection
     const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
 
-    if (isUndo || isCurrentlyWatched) {
+    if (isCurrentlyWatched) {
       const { error } = await supabase
         .from('watched_content')
         .delete()
@@ -71,13 +65,7 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
-        if (isUndo) {
-          showSuccess("Action undone");
-        } else {
-          showSuccess("Removed from collection");
-        }
-      } else {
-        showError("Failed to update collection");
+        showSuccess("Moved to unique category");
       }
     } else {
       const { error } = await supabase
@@ -94,18 +82,28 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => [...prev, item]);
-        
-        toast.success(`Added ${item.title}`, {
-          description: "Moved to common interests",
-          action: {
-            label: 'Undo',
-            onClick: () => toggleWatched(item, true)
-          },
-        });
-      } else {
-        showError("Failed to add to collection");
+        showSuccess("Moved to similar interests");
       }
     }
+  };
+
+  const addToWatchlist = async (item: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('watchlist')
+      .insert({
+        user_id: user.id,
+        content_id: item.content_id,
+        title: item.title,
+        poster_path: item.poster_path,
+        release_date: item.release_date,
+        vote_average: item.vote_average,
+        media_type: item.media_type
+      });
+
+    if (!error) showSuccess("Added to your watchlist");
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="animate-spin text-primary" size={48} /></div>;
@@ -121,7 +119,11 @@ const Compare = () => {
       <Navigation />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10">
+        <motion.header 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-10"
+        >
           <Link to="/friends" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-6">
             <ArrowLeft size={18} /> Back to Friends
           </Link>
@@ -131,112 +133,51 @@ const Compare = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
-              <p className="text-muted-foreground mt-2">Discover shared tastes and new recommendations.</p>
             </div>
 
             <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'common', label: 'Common' },
-                { id: 'unique', label: 'Unique' }
-              ].map((btn) => (
+              {['all', 'common', 'unique'].map((btn) => (
                 <button
-                  key={btn.id}
-                  onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
+                  key={btn}
+                  onClick={() => { setFilter(btn as any); setVisibleCount(12); }}
                   className={cn(
                     "px-6 py-2 rounded-lg text-sm font-bold transition-all",
-                    filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
+                    filter === btn ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
                   )}
                 >
-                  {btn.label}
+                  {btn.charAt(0).toUpperCase() + btn.slice(1)}
                 </button>
               ))}
             </div>
           </div>
-        </header>
+        </motion.header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="glass-card p-6 border-primary/20 cinematic-glow text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Common Interests</p>
-            <p className="text-4xl font-bold text-primary">{commonItems.length}</p>
-            <p className="text-xs text-muted-foreground mt-2">Titles you both watched</p>
-          </div>
-          <div className="glass-card p-6 border-white/5 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Friend's Unique</p>
-            <p className="text-4xl font-bold text-white">{uniqueToFriend.length}</p>
-            <p className="text-xs text-muted-foreground mt-2">Recommendations for you</p>
-          </div>
-          <div className="glass-card p-6 border-white/5 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Compatibility</p>
-            <p className="text-4xl font-bold text-white">
-              {friendCollection.length > 0 
-                ? Math.round((commonItems.length / friendCollection.length) * 100) 
-                : 0}%
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Based on {friendProfile?.username || 'their'} list</p>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {displayedItems.map((item) => {
+            const isCommon = myIds.has(item.content_id);
+            return (
+              <ContentCard 
+                key={item.content_id} 
+                item={{
+                  id: item.content_id,
+                  title: item.title,
+                  poster_path: item.poster_path,
+                  release_date: item.release_date,
+                  vote_average: item.vote_average,
+                  media_type: item.media_type as any,
+                  genre_ids: [],
+                  overview: ""
+                }} 
+                isWatched={isCommon}
+                isSimilar={isCommon}
+                showWatchlistButton={!isCommon}
+                onToggleWatched={() => toggleWatched(item)}
+                onToggleWatchlist={() => addToWatchlist(item)}
+                variant="compare"
+              />
+            );
+          })}
         </div>
-
-        {displayedItems.length === 0 ? (
-          <div className="text-center py-20 opacity-50">
-            <Users size={64} className="mx-auto mb-4" />
-            <p className="text-xl">No items found for this filter.</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayedItems.map((item) => (
-                <div key={item.content_id} className="relative group">
-                  <ContentCard 
-                    item={{
-                      id: item.content_id,
-                      title: item.title,
-                      poster_path: item.poster_path,
-                      release_date: item.release_date,
-                      vote_average: item.vote_average,
-                      media_type: item.media_type,
-                      genre_ids: [],
-                      overview: ""
-                    }} 
-                    isWatched={myIds.has(item.content_id)}
-                    onToggleWatched={() => toggleWatched(item)}
-                  />
-                  {myIds.has(item.content_id) && (
-                    <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
-                      <CheckCircle2 size={10} /> Shared
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {visibleCount < (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).length && (
-              <div className="mt-12 flex justify-center">
-                <button
-                  onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
-                >
-                  <Plus size={20} />
-                  Load More
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        <AnimatePresence>
-          {showScrollTop && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
-            >
-              <ChevronUp size={24} />
-            </motion.button>
-          )}
-        </AnimatePresence>
       </main>
     </div>
   );

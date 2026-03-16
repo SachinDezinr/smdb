@@ -1,10 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Home, Film, Tv, Heart, Clock, Settings, LogOut, 
-  User, Bookmark, Users, BarChart3, Info, Mail 
+  Home, Film, Clock, User, Bookmark, Users, BarChart3, Info, Mail, Layers, LogOut 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -12,9 +11,9 @@ import { showSuccess } from '@/utils/toast';
 
 const MAIN_NAV = [
   { icon: Home, label: 'Home', path: '/' },
-  { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
-  { icon: Heart, label: 'Collection', path: '/collection' },
   { icon: Clock, label: 'Upcoming', path: '/upcoming' },
+  { icon: Layers, label: 'Collection', path: '/collection' },
+  { icon: Bookmark, label: 'Watchlist', path: '/watchlist' },
 ];
 
 const SECONDARY_NAV = [
@@ -23,18 +22,26 @@ const SECONDARY_NAV = [
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
-const FOOTER_NAV = [
-  { icon: Info, label: 'About', path: '/about' },
-  { icon: Mail, label: 'Contact Us', path: '/contact' },
-];
-
 export const Navigation = () => {
   const location = useLocation();
-  const [user, setUser] = React.useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
-  React.useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-    
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        const { data } = await supabase
+          .from('friends')
+          .select('id')
+          .eq('friend_id', user.id)
+          .eq('status', 'pending');
+        setPendingRequests(data?.length || 0);
+      }
+    };
+    init();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
@@ -62,13 +69,12 @@ export const Navigation = () => {
 
         <nav className="flex-1 space-y-8">
           <div className="space-y-2">
-            <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu</div>
             {MAIN_NAV.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
                   location.pathname === item.path 
                     ? "bg-primary text-black shadow-lg shadow-primary/10" 
                     : "text-muted-foreground hover:bg-white/5 hover:text-white"
@@ -90,98 +96,65 @@ export const Navigation = () => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative",
                   location.pathname === item.path 
                     ? "bg-primary text-black shadow-lg shadow-primary/10" 
                     : "text-muted-foreground hover:bg-white/5 hover:text-white"
                 )}
               >
-                <item.icon size={20} className={cn(
-                  "transition-transform duration-300 group-hover:scale-110",
-                  location.pathname === item.path ? "text-black" : "text-primary"
-                )} />
-                <span className="font-bold text-sm">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <div className="px-4 mb-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Support</div>
-            {FOOTER_NAV.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                  location.pathname === item.path 
-                    ? "bg-primary text-black shadow-lg shadow-primary/10" 
-                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
-                )}
-              >
-                <item.icon size={20} className={cn(
-                  "transition-transform duration-300 group-hover:scale-110",
-                  location.pathname === item.path ? "text-black" : "text-primary"
-                )} />
+                <div className="relative">
+                  <item.icon size={20} className={cn(
+                    "transition-transform duration-300 group-hover:scale-110",
+                    location.pathname === item.path ? "text-black" : "text-primary"
+                  )} />
+                  {item.label === 'Friends' && pendingRequests > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background" />
+                  )}
+                </div>
                 <span className="font-bold text-sm">{item.label}</span>
               </Link>
             ))}
           </div>
         </nav>
 
-        <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
-          {user ? (
-            <div className="space-y-4">
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-red-400 hover:bg-red-400/10 transition-all font-bold text-sm"
-              >
-                <LogOut size={20} />
-                <span>Logout</span>
-              </button>
-              
-              <div className="px-4 space-y-1">
-                <p className="text-[10px] text-muted-foreground font-medium">
-                  © {new Date().getFullYear()} SMDB. All rights reserved.
-                </p>
-                <p className="text-[10px] text-red-400/60 font-medium italic">
-                  Unauthorized reproduction is prohibited.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Link
-              to="/auth"
-              className="flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-primary text-black font-bold text-sm hover:scale-[1.02] transition-all shadow-lg shadow-primary/20"
+        <div className="mt-auto pt-6 border-t border-white/5">
+          {user && (
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-red-400 hover:bg-red-400/10 transition-all font-bold text-sm"
             >
-              <User size={20} />
-              <span>Sign In</span>
-            </Link>
+              <LogOut size={20} />
+              <span>Logout</span>
+            </button>
           )}
         </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex justify-between items-center z-50">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 h-16 flex justify-between items-center z-50">
         {MAIN_NAV.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "p-3 rounded-2xl transition-all",
+              "p-2.5 rounded-xl transition-all",
               location.pathname === item.path ? "bg-primary text-black" : "text-muted-foreground"
             )}
           >
-            <item.icon size={24} />
+            <item.icon size={22} />
           </Link>
         ))}
         <Link
           to={user ? "/profile" : "/auth"}
           className={cn(
-            "p-3 rounded-2xl transition-all",
-            location.pathname === "/auth" || location.pathname === "/profile" ? "bg-primary text-black" : "text-muted-foreground"
+            "p-2.5 rounded-xl transition-all relative",
+            location.pathname === "/profile" ? "bg-primary text-black" : "text-muted-foreground"
           )}
         >
-          <User size={24} />
+          <User size={22} />
+          {pendingRequests > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background" />
+          )}
         </Link>
       </nav>
     </>
