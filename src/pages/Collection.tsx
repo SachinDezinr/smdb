@@ -1,222 +1,153 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
-import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3, Calendar } from 'lucide-react';
+import { fetchContentDetails, ContentItem } from '@/lib/tmdb';
+import { ContentCard } from '@/components/content/ContentCard';
+import { Search, Filter, Loader2, Film, Tv, LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Collection = () => {
-  const [watchedItems, setWatchedItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(12);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('all');
-  const navigate = useNavigate();
+  const [filter, setFilter] = useState<'all' | 'movie' | 'tv'>('all');
 
-  const currentYear = new Date().getFullYear();
+  useEffect(() => {
+    const fetchCollection = async () => {
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-  const fetchData = async () => {
+        const { data: collectionData, error } = await supabase
+          .from('collection')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Fetch details in parallel for better performance
+        const detailedItems = await Promise.all(
+          (collectionData || []).map(async (item) => {
+            try {
+              return await fetchContentDetails(item.content_id, item.media_type);
+            } catch (err) {
+              console.error(`Failed to fetch details for ${item.content_id}`, err);
+              return null;
+            }
+          })
+        );
+
+        setItems(detailedItems.filter((item): item is ContentItem => item !== null));
+      } catch (error: any) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCollection();
+  }, []);
+
+  const handleRemove = async (id: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('watched_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (data) setWatchedItems(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchData();
-    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const removeWatched = async (id: number) => {
-    if (!confirm("Are you sure you want to remove this from your collection?")) return;
-
     const { error } = await supabase
-      .from('watched_content')
+      .from('collection')
       .delete()
+      .eq('user_id', user.id)
       .eq('content_id', id);
 
-    if (!error) {
-      setWatchedItems(prev => prev.filter(item => item.content_id !== id));
+    if (error) showError(error.message);
+    else {
+      setItems(prev => prev.filter(item => item.id !== id));
       showSuccess("Removed from collection");
     }
   };
 
-  const stats = {
-    total: watchedItems.length,
-    movies: watchedItems.filter(i => i.media_type === 'movie').length,
-    tv: watchedItems.filter(i => i.media_type === 'tv').length,
-    anime: watchedItems.filter(i => i.media_type === 'anime').length,
-    kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
-    currentYear: watchedItems.filter(i => {
-      if (!i.release_date || i.release_date === "TBA") return false;
-      return new Date(i.release_date).getFullYear() === currentYear;
-    }).length,
-  };
-
-  const filteredItems = watchedItems.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesTab = false;
-    if (activeTab === 'all') {
-      matchesTab = true;
-    } else if (['movie', 'tv', 'anime', 'k-drama'].includes(activeTab)) {
-      matchesTab = item.media_type === activeTab;
-    } else if (activeTab === currentYear.toString()) {
-      const itemYear = item.release_date && item.release_date !== "TBA" 
-        ? new Date(item.release_date).getFullYear().toString() 
-        : "";
-      matchesTab = itemYear === activeTab;
-    }
-    
-    return matchesSearch && matchesTab;
-  });
-
-  const displayedItems = filteredItems.slice(0, visibleCount);
-
-  const statCards = [
-    { id: 'all', label: 'All', value: stats.total, icon: Library, color: 'text-white' },
-    { id: 'movie', label: 'Movies', value: stats.movies, icon: Film, color: 'text-primary' },
-    { id: 'tv', label: 'Series', value: stats.tv, icon: Tv, color: 'text-blue-400' },
-    { id: 'anime', label: 'Anime', value: stats.anime, icon: Sparkles, color: 'text-purple-400' },
-    { id: 'k-drama', label: 'K-Drama', value: stats.kdrama, icon: Heart, color: 'text-pink-400' },
-    { id: currentYear.toString(), label: currentYear.toString(), value: stats.currentYear, icon: Calendar, color: 'text-emerald-400' },
-  ];
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = filter === 'all' || item.media_type === filter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [items, searchQuery, filter]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
-      
-      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10 space-y-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <main className="flex-1 p-4 lg:p-10 pb-24 lg:pb-10">
+        <header className="mb-10 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
-                Your <span className="text-primary">Collection</span>
-              </h1>
-              <p className="text-muted-foreground mt-2">Manage your personal cinematic library.</p>
+              <h1 className="text-4xl font-serif font-bold mb-2">My <span className="text-primary">Collection</span></h1>
+              <p className="text-muted-foreground">Everything you've watched and loved.</p>
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="relative group flex-1 sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search collection..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+            <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
               <button 
-                onClick={() => navigate('/stats')}
-                className="lg:hidden flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${filter === 'all' ? 'bg-primary text-black' : 'hover:bg-white/5'}`}
               >
-                <BarChart3 size={18} />
-                Detailed Stats
+                All
+              </button>
+              <button 
+                onClick={() => setFilter('movie')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${filter === 'movie' ? 'bg-primary text-black' : 'hover:bg-white/5'}`}
+              >
+                <Film size={14} /> Movies
+              </button>
+              <button 
+                onClick={() => setFilter('tv')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${filter === 'tv' ? 'bg-primary text-black' : 'hover:bg-white/5'}`}
+              >
+                <Tv size={14} /> Series
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {statCards.map((stat, i) => (
-              <motion.button
-                key={stat.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                onClick={() => { setActiveTab(stat.id); setVisibleCount(12); }}
-                className={cn(
-                  "glass-card p-4 border-white/5 flex flex-col items-center text-center group transition-all relative overflow-hidden",
-                  activeTab === stat.id ? "border-primary/50 bg-primary/5 cinematic-glow" : "hover:border-white/20"
-                )}
-              >
-                {activeTab === stat.id && (
-                  <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-                )}
-                <stat.icon className={cn("mb-2 transition-transform group-hover:scale-110", stat.color)} size={24} />
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-              </motion.button>
-            ))}
+          <div className="relative max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <input
+              type="text"
+              placeholder="Search your collection..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+            />
           </div>
         </header>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-primary" size={48} />
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="animate-spin text-primary" size={40} />
+            <p className="text-muted-foreground font-medium">Loading your library...</p>
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-center opacity-50">
-            <Library size={64} className="mb-4" />
-            <h2 className="text-2xl font-serif">No items found</h2>
-            <p>Try changing your filters or adding more content</p>
+        ) : filteredItems.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredItems.map((item) => (
+                <ContentCard
+                  key={item.id}
+                  item={item}
+                  isWatched={true}
+                  onToggleWatched={() => handleRemove(item.id)}
+                  showWatchlistButton={false}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayedItems.map((item) => (
-                <div key={item.content_id} className="relative group">
-                  <ContentCard 
-                    item={{
-                      id: item.content_id,
-                      title: item.title,
-                      poster_path: item.poster_path,
-                      release_date: item.release_date,
-                      vote_average: item.vote_average,
-                      media_type: item.media_type,
-                      genre_ids: [],
-                      overview: ""
-                    }} 
-                    isWatched={true}
-                    showWatchlistButton={false}
-                    onToggleWatched={() => removeWatched(item.content_id)}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {visibleCount < filteredItems.length && (
-              <div className="mt-12 flex justify-center">
-                <button
-                  onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
-                >
-                  <Plus size={20} />
-                  Load More
-                </button>
-              </div>
-            )}
-          </>
+          <div className="text-center py-20 glass-card border-dashed border-white/10">
+            <LayoutGrid className="mx-auto text-muted-foreground mb-4" size={48} />
+            <h3 className="text-xl font-bold mb-2">No items found</h3>
+            <p className="text-muted-foreground">Start adding movies and series to your collection!</p>
+          </div>
         )}
-
-        <AnimatePresence>
-          {showScrollTop && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 lg:bottom-10 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
-            >
-              <ChevronUp size={24} />
-            </motion.button>
-          )}
-        </AnimatePresence>
       </main>
     </div>
   );

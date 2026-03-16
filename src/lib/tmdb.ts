@@ -215,6 +215,13 @@ export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
   return trailer ? `https://www.youtube.com/embed/${trailer.key}` : null;
 };
 
+export const fetchContentDetails = async (id: number, type: MediaType): Promise<ContentItem> => {
+  const tmdbType = (type === 'anime' || type === 'k-drama') ? 'tv' : type;
+  const data = await fetchFromProxy(`/${tmdbType}/${id}`);
+  const mapped = mapResults([data], type);
+  return mapped[0];
+};
+
 export const fetchContent = async (
   type: MediaType,
   year?: number,

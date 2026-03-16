@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, LogOut, Edit3, Check, Loader2, Info, MessageSquare, ChevronRight, Users, ShieldCheck } from 'lucide-react';
+import { User, LogOut, Edit3, Check, Loader2, Info, MessageSquare, ChevronRight, Users, ShieldCheck, Lock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -101,12 +101,12 @@ const Profile = () => {
 
           <div className="flex justify-center gap-3">
             {isEditing ? (
-              <button onClick={updateUsername} disabled={loading} className="bg-primary text-black px-6 py-2 rounded-xl font-bold text-sm hover:scale-105 transition-all flex items-center gap-2">
+              <button onClick={updateUsername} disabled={loading} className="bg-primary text-black px-8 py-2.5 rounded-xl font-bold text-sm hover:scale-105 transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
                 {loading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                Save Name
+                Save Changes
               </button>
             ) : (
-              <button onClick={() => setIsEditing(true)} className="bg-white/10 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center gap-2">
+              <button onClick={() => setIsEditing(true)} className="bg-white/10 text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center gap-2">
                 <Edit3 size={16} />
                 Edit Profile
               </button>
@@ -117,7 +117,7 @@ const Profile = () => {
         <div className="space-y-4">
           {/* Quick Actions */}
           <section className="glass-card p-4 border-white/5 space-y-3">
-            <Link to="/friends" className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
+            <Link to="/friends" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
               <div className="flex items-center gap-3">
                 <Users size={18} className="text-primary" />
                 <span className="text-sm font-bold">Friends & Requests</span>
@@ -129,29 +129,36 @@ const Profile = () => {
             </Link>
 
             {isEditing && (
-              <div className="p-3 bg-white/5 rounded-xl space-y-3">
+              <div className="p-4 bg-white/5 rounded-xl space-y-3">
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Change Username</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  placeholder="Enter new username"
                 />
               </div>
             )}
 
-            <div className="p-3 bg-white/5 rounded-xl space-y-3">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Update Password</label>
-              <div className="flex gap-2">
+            <div className="p-4 bg-white/5 rounded-xl space-y-3">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Lock size={12} /> Update Password
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="password"
                   placeholder="New password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
                 />
-                <button onClick={updatePassword} disabled={passLoading || !newPassword} className="bg-primary/10 text-primary px-4 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all">
-                  {passLoading ? <Loader2 className="animate-spin" size={14} /> : "Update"}
+                <button 
+                  onClick={updatePassword} 
+                  disabled={passLoading || !newPassword} 
+                  className="bg-primary text-black px-6 py-2.5 rounded-lg text-xs font-bold hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {passLoading ? <Loader2 className="animate-spin mx-auto" size={14} /> : "Update"}
                 </button>
               </div>
             </div>
@@ -159,11 +166,11 @@ const Profile = () => {
 
           {/* Support Links */}
           <section className="grid grid-cols-2 gap-4">
-            <Link to="/about" className="glass-card p-4 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
+            <Link to="/about" className="glass-card p-5 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
               <Info size={20} className="text-primary mx-auto" />
               <p className="text-sm font-bold">About Us</p>
             </Link>
-            <Link to="/contact" className="glass-card p-4 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
+            <Link to="/contact" className="glass-card p-5 border-white/5 hover:bg-white/5 transition-colors text-center space-y-2">
               <MessageSquare size={20} className="text-primary mx-auto" />
               <p className="text-sm font-bold">Contact Us</p>
             </Link>
@@ -171,7 +178,7 @@ const Profile = () => {
 
           <button
             onClick={handleLogout}
-            className="w-full py-3 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-all font-bold text-sm uppercase tracking-widest"
+            className="w-full py-4 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-all font-bold text-sm uppercase tracking-widest mt-4"
           >
             Sign Out
           </button>
