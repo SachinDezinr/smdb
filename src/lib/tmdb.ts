@@ -16,6 +16,10 @@ export interface ContentItem {
   popularity?: number;
   adult?: boolean;
   videos?: { results: any[] };
+  credits?: {
+    cast: { id: number; name: string }[];
+    crew: { id: number; name: string; job: string }[];
+  };
 }
 
 const PROXY_URL = "https://umkupiqsoblxkrxyaqst.supabase.co/functions/v1/tmdb-proxy";
@@ -30,13 +34,13 @@ const ACTIVITY_THRESHOLD = 3;
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
-    case "bollywood": return { with_original_language: "hi", region: "IN" };
-    case "punjabi": return { with_original_language: "pa", region: "IN" };
-    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN" };
-    case "hollywood": return { with_original_language: "en", region: "US" };
+    case "bollywood": return { with_original_language: "hi", region: "IN", with_release_type: "3|2" };
+    case "punjabi": return { with_original_language: "pa", region: "IN", with_release_type: "3|2" };
+    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN", with_release_type: "3|2" };
+    case "hollywood": return { with_original_language: "en", region: "US", with_release_type: "3|2" };
     case "animated": return { with_genres: "16" };
     case "korean": return { with_original_language: "ko" };
-    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN" };
+    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN", with_release_type: "3|2" };
     case "international": return { with_original_language: "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa" };
     default: return {};
   }
@@ -184,7 +188,7 @@ const sortYearContent = (items: ContentItem[]) => {
 export const fetchTrending = async (): Promise<ContentItem[]> => {
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
-    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
+    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos', with_release_type: '3|2' }),
     fetchFromProxy('/trending/tv/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
     fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' })
@@ -261,14 +265,13 @@ export const fetchContent = async (
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  // Add release date filter to avoid future/unreleased content in year sections
   if (targetYear <= currentYear) {
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
-    const indianParams = { ...baseParams, region: 'IN', with_original_language: 'hi|te|ta|kn|ml|pa' };
+    const indianParams = { ...baseParams, region: 'IN', with_original_language: 'hi|te|ta|kn|ml|pa', with_release_type: '3|2' };
 
     const [hData, iData] = await Promise.all([
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, hollywoodParams),
@@ -296,7 +299,7 @@ export const fetchContent = async (
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
   const data = await fetchFromProxy(`/${type}/${id}/credits`);
   const director = data.crew?.find((c: any) => c.job === 'Director')?.name;
-  const cast = data.cast?.slice(0, 5).map((c: any) => c.name);
+  const cast = data.cast?.slice(0, 5).map((c: any) => ({ id: c.id, name: c.name }));
   return { director, cast };
 };
 
@@ -317,6 +320,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
       region: 'IN',
       with_original_language: 'hi|te|ta|kn|ml|pa',
+      with_release_type: '3|2',
       [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
     };
 

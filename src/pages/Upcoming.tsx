@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
-import { ContentCard } from '@/components/content/ContentCard';
+import { UpcomingCard } from '@/components/content/UpcomingCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
 import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -48,11 +48,9 @@ const Upcoming = () => {
 
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
-        // Strictly future releases for Upcoming
         data = data.filter(item => item.release_date > today);
       } else {
         data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
-        // Ensure strictly future releases even from the upcoming endpoint
         data = data.filter(item => item.release_date > today);
       }
       
@@ -78,7 +76,6 @@ const Upcoming = () => {
     try {
       const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
-      // Strictly future releases for search results in Upcoming page
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
       showError("Search failed");
@@ -212,7 +209,7 @@ const Upcoming = () => {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {(isSearching ? searchResults : items).map((item) => (
-                <ContentCard key={item.id} item={item} showReleaseDate />
+                <UpcomingCard key={item.id} item={item} />
               ))}
             </div>
             

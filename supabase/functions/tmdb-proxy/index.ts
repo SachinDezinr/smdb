@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 
-// Fetching secret from environment variables
-const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY') || "87ac1ac60056408dd1f46c65dbfc4a1f";
+// Updated API Key as requested
+const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY') || "a52b6bf7cad83e446632082393efa4dd";
 const BASE_URL = "https://api.themoviedb.org/3";
 
 const corsHeaders = {
@@ -11,13 +11,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Security: Ensure the request is authenticated
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error("[tmdb-proxy] Unauthorized access attempt");
@@ -37,11 +35,9 @@ serve(async (req) => {
       });
     }
 
-    // Construct the TMDB URL securely
     const tmdbUrl = new URL(`${BASE_URL}${path}`);
     tmdbUrl.searchParams.set('api_key', TMDB_API_KEY);
     
-    // Forward all other search params
     url.searchParams.forEach((value, key) => {
       if (key !== 'path') {
         tmdbUrl.searchParams.set(key, value);
