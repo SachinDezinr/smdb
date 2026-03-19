@@ -20,13 +20,13 @@ export interface ContentItem {
 
 const getRegionParams = (region: Region) => {
   switch (region) {
-    case "bollywood": return "&with_original_language=hi&region=IN";
-    case "punjabi": return "&with_original_language=pa&region=IN";
-    case "south-indian": return "&with_original_language=te|ta|kn|ml&region=IN";
-    case "hollywood": return "&with_original_language=en&region=US";
+    case "bollywood": return "&with_original_language=hi&region=IN&with_release_type=2|3";
+    case "punjabi": return "&with_original_language=pa&region=IN&with_release_type=2|3";
+    case "south-indian": return "&with_original_language=te|ta|kn|ml&region=IN&with_release_type=2|3";
+    case "hollywood": return "&with_original_language=en&region=US&with_release_type=2|3";
     case "korean": return "&with_original_language=ko&region=KR";
     case "animated": return "&with_genres=16";
-    default: return "";
+    default: return "&with_release_type=2|3";
   }
 };
 
@@ -69,22 +69,18 @@ export const fetchContent = async (
     }
   } else {
     let url = "";
-    // Sort by release date descending for "Latest" feel
-    const sortParam = "&sort_by=primary_release_date.desc";
-    const tvSortParam = "&sort_by=first_air_date.desc";
-
     switch (type) {
       case "movie":
-        url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year || currentYear}${sortParam}&page=${page}${regionParams}${adultParam}`;
+        url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
         break;
       case "tv":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date_year=${year || currentYear}${tvSortParam}&page=${page}${regionParams}${adultParam}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
         break;
       case "anime":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date_year=${year || currentYear}${tvSortParam}&page=${page}${adultParam}${animeAdultFilter}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date_year=${year || currentYear}&page=${page}${adultParam}${animeAdultFilter}`;
         break;
       case "k-drama":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year || currentYear}${tvSortParam}&page=${page}${adultParam}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year || currentYear}&page=${page}${adultParam}`;
         break;
     }
     const response = await fetch(url);
@@ -124,12 +120,6 @@ export const fetchContent = async (
       
       if (!year) return true;
       return item.release_date <= today;
-    })
-    .sort((a, b) => {
-      // Secondary sort to ensure latest is always on top
-      if (a.release_date === "TBA") return 1;
-      if (b.release_date === "TBA") return -1;
-      return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
     });
 };
 
@@ -137,8 +127,7 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const url = `${BASE_URL}/trending/all/day?api_key=${TMDB_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
-  // Limit to top 10 as requested
-  return (data.results || []).slice(0, 10).map((item: any) => ({
+  return (data.results || []).map((item: any) => ({
     id: item.id,
     title: item.title || item.name,
     poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
