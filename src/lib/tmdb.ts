@@ -1,3 +1,5 @@
+"use client";
+
 const TMDB_API_KEY = "a52b6bf7cad83e446632082393efa4dd";
 const BASE_URL = "https://api.themoviedb.org/3";
 
@@ -19,7 +21,6 @@ export interface ContentItem {
 }
 
 const getRegionParams = (region: Region, isUpcoming: boolean = false) => {
-  // For upcoming content, we relax the release_type constraint as it's often not set yet for future dates
   const releaseType = isUpcoming ? "" : "&with_release_type=2|3";
   
   switch (region) {
@@ -29,7 +30,7 @@ const getRegionParams = (region: Region, isUpcoming: boolean = false) => {
     case "hollywood": return `&with_original_language=en&region=US${releaseType}`;
     case "korean": return `&with_original_language=ko&region=KR`;
     case "animated": return `&with_genres=16`;
-    default: return isUpcoming ? "" : "&with_release_type=2|3";
+    default: return "";
   }
 };
 
@@ -115,15 +116,17 @@ export const fetchContent = async (
     .filter((item: any) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
-
       if (!item.poster_path && item.vote_average === 0) return false;
       if (!item.title) return false;
-
       if (query) return true;
-      
-      // Strictly only show released content for the home screen/browsing
       if (item.release_date === "TBA") return false;
       return item.release_date <= today;
+    })
+    .sort((a, b) => {
+      // Sort by release date descending (newest first)
+      if (a.release_date === "TBA") return 1;
+      if (b.release_date === "TBA") return -1;
+      return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
     });
 };
 
@@ -178,7 +181,8 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
 
   switch (type) {
     case "movie":
-      url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${today}&sort_by=primary_release_date.asc&page=${page}${regionParams}${adultParam}`;
+      // Using release_date.gte for broader upcoming movie results
+      url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&release_date.gte=${today}&sort_by=release_date.asc&page=${page}${regionParams}${adultParam}`;
       break;
     case "tv":
       url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date.gte=${today}&sort_by=first_air_date.asc&page=${page}${regionParams}${adultParam}`;
@@ -205,5 +209,5 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       genre_ids: item.genre_ids || [],
       overview: item.overview
     }))
-    .filter((item: any) => item.release_date >= today);
+    .filter((item: any) => item.release_date >= today || item.release_date === "TBA");
 };
