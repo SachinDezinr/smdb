@@ -1,5 +1,3 @@
-"use client";
-
 const TMDB_API_KEY = "a52b6bf7cad83e446632082393efa4dd";
 const BASE_URL = "https://api.themoviedb.org/3";
 
@@ -21,6 +19,7 @@ export interface ContentItem {
 }
 
 const getRegionParams = (region: Region, isUpcoming: boolean = false) => {
+  // For upcoming content, we relax the release_type constraint as it's often not set yet for future dates
   const releaseType = isUpcoming ? "" : "&with_release_type=2|3";
   
   switch (region) {
@@ -43,12 +42,10 @@ export const fetchContent = async (
   includeAdult: boolean = false
 ): Promise<ContentItem[]> => {
   let results: any[] = [];
+  const currentYear = new Date().getFullYear();
   const regionParams = getRegionParams(region);
   const adultParam = `&include_adult=${includeAdult}`;
   const animeAdultFilter = !includeAdult ? "&without_keywords=190370" : "";
-  
-  // Use release date sorting if a year is specified, otherwise popularity
-  const sortBy = year ? "primary_release_date.desc" : "popularity.desc";
 
   if (query) {
     const [multiRes, personRes] = await Promise.all([
@@ -58,28 +55,35 @@ export const fetchContent = async (
 
     const multiData = await multiRes.json();
     const personData = await personRes.json();
+
     results = [...(multiData.results || [])];
 
     if (personData.results?.length > 0) {
       const personId = personData.results[0].id;
       const creditsRes = await fetch(`${BASE_URL}/person/${personId}/combined_credits?api_key=${TMDB_API_KEY}${adultParam}`);
       const creditsData = await creditsRes.json();
-      results = [...results, ...(creditsData.cast || []), ...(creditsData.crew || [])];
+      
+      const personCredits = [
+        ...(creditsData.cast || []),
+        ...(creditsData.crew || [])
+      ];
+      
+      results = [...results, ...personCredits];
     }
   } else {
     let url = "";
     switch (type) {
       case "movie":
-        url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year}&sort_by=${sortBy}&page=${page}${regionParams}${adultParam}`;
+        url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&primary_release_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
         break;
       case "tv":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date_year=${year}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&first_air_date_year=${year || currentYear}&sort_by=popularity.desc&page=${page}${regionParams}${adultParam}`;
         break;
       case "anime":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date_year=${year}&page=${page}${adultParam}${animeAdultFilter}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_keywords=210024&with_original_language=ja&first_air_date_year=${year || currentYear}&page=${page}${adultParam}${animeAdultFilter}`;
         break;
       case "k-drama":
-        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year}&page=${page}${adultParam}`;
+        url = `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ko&first_air_date_year=${year || currentYear}&page=${page}${adultParam}`;
         break;
     }
     const response = await fetch(url);
@@ -111,16 +115,14 @@ export const fetchContent = async (
     .filter((item: any) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
+
       if (!item.poster_path && item.vote_average === 0) return false;
       if (!item.title) return false;
+
       if (query) return true;
+      
+      // Strictly only show released content for the home screen/browsing
       if (item.release_date === "TBA") return false;
-      
-      // If year is in the future (like 2027), we allow it if it's specifically requested
-      if (year && parseInt(item.release_date.split('-')[0]) === year) {
-        return item.release_date <= today || year > new Date().getFullYear();
-      }
-      
       return item.release_date <= today;
     });
 };
@@ -171,6 +173,7 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   const regionParams = getRegionParams(region, true);
   const adultParam = `&include_adult=${includeAdult}`;
   let url = "";
+  
   const today = new Date().toISOString().split('T')[0];
 
   switch (type) {
