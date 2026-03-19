@@ -1,352 +1,111 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
-import { ContentCard } from '@/components/content/ContentCard';
-import { TrendingHero } from '@/components/content/TrendingHero';
-import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
-import { showSuccess, showError } from '@/utils/toast';
-import { ScrollToTop } from '@/components/layout/ScrollToTop';
-
-const CATEGORIES: { label: string; value: MediaType }[] = [
-  { label: 'Movies', value: 'movie' },
-  { label: 'Web Series', value: 'tv' },
-  { label: 'Anime', value: 'anime' },
-  { label: 'K-Drama', value: 'k-drama' },
-];
-
-const REGIONS: { label: string; value: Region }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Hollywood', value: 'hollywood' },
-  { label: 'Bollywood', value: 'bollywood' },
-  { label: 'Punjabi', value: 'punjabi' },
-  { label: 'South Indian', value: 'south-indian' },
-  { label: 'Animated', value: 'animated' },
-];
+import { ContentGrid } from '@/components/home/ContentGrid';
+import { TrendingHero } from '@/components/home/TrendingHero';
+import { SearchBar } from '@/components/home/SearchBar';
+import { FilterBar } from '@/components/home/FilterBar';
+import { fetchContent, fetchTrending, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { useInView } from 'react-intersection-observer';
+import { Loader2, Sparkles } from 'lucide-react';
 
 const Index = () => {
-  const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [trending, setTrending] = useState<ContentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [activeType, setActiveType] = useState<MediaType>('movie');
   const [activeRegion, setActiveRegion] = useState<Region>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
-  const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
-  const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
-  const [yearPages, setYearPages] = useState<Record<number, number>>({});
-  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
-  const [watchedIds, setWatchedIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [hasMore, setHasMore] = useState(true);
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
+  const { ref, inView } = useInView();
 
-  const fetchWatchedIds = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      const [trendingData, initialContent] = await Promise.all([
+        fetchTrending(),
+        fetchContent(activeType, undefined, 1, searchQuery, activeRegion)
+      ]);
+      setTrending(trendingData);
+      setContent(initialContent);
+      setPage(1);
+      setHasMore(initialContent.length > 0);
+      setLoading(false);
+    };
+    loadInitialData();
+  }, [activeType, activeRegion, searchQuery]);
 
-    const { data } = await supabase
-      .from('watched_content')
-      .select('content_id')
-      .eq('user_id', user.id);
+  useEffect(() => {
+    if (inView && !loadingMore && hasMore) {
+      loadMore();
+    }
+  }, [inView]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const newContent = await fetchContent(activeType, undefined, nextPage, searchQuery, activeRegion);
     
-    if (data) setWatchedIds(data.map(item => item.content_id));
-  };
-
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setIsSearching(false);
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    setLoadingYears({ 0: true });
-    try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all');
-      setSearchResults(results);
-    } catch (error) {
-      showError("Search failed. Please try again.");
-    } finally {
-      setLoadingYears({ 0: false });
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) {
-        performSearch(searchQuery);
-      } else {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, performSearch]);
-
-  const loadYearContent = async (year: number, page: number = 1) => {
-    setLoadingYears(prev => ({ ...prev, [year]: true }));
-    try {
-      const results = await fetchContent(activeCategory, year, page, "", activeRegion);
-      
-      setYearData(prev => {
-        const existing = prev[year] || [];
-        const existingIds = new Set(existing.map(item => item.id));
-        const uniqueNew = results.filter(item => !existingIds.has(item.id));
-        
-        return { 
-          ...prev, 
-          [year]: page === 1 ? results : [...existing, ...uniqueNew] 
-        };
-      });
-      setYearPages(prev => ({ ...prev, [year]: page }));
-    } catch (error) {
-      console.error(`Failed to fetch content for ${year}:`, error);
-    } finally {
-      setLoadingYears(prev => ({ ...prev, [year]: false }));
-    }
-  };
-
-  const toggleYear = (year: number) => {
-    if (expandedYears.includes(year)) {
-      setExpandedYears(prev => prev.filter(y => y !== year));
+    if (newContent.length === 0) {
+      setHasMore(false);
     } else {
-      setExpandedYears(prev => [...prev, year]);
-      if (!yearData[year]) loadYearContent(year, 1);
-    }
-  };
-
-  const toggleWatched = async (item: ContentItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      showError("Please sign in to track movies");
-      return;
-    }
-
-    const isCurrentlyWatched = watchedIds.includes(item.id);
-
-    if (isCurrentlyWatched) {
-      const { error } = await supabase
-        .from('watched_content')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('content_id', item.id);
-
-      if (!error) {
-        setWatchedIds(prev => prev.filter(id => id !== item.id));
-        showSuccess("Removed from collection");
-      }
-    } else {
-      const { error } = await supabase
-        .from('watched_content')
-        .insert({
-          user_id: user.id,
-          content_id: item.id,
-          title: item.title,
-          poster_path: item.poster_path,
-          release_date: item.release_date,
-          vote_average: item.vote_average,
-          media_type: item.media_type
+      setContent(prev => {
+        const combined = [...prev, ...newContent];
+        // Ensure everything stays sorted by release date even after loading more
+        return combined.sort((a, b) => {
+          if (a.release_date === "TBA") return 1;
+          if (b.release_date === "TBA") return -1;
+          return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
         });
-
-      if (!error) {
-        setWatchedIds(prev => [...prev, item.id]);
-        showSuccess("Added to your collection!");
-      }
+      });
+      setPage(nextPage);
     }
+    setLoadingMore(false);
   };
-
-  useEffect(() => {
-    if (!isSearching) {
-      setYearData({});
-      setYearPages({});
-      setExpandedYears([currentYear]);
-      loadYearContent(currentYear, 1);
-    }
-    fetchWatchedIds();
-  }, [activeCategory, activeRegion, isSearching]);
-
-  const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Navigation />
-      <ScrollToTop />
       
-      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
-                Discover <span className="text-primary">SMDB</span>
-              </h1>
-            </div>
-            
-            <div className="relative group max-w-md w-full flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search titles, cast, or directors..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button 
-                    type="button"
-                    onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                  >
-                    <X size={18} />
-                  </button>
-                )}
-              </div>
-            </div>
+      <main className="flex-1 pb-24 lg:pb-10">
+        <TrendingHero items={trending} />
+        
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 -mt-8 relative z-10">
+          <div className="glass-card p-4 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between border-white/5">
+            <SearchBar onSearch={setSearchQuery} />
+            <FilterBar 
+              activeType={activeType} 
+              onTypeChange={setActiveType}
+              activeRegion={activeRegion}
+              onRegionChange={setActiveRegion}
+            />
           </div>
 
-          {!isSearching && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setActiveCategory(cat.value)}
-                    className={cn(
-                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                      activeCategory === cat.value 
-                        ? "bg-primary text-black" 
-                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
+          <div className="flex items-center gap-2 mb-6">
+            <Sparkles className="text-primary" size={20} />
+            <h2 className="text-xl font-serif font-bold">
+              {searchQuery ? `Results for "${searchQuery}"` : `Latest ${activeType === 'movie' ? 'Movies' : activeType === 'tv' ? 'Web Series' : activeType.charAt(0).toUpperCase() + activeType.slice(1)}`}
+            </h2>
+          </div>
 
-              {showRegionFilters && (
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Filter size={16} className="text-primary mr-2" />
-                  {REGIONS.map((reg) => (
-                    <button
-                      key={reg.value}
-                      onClick={() => setActiveRegion(reg.value as Region)}
-                      className={cn(
-                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                        activeRegion === reg.value 
-                          ? "border-primary bg-primary/10 text-primary" 
-                          : "border-white/10 text-muted-foreground hover:border-white/30"
-                      )}
-                    >
-                      {reg.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </header>
-
-        {!isSearching && <TrendingHero />}
-
-        <div className="space-y-4">
-          {isSearching ? (
-            <div className="glass-card p-6 md:p-8 border-primary/20">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-serif font-bold">Search Results for "{searchQuery}"</h2>
-                <button 
-                  onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Back to Years
-                </button>
-              </div>
-              
-              {loadingYears[0] ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="animate-spin text-primary" size={48} />
-                </div>
-              ) : searchResults.length === 0 ? (
-                <div className="text-center py-20 opacity-50">
-                  <p className="text-xl">No result found.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                  {searchResults.map((item) => (
-                    <ContentCard 
-                      key={item.id} 
-                      item={item} 
-                      isWatched={watchedIds.includes(item.id)}
-                      onToggleWatched={() => toggleWatched(item)}
-                    />
-                  ))}
-                </div>
-              )}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="animate-spin text-primary" size={40} />
             </div>
           ) : (
-            years.map((year) => (
-              <div key={year} className="glass-card overflow-hidden border-white/5">
-                <button
-                  onClick={() => toggleYear(year)}
-                  className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl font-serif font-bold text-primary">{year}</span>
-                    <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
-                      {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
-                    </span>
-                  </div>
-                  <ChevronDown 
-                    className={cn("transition-transform duration-300", expandedYears.includes(year) && "rotate-180")} 
-                    size={20} 
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {expandedYears.includes(year) && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="p-6 pt-0">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                          {yearData[year]?.map((item) => (
-                            <ContentCard 
-                              key={item.id} 
-                              item={item} 
-                              isWatched={watchedIds.includes(item.id)}
-                              onToggleWatched={() => toggleWatched(item)}
-                            />
-                          ))}
-                        </div>
-
-                        {loadingYears[year] ? (
-                          <div className="flex items-center justify-center py-10">
-                            <Loader2 className="animate-spin text-primary" size={32} />
-                          </div>
-                        ) : (
-                          yearData[year] && yearData[year].length > 0 && (
-                            <div className="mt-8 flex justify-center">
-                              <button
-                                onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
-                                className="flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-bold text-sm border border-white/10"
-                              >
-                                <Plus size={16} />
-                                Load More
-                              </button>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))
+            <>
+              <ContentGrid items={content} />
+              
+              {hasMore && (
+                <div ref={ref} className="flex justify-center py-10">
+                  {loadingMore && <Loader2 className="animate-spin text-primary" size={30} />}
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

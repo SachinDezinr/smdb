@@ -3,14 +3,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
+import { ContentItem, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
-export const TrendingHero = () => {
-  const [trending, setTrending] = useState<ContentItem[]>([]);
+interface TrendingHeroProps {
+  items: ContentItem[];
+}
+
+export const TrendingHero = ({ items }: TrendingHeroProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [direction, setDirection] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -22,24 +24,19 @@ export const TrendingHero = () => {
   };
 
   useEffect(() => {
-    const load = async () => {
-      const data = await fetchTrending();
-      setTrending(data);
-      setLoading(false);
-    };
-    load();
     resetTimer();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [items.length]);
 
   const paginate = (newDirection: number) => {
+    if (items.length === 0) return;
     setDirection(newDirection);
     setCurrentIndex((prevIndex) => {
       let nextIndex = prevIndex + newDirection;
-      if (nextIndex < 0) nextIndex = trending.length - 1;
-      if (nextIndex >= trending.length) nextIndex = 0;
+      if (nextIndex < 0) nextIndex = items.length - 1;
+      if (nextIndex >= items.length) nextIndex = 0;
       return nextIndex;
     });
     resetTimer();
@@ -50,16 +47,11 @@ export const TrendingHero = () => {
     setTrailerUrl(url);
   };
 
-  const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset: number, velocity: number) => {
-    return Math.abs(offset) * velocity;
-  };
-
-  if (loading || trending.length === 0) return (
+  if (items.length === 0) return (
     <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
   );
 
-  const current = trending[currentIndex];
+  const current = items[currentIndex];
 
   const variants = {
     enter: (direction: number) => ({
@@ -92,42 +84,28 @@ export const TrendingHero = () => {
             x: { type: "spring", stiffness: 300, damping: 30 },
             opacity: { duration: 0.4 }
           }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={1}
-          onDragEnd={(e, { offset, velocity }) => {
-            const swipe = swipePower(offset.x, velocity.x);
-
-            if (swipe < -swipeConfidenceThreshold) {
-              paginate(1);
-            } else if (swipe > swipeConfidenceThreshold) {
-              paginate(-1);
-            }
-          }}
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          className="absolute inset-0"
         >
           <img 
             src={current.backdrop_path || current.poster_path} 
             alt={current.title}
-            className="w-full h-full object-cover pointer-events-none"
+            className="w-full h-full object-cover"
           />
-          {/* Decreased black edge intensity by reducing opacity of gradients */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-transparent to-transparent" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Desktop Navigation Buttons */}
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
-          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
+          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100"
         >
           <ChevronLeft size={24} />
         </button>
         <button 
           onClick={() => paginate(1)}
-          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
+          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100"
         >
           <ChevronRight size={24} />
         </button>
@@ -139,7 +117,7 @@ export const TrendingHero = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="space-y-3 lg:space-y-4"
+          className="space-y-4"
         >
           <div className="flex items-center gap-2">
             <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
@@ -149,30 +127,28 @@ export const TrendingHero = () => {
             </div>
           </div>
           
-          {/* Improved text responsiveness with intermediate md: breakpoint */}
-          <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
           
-          <p className="text-muted-foreground text-[10px] md:text-sm lg:text-base line-clamp-2 max-w-lg">
+          <p className="text-muted-foreground text-sm lg:text-base line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
           <div className="flex items-center gap-4 pt-2 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 bg-primary text-black px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              <Play size={12} fill="currentColor" />
+              <Play size={16} fill="currentColor" />
               Watch Trailer
             </button>
           </div>
         </motion.div>
       </div>
 
-      {/* Navigation Dots */}
-      <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
-        {trending.map((_, i) => (
+      <div className="absolute bottom-8 right-12 flex gap-2 z-20">
+        {items.map((_, i) => (
           <button
             key={i}
             onClick={() => {
@@ -182,13 +158,12 @@ export const TrendingHero = () => {
             }}
             className={cn(
               "h-1 rounded-full transition-all duration-500",
-              currentIndex === i ? "w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/20 hover:bg-white/40"
+              currentIndex === i ? "w-8 bg-primary" : "w-2 bg-white/20 hover:bg-white/40"
             )}
           />
         ))}
       </div>
 
-      {/* Trailer Modal */}
       <AnimatePresence>
         {trailerUrl && (
           <motion.div
