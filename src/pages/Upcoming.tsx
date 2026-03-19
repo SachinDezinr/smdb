@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus, X } from 'lucide-react';
+import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { showError } from '@/utils/toast';
@@ -23,11 +23,13 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'Punjabi', value: 'punjabi' },
   { label: 'South Indian', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
+  { label: 'Korean', value: 'korean' },
 ];
 
 const Upcoming = () => {
   const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
   const [activeRegion, setActiveRegion] = useState<Region>('all');
+  const [activeYear, setActiveYear] = useState<number | null>(null);
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -41,7 +43,19 @@ const Upcoming = () => {
     else setLoadingMore(true);
     
     try {
-      const data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+      let data: ContentItem[];
+      const today = new Date().toISOString().split('T')[0];
+
+      if (activeYear) {
+        data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
+        // Strictly future releases for Upcoming
+        data = data.filter(item => item.release_date > today);
+      } else {
+        data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+        // Ensure strictly future releases even from the upcoming endpoint
+        data = data.filter(item => item.release_date > today);
+      }
+      
       setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
       setPage(pageNum);
     } catch (error) {
@@ -62,8 +76,9 @@ const Upcoming = () => {
     setIsSearching(true);
     setLoading(true);
     try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all', false);
+      const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
+      // Strictly future releases for search results in Upcoming page
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
       showError("Search failed");
@@ -72,7 +87,6 @@ const Upcoming = () => {
     }
   }, []);
 
-  // Live search effect with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery) {
@@ -87,9 +101,9 @@ const Upcoming = () => {
 
   useEffect(() => {
     if (!isSearching) load(1);
-  }, [activeCategory, activeRegion, isSearching]);
+  }, [activeCategory, activeRegion, activeYear, isSearching]);
 
-  const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
+  const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -134,10 +148,10 @@ const Upcoming = () => {
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => setActiveCategory(cat.value)}
+                    onClick={() => { setActiveCategory(cat.value); setActiveYear(null); setActiveRegion('all'); }}
                     className={cn(
                       "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                      activeCategory === cat.value 
+                      activeCategory === cat.value && !activeYear
                         ? "bg-primary text-black" 
                         : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
                     )}
@@ -145,25 +159,45 @@ const Upcoming = () => {
                     {cat.label}
                   </button>
                 ))}
+                <button
+                  onClick={() => { 
+                    const nextYear = activeYear === 2027 ? null : 2027;
+                    setActiveYear(nextYear);
+                    if (nextYear === null && activeRegion === 'korean') {
+                      setActiveRegion('all');
+                    }
+                  }}
+                  className={cn(
+                    "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
+                    activeYear === 2027 
+                      ? "bg-primary border-primary text-black" 
+                      : "bg-white/5 border-white/10 text-primary hover:bg-primary/10"
+                  )}
+                >
+                  <CalendarIcon size={16} />
+                  2027 Releases
+                </button>
               </div>
 
               {showRegionFilters && (
                 <div className="flex flex-wrap gap-2 items-center">
                   <Filter size={16} className="text-primary mr-2" />
-                  {REGIONS.map((reg) => (
-                    <button
-                      key={reg.value}
-                      onClick={() => setActiveRegion(reg.value)}
-                      className={cn(
-                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                        activeRegion === reg.value 
-                          ? "border-primary bg-primary/10 text-primary" 
-                          : "border-white/10 text-muted-foreground hover:border-white/30"
-                      )}
-                    >
-                      {reg.label}
-                    </button>
-                  ))}
+                  {REGIONS
+                    .filter(reg => reg.value !== 'korean' || activeYear === 2027)
+                    .map((reg) => (
+                      <button
+                        key={reg.value}
+                        onClick={() => setActiveRegion(reg.value)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
+                          activeRegion === reg.value 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-white/10 text-muted-foreground hover:border-white/30"
+                        )}
+                      >
+                        {reg.label}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
@@ -185,6 +219,18 @@ const Upcoming = () => {
             {isSearching && searchResults.length === 0 && (
               <div className="text-center py-20 opacity-50">
                 <p className="text-xl">No result found.</p>
+              </div>
+            )}
+
+            {!isSearching && items.length === 0 && (
+              <div className="text-center py-32 opacity-50 flex flex-col items-center justify-center">
+                <CalendarIcon size={64} className="mb-4 text-primary/20" />
+                <h2 className="text-2xl font-serif font-bold">No Upcoming Content</h2>
+                <p className="text-muted-foreground mt-2">
+                  {activeRegion !== 'all' 
+                    ? `No ${activeRegion} content announced yet${activeYear ? ` for ${activeYear}` : ''}.` 
+                    : `Nothing announced for this category yet${activeYear ? ` for ${activeYear}` : ''}.`}
+                </p>
               </div>
             )}
             

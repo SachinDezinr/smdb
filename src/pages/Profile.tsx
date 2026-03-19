@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock, Bell } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -36,7 +36,7 @@ const Profile = () => {
     getUser();
   }, []);
 
-  const handleUpdateUsername = async () => {
+  const handleUpdateProfile = async () => {
     const usernameRegex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
     if (!usernameRegex.test(username)) {
       showError("Username must start/end with letters, and only contain letters, numbers, _ or .");
@@ -45,22 +45,19 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', username)
-        .single();
-      
-      if (existing && existing.username !== user?.user_metadata?.username) {
-        showError("Username already taken");
-        return;
-      }
-
-      const { error } = await supabase.auth.updateUser({
+      const { error: authError } = await supabase.auth.updateUser({
         data: { username }
       });
-      if (error) throw error;
-      showSuccess("Username updated successfully!");
+      if (authError) throw authError;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+      
+      if (profileError) throw profileError;
+
+      showSuccess("Profile updated successfully!");
       setIsEditing(false);
     } catch (error: any) {
       showError(error.message);
@@ -119,6 +116,7 @@ const Profile = () => {
         </header>
 
         <div className="space-y-6">
+          {/* Account Settings Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Edit3 size={20} className="text-primary" />
@@ -128,36 +126,45 @@ const Profile = () => {
             <div className="space-y-8">
               <div className="flex flex-col gap-2">
                 <label className="text-sm text-muted-foreground">Username</label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    disabled={!isEditing}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                  {isEditing ? (
-                    <button
-                      onClick={handleUpdateUsername}
-                      disabled={loading}
-                      className="bg-primary text-black px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform flex items-center justify-center gap-2"
-                    >
-                      {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-                      Save
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  disabled={!isEditing}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground">Change Password</label>
+              <div className="flex justify-end">
+                {isEditing ? (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-6 py-3 rounded-xl font-bold text-white/60 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUpdateProfile}
+                      disabled={loading}
+                      className="bg-primary text-black px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform flex items-center gap-2"
+                    >
+                      {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                      Save Changes
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-white/10 text-white px-8 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                )}
+              </div>
+
+              <div className="pt-8 border-t border-white/5">
+                <label className="text-sm text-muted-foreground block mb-2">Change Password</label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -181,6 +188,7 @@ const Profile = () => {
             </div>
           </section>
 
+          {/* Social Circle Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Users size={20} className="text-primary" />
@@ -198,10 +206,11 @@ const Profile = () => {
             </Link>
           </section>
 
-          <section className="glass-card p-6 lg:p-8 border-white/5">
+          {/* Help & Info Section (Mobile Only) */}
+          <section className="lg:hidden glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Info size={20} className="text-primary" />
-              Information
+              Help & Information
             </h2>
             <div className="space-y-3">
               <Link to="/about" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
@@ -214,13 +223,14 @@ const Profile = () => {
               <Link to="/contact" className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group">
                 <div className="flex items-center gap-3">
                   <Mail size={20} className="text-primary" />
-                  <span>Contact Us</span>
+                  <span>Contact Support</span>
                 </div>
                 <ChevronRight size={18} className="text-muted-foreground group-hover:text-white transition-colors" />
               </Link>
             </div>
           </section>
 
+          {/* Danger Zone Section */}
           <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <LogOut size={20} className="text-red-500" />

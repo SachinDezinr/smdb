@@ -27,10 +27,14 @@ const footerItems = [
   { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
+/**
+ * Navigation Component: Handles both Desktop Sidebar and Mobile Bottom Navigation.
+ */
 export const Navigation = () => {
   const location = useLocation();
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
+  // Check for pending friend requests to show notification dot
   useEffect(() => {
     const checkRequests = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -75,18 +79,22 @@ export const Navigation = () => {
                   : "text-muted-foreground hover:bg-white/5 hover:text-white"
               )}
             >
-              <item.icon size={20} className={cn(
-                "transition-transform duration-300 group-hover:scale-110",
-                location.pathname === item.path ? "text-black" : "text-primary"
-              )} />
+              <div className="relative">
+                <item.icon size={20} className={cn(
+                  "transition-transform duration-300 group-hover:scale-110",
+                  location.pathname === item.path ? "text-black" : "text-primary"
+                )} />
+                {/* Desktop: Dot on Friends icon */}
+                {item.path === '/friends' && hasPendingRequests && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+                )}
+              </div>
               {item.label}
-              {item.path === '/profile' && hasPendingRequests && (
-                <span className="absolute right-4 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              )}
             </Link>
           ))}
         </nav>
 
+        {/* Desktop Footer Section */}
         <div className="pt-6 border-t border-white/10 space-y-2">
           {footerItems.map((item) => (
             <Link
@@ -106,27 +114,30 @@ export const Navigation = () => {
           
           <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
             <p>© 2026 SMDB. All Rights Reserved.</p>
-            <p className="mt-1">Unauthorized copying of code, design, or content is strictly prohibited.</p>
+            <p className="mt-2 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
           </div>
         </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-4 z-50">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 z-50">
         {mobileNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "flex flex-col items-center gap-1 transition-colors relative",
+              "flex flex-col items-center gap-1 transition-colors relative flex-1",
               location.pathname === item.path ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <item.icon size={20} />
-            <span className="text-[10px] font-medium">{item.label}</span>
-            {item.path === '/profile' && hasPendingRequests && (
-              <span className="absolute top-0 right-2 w-2 h-2 bg-red-500 rounded-full border border-background" />
-            )}
+            <div className="relative">
+              <item.icon size={18} />
+              {/* Mobile: Dot stays on Profile icon */}
+              {item.path === '/profile' && hasPendingRequests && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+              )}
+            </div>
+            <span className="text-[9px] font-medium">{item.label}</span>
           </Link>
         ))}
       </nav>
