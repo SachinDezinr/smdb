@@ -6,11 +6,11 @@ export type Region = "all" | "hollywood" | "bollywood" | "punjabi" | "south-indi
 export interface ContentItem {
   id: number;
   title: string;
-  name?: string; // Added for TS fix
+  name?: string;
   poster_path: string;
   backdrop_path?: string;
   release_date: string;
-  first_air_date?: string; // Added for TS fix
+  first_air_date?: string;
   vote_average: number;
   media_type: MediaType;
   genre_ids: number[];
@@ -31,19 +31,16 @@ const cache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 1000 * 60 * 60;
 
 const inFlight = new Map<string, Promise<any>>();
-let activityScore = 0;
-const ACTIVITY_THRESHOLD = 3;
 
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
-    // Added with_release_type=3|2 to prioritize theatrical releases
-    case "bollywood": return { with_original_language: "hi", region: "IN", with_release_type: "3|2" };
-    case "punjabi": return { with_original_language: "pa", region: "IN", with_release_type: "3|2" };
-    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN", with_release_type: "3|2" };
-    case "hollywood": return { with_original_language: "en", region: "US", with_release_type: "3|2" };
+    case "bollywood": return { with_original_language: "hi", region: "IN", with_release_type: "3" };
+    case "punjabi": return { with_original_language: "pa", region: "IN", with_release_type: "3" };
+    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN", with_release_type: "3" };
+    case "hollywood": return { with_original_language: "en", region: "US", with_release_type: "3" };
     case "animated": return { with_genres: "16" };
     case "korean": return { with_original_language: "ko" };
-    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN", with_release_type: "3|2" };
+    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN", with_release_type: "3" };
     case "international": return { with_original_language: "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa" };
     default: return {};
   }
@@ -63,8 +60,6 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
   }
 
   const requestPromise = (async () => {
-    activityScore++;
-    
     if (!cachedSession) {
       const { data: { session } } = await supabase.auth.getSession();
       cachedSession = session;
@@ -102,15 +97,8 @@ const fetchFromProxy = async (path: string, params: Record<string, string | numb
 };
 
 const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
-  const adultKeywords = ['hentai', 'porn', 'erotica', 'erotic', 'sexy', 'hot scenes'];
-
   return (results || [])
-    .filter((item: any) => {
-      if (item.adult) return false;
-      if (!item.poster_path) return false;
-      const title = (item.title || item.name || '').toLowerCase();
-      return !adultKeywords.some(kw => title.includes(kw));
-    })
+    .filter((item: any) => item.poster_path && !item.adult)
     .map((item: any) => {
       let type = (item.media_type as MediaType) || defaultType;
       const isAnimated = item.genre_ids?.includes(16);
@@ -124,7 +112,7 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
         id: item.id,
         title: item.title || item.name,
         name: item.name,
-        poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "",
+        poster_path: `https://image.tmdb.org/t/p/w342${item.poster_path}`,
         backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : "",
         release_date: item.release_date || item.first_air_date || "TBA",
         first_air_date: item.first_air_date,
@@ -162,7 +150,7 @@ const uniqueById = (items: ContentItem[]): ContentItem[] => {
 export const fetchTrending = async (): Promise<ContentItem[]> => {
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day'),
-    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', with_release_type: '3|2' }),
+    fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', with_release_type: '3' }),
     fetchFromProxy('/trending/tv/day'),
     fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc' }),
     fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc' })
@@ -178,12 +166,6 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   return uniqueById(combined).slice(0, 12);
 };
 
-export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
-  const data = await fetchFromProxy(`/${type}/${id}/videos`);
-  const trailer = data.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-  return trailer ? `https://www.youtube.com/embed/${trailer.key}` : null;
-};
-
 export const fetchContent = async (
   type: MediaType,
   year?: number,
@@ -196,15 +178,17 @@ export const fetchContent = async (
     return uniqueById(mapResults(data.results || [], type));
   }
 
-  const currentYear = new Date().getFullYear();
-  const targetYear = year || currentYear;
-
+  const today = new Date().toISOString().split('T')[0];
   const baseParams: any = {
     page,
     include_adult: false,
     sort_by: 'popularity.desc',
-    [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
+    [type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte']: today
   };
+
+  if (year) {
+    baseParams[type === 'movie' ? 'primary_release_year' : 'first_air_date_year'] = year;
+  }
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const [hData, iData] = await Promise.all([
@@ -221,13 +205,6 @@ export const fetchContent = async (
 
   const data = await fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, params);
   return uniqueById(mapResults(data.results || [], type));
-};
-
-export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
-  const data = await fetchFromProxy(`/${type}/${id}/credits`);
-  const director = data.crew?.find((c: any) => c.job === 'Director')?.name;
-  const cast = data.cast?.slice(0, 5).map((c: any) => ({ id: c.id, name: c.name }));
-  return { director, cast };
 };
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all", page: number = 1): Promise<ContentItem[]> => {
@@ -253,6 +230,19 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
     
   const data = await fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, params);
   return uniqueById(mapResults(data.results || [], type));
+};
+
+export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
+  const data = await fetchFromProxy(`/${type}/${id}/credits`);
+  const director = data.crew?.find((c: any) => c.job === 'Director')?.name;
+  const cast = data.cast?.slice(0, 5).map((c: any) => ({ id: c.id, name: c.name }));
+  return { director, cast };
+};
+
+export const fetchTrailers = async (id: number, type: 'movie' | 'tv') => {
+  const data = await fetchFromProxy(`/${type}/${id}/videos`);
+  const trailer = data.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+  return trailer ? `https://www.youtube.com/embed/${trailer.key}` : null;
 };
 
 export const smartWarmCache = async () => {
