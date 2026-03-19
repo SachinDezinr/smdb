@@ -6,15 +6,12 @@ import { motion } from 'framer-motion';
 import { Film, CheckCircle2, Users, BarChart3, Calendar } from 'lucide-react';
 
 const features = [
-  { icon: Calendar, title: "Year-based Browsing", desc: "Explore content organized by release year from 1950 to the future." },
+  { icon: Calendar, title: "Year-based Browsing", desc: "Explore content organized by release year from 1950 to future." },
   { icon: CheckCircle2, title: "Watch Tracking", desc: "Keep a personal log of every movie and series you've watched." },
   { icon: BarChart3, title: "Live Statistics", desc: "Get detailed insights into your viewing habits and yearly wrapped." },
   { icon: Users, title: "Friend System", desc: "Compare collections and see what your friends are watching." },
 ];
 
-/**
- * About Page: Explains the purpose and features of SMDB.
- */
 const About = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -31,7 +28,6 @@ const About = () => {
         </motion.div>
 
         <div className="space-y-12">
-          {/* Mission Statement */}
           <section className="glass-card p-8 border-primary/20 cinematic-glow">
             <h2 className="text-2xl font-serif font-bold mb-4 text-primary">What is SMDB?</h2>
             <p className="text-lg leading-relaxed text-white/80 mb-6">
@@ -44,7 +40,6 @@ const About = () => {
             </p>
           </section>
 
-          {/* Feature Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {features.map((f, i) => (
               <motion.div
@@ -61,7 +56,6 @@ const About = () => {
             ))}
           </div>
 
-          {/* Workflow Steps */}
           <section className="text-center py-12">
             <h2 className="text-3xl font-serif font-bold mb-8">How It Works</h2>
             <div className="flex flex-col md:flex-row justify-between gap-8">

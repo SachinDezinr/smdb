@@ -46,31 +46,16 @@ const Auth = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { 
-            data: { username } 
-          }
+          options: { data: { username } }
         });
         if (error) throw error;
-        
-        showSuccess("Registration successful! Please check your email for confirmation.");
+        showSuccess("You are successfully registered! Please check your email to verify.");
         setMode('login');
       } else if (mode === 'forgot') {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .eq('username', username)
-          .single();
-        
-        if (profileError || !profile) {
-          throw new Error("Account details do not match our records.");
-        }
-
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/profile`,
-        });
+        // Securely trigger password reset via Supabase Auth
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        showSuccess("Details verified! A reset link has been sent to your email.");
+        showSuccess("If an account exists with this email, a reset link has been sent.");
         setMode('login');
       }
     } catch (error: any) {
@@ -82,79 +67,76 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden">
-      {/* Increased intensity of yellow glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/25 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/15 rounded-full blur-[120px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md glass-card p-8 border-primary/20 cinematic-glow relative z-10"
+        className="w-full max-w-md glass-card p-8 border-primary/20 cinematic-glow"
       >
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
             <Film className="text-black" size={32} />
           </div>
           <h1 className="text-3xl font-serif font-bold text-primary">SMDB</h1>
-          <p className="text-muted-foreground text-sm mt-2 text-center">
+          <p className="text-muted-foreground text-sm mt-2">
             {mode === 'login' ? "Sign in to track your journey" : 
              mode === 'register' ? "Create your cinematic profile" : 
              "Reset your password"}
           </p>
         </div>
 
-        <div className="space-y-4">
-          <form onSubmit={handleAuth} className="space-y-4">
-            {(mode === 'register' || mode === 'forgot') && (
-              <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Username"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-            )}
-            
+        <form onSubmit={handleAuth} className="space-y-4">
+          {mode === 'register' && (
             <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
               <input
-                type="email"
-                placeholder="Email Address"
+                type="text"
+                placeholder="Username"
                 required
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
+          )}
+          
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+            <input
+              type="email"
+              placeholder="Email Address"
+              required
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-            {mode !== 'forgot' && (
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            )}
+          {mode !== 'forgot' && (
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+              <input
+                type="password"
+                placeholder="Password"
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 
-               (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Verify & Reset")}
-            </button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
+          >
+            {loading ? <Loader2 className="animate-spin" size={20} /> : 
+             (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Reset Password")}
+          </button>
+        </form>
 
         <div className="mt-8 flex flex-col gap-3 text-center">
           {mode === 'login' ? (

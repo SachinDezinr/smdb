@@ -4,21 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
-import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, Heart, BarChart3, Calendar } from 'lucide-react';
+import { Search, Library, Trash2, Loader2, BarChart3, ChevronRight, ChevronUp, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Collection = () => {
   const [watchedItems, setWatchedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('all');
-  const navigate = useNavigate();
-
-  const currentYear = new Date().getFullYear();
 
   const fetchWatched = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -60,40 +56,13 @@ const Collection = () => {
     tv: watchedItems.filter(i => i.media_type === 'tv').length,
     anime: watchedItems.filter(i => i.media_type === 'anime').length,
     kdrama: watchedItems.filter(i => i.media_type === 'k-drama').length,
-    currentYear: watchedItems.filter(i => {
-      if (!i.release_date || i.release_date === "TBA") return false;
-      return new Date(i.release_date).getFullYear() === currentYear;
-    }).length,
   };
 
-  const filteredItems = watchedItems.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesTab = false;
-    if (activeTab === 'all') {
-      matchesTab = true;
-    } else if (['movie', 'tv', 'anime', 'k-drama'].includes(activeTab)) {
-      matchesTab = item.media_type === activeTab;
-    } else if (activeTab === currentYear.toString()) {
-      const itemYear = item.release_date && item.release_date !== "TBA" 
-        ? new Date(item.release_date).getFullYear().toString() 
-        : "";
-      matchesTab = itemYear === activeTab;
-    }
-    
-    return matchesSearch && matchesTab;
-  });
+  const filteredItems = watchedItems.filter(item => 
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const displayedItems = filteredItems.slice(0, visibleCount);
-
-  const statCards = [
-    { id: 'all', label: 'All', value: stats.total, icon: Library, color: 'text-white' },
-    { id: 'movie', label: 'Movies', value: stats.movies, icon: Film, color: 'text-primary' },
-    { id: 'tv', label: 'Series', value: stats.tv, icon: Tv, color: 'text-blue-400' },
-    { id: 'anime', label: 'Anime', value: stats.anime, icon: Sparkles, color: 'text-purple-400' },
-    { id: 'k-drama', label: 'K-Drama', value: stats.kdrama, icon: Heart, color: 'text-pink-400' },
-    { id: currentYear.toString(), label: currentYear.toString(), value: stats.currentYear, icon: Calendar, color: 'text-emerald-400' },
-  ];
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -106,52 +75,48 @@ const Collection = () => {
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
                 Your <span className="text-primary">Collection</span>
               </h1>
-              <p className="text-muted-foreground mt-2">Manage your personal cinematic library.</p>
+              <Link 
+                to="/stats" 
+                className="inline-flex items-center gap-2 mt-4 text-primary hover:underline font-bold text-sm lg:hidden"
+              >
+                <BarChart3 size={16} />
+                View Detailed Stats
+                <ChevronRight size={14} />
+              </Link>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="relative group flex-1 sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search collection..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              {/* Detailed Stats Button - Mobile Only */}
-              <button 
-                onClick={() => navigate('/stats')}
-                className="lg:hidden flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary hover:text-black transition-all font-bold"
-              >
-                <BarChart3 size={18} />
-                Detailed Stats
-              </button>
+            <div className="relative group max-w-md w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+              <input
+                type="text"
+                placeholder="Search your collection..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* Interactive Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {statCards.map((stat, i) => (
-              <motion.button
-                key={stat.id}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { label: 'Total', value: stats.total, color: 'primary' },
+              { label: 'Movies', value: stats.movies, color: 'white' },
+              { label: 'Series', value: stats.tv, color: 'white' },
+              { label: 'Anime', value: stats.anime, color: 'white' },
+              { label: 'K-Drama', value: stats.kdrama, color: 'white' },
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                onClick={() => { setActiveTab(stat.id); setVisibleCount(12); }}
-                className={cn(
-                  "glass-card p-4 border-white/5 flex flex-col items-center text-center group transition-all relative overflow-hidden",
-                  activeTab === stat.id ? "border-primary/50 bg-primary/5 cinematic-glow" : "hover:border-white/20"
-                )}
+                className="glass-card p-4 text-center border-white/5"
               >
-                {activeTab === stat.id && (
-                  <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-                )}
-                <stat.icon className={cn("mb-2 transition-transform group-hover:scale-110", stat.color)} size={24} />
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-              </motion.button>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
+                <p className={cn("text-2xl font-bold", stat.color === 'primary' ? "text-primary" : "text-white")}>
+                  {stat.value}
+                </p>
+              </motion.div>
             ))}
           </div>
         </header>
@@ -160,11 +125,11 @@ const Collection = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="animate-spin text-primary" size={48} />
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : watchedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center opacity-50">
             <Library size={64} className="mb-4" />
-            <h2 className="text-2xl font-serif">No items found</h2>
-            <p>Try changing your filters or adding more content</p>
+            <h2 className="text-2xl font-serif">Your collection is empty</h2>
+            <p>Start adding content from the Home tab</p>
           </div>
         ) : (
           <>
@@ -197,7 +162,7 @@ const Collection = () => {
             {visibleCount < filteredItems.length && (
               <div className="mt-12 flex justify-center">
                 <button
-                  onClick={() => setVisibleCount(prev => prev + 12)}
+                  onClick={() => setVisibleCount(prev => prev + 10)}
                   className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
                 >
                   <Plus size={20} />
