@@ -18,15 +18,18 @@ export interface ContentItem {
   cast?: string[];
 }
 
-const getRegionParams = (region: Region) => {
+const getRegionParams = (region: Region, isUpcoming: boolean = false) => {
+  // For upcoming content, we relax the release_type constraint as it's often not set yet for future dates
+  const releaseType = isUpcoming ? "" : "&with_release_type=2|3";
+  
   switch (region) {
-    case "bollywood": return "&with_original_language=hi&region=IN&with_release_type=2|3";
-    case "punjabi": return "&with_original_language=pa&region=IN&with_release_type=2|3";
-    case "south-indian": return "&with_original_language=te|ta|kn|ml&region=IN&with_release_type=2|3";
-    case "hollywood": return "&with_original_language=en&region=US&with_release_type=2|3";
-    case "korean": return "&with_original_language=ko&region=KR";
-    case "animated": return "&with_genres=16";
-    default: return "&with_release_type=2|3";
+    case "bollywood": return `&with_original_language=hi&region=IN${releaseType}`;
+    case "punjabi": return `&with_original_language=pa&region=IN${releaseType}`;
+    case "south-indian": return `&with_original_language=te|ta|kn|ml&region=IN${releaseType}`;
+    case "hollywood": return `&with_original_language=en&region=US${releaseType}`;
+    case "korean": return `&with_original_language=ko&region=KR`;
+    case "animated": return `&with_genres=16`;
+    default: return isUpcoming ? "" : "&with_release_type=2|3";
   }
 };
 
@@ -118,7 +121,8 @@ export const fetchContent = async (
 
       if (query) return true;
       
-      if (!year) return true;
+      // Strictly only show released content for the home screen/browsing
+      if (item.release_date === "TBA") return false;
       return item.release_date <= today;
     });
 };
@@ -127,17 +131,21 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const url = `${BASE_URL}/trending/all/day?api_key=${TMDB_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
-  return (data.results || []).map((item: any) => ({
-    id: item.id,
-    title: item.title || item.name,
-    poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-    backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
-    release_date: item.release_date || item.first_air_date || "TBA",
-    vote_average: item.vote_average || 0,
-    media_type: item.media_type || 'movie',
-    genre_ids: item.genre_ids || [],
-    overview: item.overview
-  }));
+  const today = new Date().toISOString().split('T')[0];
+
+  return (data.results || [])
+    .map((item: any) => ({
+      id: item.id,
+      title: item.title || item.name,
+      poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
+      backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : "",
+      release_date: item.release_date || item.first_air_date || "TBA",
+      vote_average: item.vote_average || 0,
+      media_type: item.media_type || 'movie',
+      genre_ids: item.genre_ids || [],
+      overview: item.overview
+    }))
+    .filter((item: any) => item.release_date <= today);
 };
 
 export const fetchTrailers = async (id: number, type: 'movie' | 'tv'): Promise<string | null> => {
@@ -162,7 +170,7 @@ export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
 };
 
 export const fetchUpcoming = async (type: MediaType = "movie", region: Region = "all", page: number = 1, includeAdult: boolean = false): Promise<ContentItem[]> => {
-  const regionParams = getRegionParams(region);
+  const regionParams = getRegionParams(region, true);
   const adultParam = `&include_adult=${includeAdult}`;
   let url = "";
   
@@ -196,5 +204,6 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       media_type: type,
       genre_ids: item.genre_ids || [],
       overview: item.overview
-    }));
+    }))
+    .filter((item: any) => item.release_date >= today);
 };
