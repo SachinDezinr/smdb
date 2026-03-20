@@ -27,7 +27,9 @@ const getRegionParams = (region: Region, isUpcoming: boolean = false) => {
     case "bollywood": return `&with_original_language=hi&region=IN${releaseType}`;
     case "punjabi": return `&with_original_language=pa&region=IN${releaseType}`;
     case "south-indian": return `&with_original_language=te|ta|kn|ml&region=IN${releaseType}`;
-    case "hollywood": return `&with_original_language=en&region=US${releaseType}`;
+    case "hollywood": 
+      // For upcoming, we remove region=US to be more inclusive of global English releases
+      return isUpcoming ? `&with_original_language=en` : `&with_original_language=en&region=US${releaseType}`;
     case "korean": return `&with_original_language=ko&region=KR`;
     case "animated": return `&with_genres=16`;
     default: return "";
@@ -120,10 +122,13 @@ export const fetchContent = async (
       if (!item.title) return false;
       if (query) return true;
       if (item.release_date === "TBA") return false;
+      
+      // Allow future dates if we are specifically looking for a future year (like 2027)
+      if (year && year > currentYear) return true;
+      
       return item.release_date <= today;
     })
     .sort((a, b) => {
-      // Sort by release date descending (newest first)
       if (a.release_date === "TBA") return 1;
       if (b.release_date === "TBA") return -1;
       return new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
@@ -181,7 +186,6 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
 
   switch (type) {
     case "movie":
-      // Using release_date.gte for broader upcoming movie results
       url = `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&release_date.gte=${today}&sort_by=release_date.asc&page=${page}${regionParams}${adultParam}`;
       break;
     case "tv":
