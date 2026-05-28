@@ -132,23 +132,28 @@ const Compare = () => {
               <p className="text-muted-foreground mt-2">Discover shared tastes and new recommendations.</p>
             </div>
 
-            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'common', label: 'Common' },
-                { id: 'unique', label: 'Unique' }
-              ].map((btn) => (
-                <button
-                  key={btn.id}
-                  onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
-                  className={cn(
-                    "px-6 py-2 rounded-lg text-sm font-bold transition-all",
-                    filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
-                  )}
-                >
-                  {btn.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-4">
+              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'common', label: 'Common' },
+                  { id: 'unique', label: 'Unique' }
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
+                    className={cn(
+                      "px-6 py-2 rounded-lg text-sm font-bold transition-all",
+                      filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
+                    )}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+              <div className="hidden md:block text-primary font-bold whitespace-nowrap">
+                Total Watched: {friendCollection.length}
+              </div>
             </div>
           </div>
         </header>
