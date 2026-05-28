@@ -15,7 +15,7 @@ interface ContentCardProps {
 }
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
-  const [showCredits, setShowCredits] = useState(false) => {
+  const [showCredits, setShowCredits] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
