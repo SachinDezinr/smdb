@@ -117,7 +117,7 @@ const Upcoming = () => {
       <ScrollToTop />
       
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10 space-y-6">
+        <header className="mb-8 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <h1 className="text-4xl lg:text-5xl font-serif font-bold">
@@ -149,80 +149,103 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="flex flex-wrap gap-2">
-              {/* Category Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/10">
-                    <LayoutGrid size={16} />
-                    {CATEGORIES.find(c => c.value === activeCategory)?.label || 'Category'}
-                    <ChevronDown size={14} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+            <div className="space-y-4">
+              {/* Desktop Controls */}
+              <div className="hidden lg:flex flex-col gap-4">
+                <div className="flex flex-wrap gap-2 items-center">
                   {CATEGORIES.map((cat) => (
-                    <DropdownMenuItem 
+                    <button
                       key={cat.value}
-                      onClick={() => { setActiveCategory(cat.value); setActiveYear(null); setActiveRegion('all'); }}
+                      onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}
                       className={cn(
-                        "cursor-pointer focus:bg-primary focus:text-black font-medium",
-                        activeCategory === cat.value && !activeYear && "bg-primary/20 text-primary"
+                        "px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                        activeCategory === cat.value && !activeYear
+                          ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
+                          : "bg-white/5 border-white/10 text-white hover:bg-white/10"
                       )}
                     >
                       {cat.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Filter Dropdown */}
-              {showRegionFilters && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all">
-                      <Filter size={16} className="text-primary" />
-                      {REGIONS.find(r => r.value === activeRegion)?.label || 'Filter'}
-                      <ChevronDown size={14} />
                     </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+                  ))}
+                  <div className="w-px h-6 bg-white/10 mx-2" />
+                  <button 
+                    onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                      activeYear === 2027 
+                        ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5" 
+                        : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                    )}
+                  >
+                    <Sparkles size={16} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
+                    2027 Releases
+                  </button>
+                </div>
+                {showRegionFilters && (
+                  <div className="flex flex-wrap gap-2">
                     {REGIONS
                       .filter(reg => reg.value !== 'korean' || activeYear === 2027)
                       .map((reg) => (
-                        <DropdownMenuItem 
+                        <button
                           key={reg.value}
                           onClick={() => setActiveRegion(reg.value)}
                           className={cn(
-                            "cursor-pointer focus:bg-primary focus:text-black font-medium",
-                            activeRegion === reg.value && "bg-primary/20 text-primary"
+                            "px-4 py-2 rounded-xl font-bold text-xs transition-all border",
+                            activeRegion === reg.value 
+                              ? "bg-white/20 border-primary text-primary" 
+                              : "bg-white/5 border-white/5 text-muted-foreground hover:text-white"
                           )}
                         >
                           {reg.label}
-                        </DropdownMenuItem>
+                        </button>
                       ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Controls */}
+              <div className="lg:hidden flex flex-wrap gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm">
+                      <LayoutGrid size={16} />
+                      {activeYear === 2027 ? '2027 Releases' : CATEGORIES.find(c => c.value === activeCategory)?.label}
+                      <ChevronDown size={14} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
+                    {CATEGORIES.map((cat) => (
+                      <DropdownMenuItem key={cat.value} onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}>
+                        {cat.label}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem onClick={() => setActiveYear(2027)}>
+                      2027 Releases
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
 
-              {/* Standalone 2027 Releases Button */}
-              <button 
-                onClick={() => { 
-                  if (activeYear === 2027) {
-                    setActiveYear(null);
-                  } else {
-                    setActiveYear(2027);
-                  }
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border",
-                  activeYear === 2027 
-                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5" 
-                    : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                {showRegionFilters && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm">
+                        <Filter size={16} className="text-primary" />
+                        {REGIONS.find(r => r.value === activeRegion)?.label}
+                        <ChevronDown size={14} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
+                      {REGIONS
+                        .filter(reg => reg.value !== 'korean' || activeYear === 2027)
+                        .map((reg) => (
+                          <DropdownMenuItem key={reg.value} onClick={() => setActiveRegion(reg.value)}>
+                            {reg.label}
+                          </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-              >
-                <Sparkles size={16} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
-                2027 Releases
-              </button>
+              </div>
             </div>
           )}
         </header>

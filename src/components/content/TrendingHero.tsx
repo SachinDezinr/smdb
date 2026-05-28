@@ -56,7 +56,7 @@ export const TrendingHero = () => {
   };
 
   if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] bg-neutral-900 animate-pulse rounded-3xl" />
+    <div className="w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900 animate-pulse rounded-3xl" />
   );
 
   const current = trending[currentIndex];
@@ -79,7 +79,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[1/1] md:aspect-[16/9] lg:aspect-[21/9] rounded-[2rem] overflow-hidden mb-12 group touch-pan-y">
+    <div className="relative w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] rounded-[2rem] overflow-hidden mb-8 group touch-pan-y">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -111,13 +111,11 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          {/* Decreased black edge intensity by reducing opacity of gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Desktop Navigation Buttons */}
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
@@ -133,13 +131,13 @@ export const TrendingHero = () => {
         </button>
       </div>
 
-      <div className="absolute inset-0 p-6 md:p-10 lg:p-12 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
+      <div className="absolute inset-0 p-6 md:p-8 lg:p-10 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
         <motion.div
           key={`info-${current.id}`}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="space-y-3 lg:space-y-4"
+          className="space-y-2 lg:space-y-3"
         >
           <div className="flex items-center gap-2">
             <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
@@ -149,19 +147,18 @@ export const TrendingHero = () => {
             </div>
           </div>
           
-          {/* Improved text responsiveness with intermediate md: breakpoint */}
-          <h2 className="text-2xl md:text-4xl lg:text-6xl font-serif font-bold leading-tight">
+          <h2 className="text-xl md:text-3xl lg:text-5xl font-serif font-bold leading-tight">
             {current.title}
           </h2>
           
-          <p className="text-muted-foreground text-[10px] md:text-sm lg:text-base line-clamp-2 max-w-lg">
+          <p className="text-muted-foreground text-[10px] md:text-xs lg:text-sm line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
-          <div className="flex items-center gap-4 pt-2 pointer-events-auto">
+          <div className="flex items-center gap-4 pt-1 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold text-[10px] md:text-xs lg:text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-[10px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
               <Play size={12} fill="currentColor" />
               Watch Trailer
@@ -170,8 +167,7 @@ export const TrendingHero = () => {
         </motion.div>
       </div>
 
-      {/* Navigation Dots */}
-      <div className="absolute bottom-6 lg:bottom-8 right-6 lg:right-12 flex gap-2 z-20">
+      <div className="absolute bottom-4 lg:bottom-6 right-6 lg:right-10 flex gap-1.5 z-20">
         {trending.map((_, i) => (
           <button
             key={i}
@@ -188,7 +184,6 @@ export const TrendingHero = () => {
         ))}
       </div>
 
-      {/* Trailer Modal */}
       <AnimatePresence>
         {trailerUrl && (
           <motion.div
