@@ -5,7 +5,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, CheckCircle2, Plus, ChevronUp } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -132,7 +132,7 @@ const Compare = () => {
               <p className="text-muted-foreground mt-2 text-sm md:text-base">Discover shared tastes and new recommendations.</p>
             </div>
 
-            <div className="flex flex-col items-center md:items-center gap-4 w-full md:w-auto">
+            <div className="flex flex-col items-center gap-4 w-full md:w-auto">
               <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-[320px] md:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
