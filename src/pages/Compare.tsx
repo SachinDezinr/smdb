@@ -132,7 +132,7 @@ const Compare = () => {
               <p className="text-muted-foreground mt-2 text-sm md:text-base">Discover shared tastes and new recommendations.</p>
             </div>
 
-            <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto">
+            <div className="flex flex-col items-center md:items-center gap-4 w-full md:w-auto">
               <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-[320px] md:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
@@ -151,7 +151,7 @@ const Compare = () => {
                   </button>
                 ))}
               </div>
-              <div className="hidden md:block text-primary font-bold whitespace-nowrap">
+              <div className="text-primary font-bold whitespace-nowrap text-sm">
                 Total Watched: {friendCollection.length}
               </div>
             </div>
@@ -205,11 +205,6 @@ const Compare = () => {
                     onToggleWatched={() => toggleWatched(item)}
                     showCategory={true}
                   />
-                  {myIds.has(item.content_id) && (
-                    <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
-                      <CheckCircle2 size(10) /> Shared
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

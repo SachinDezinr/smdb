@@ -151,8 +151,8 @@ const Upcoming = () => {
           {!isSearching && (
             <div className="space-y-4">
               {/* Desktop Controls */}
-              <div className="hidden lg:flex flex-col gap-4">
-                <div className="flex flex-wrap gap-2 items-center">
+              <div className="hidden lg:flex flex-col gap-4 items-center">
+                <div className="flex flex-wrap gap-2 items-center justify-center">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
@@ -182,7 +182,7 @@ const Upcoming = () => {
                   </button>
                 </div>
                 {showRegionFilters && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {REGIONS
                       .filter(reg => reg.value !== 'korean' || activeYear === 2027)
                       .map((reg) => (
@@ -204,7 +204,7 @@ const Upcoming = () => {
               </div>
 
               {/* Mobile Controls */}
-              <div className="lg:hidden flex flex-wrap gap-2">
+              <div className="lg:hidden flex flex-wrap gap-2 justify-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm">
