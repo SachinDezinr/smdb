@@ -124,16 +124,16 @@ const Compare = () => {
             <ArrowLeft size={18} /> Back to Friends
           </Link>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 text-center md:text-left">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
-              <p className="text-muted-foreground mt-2">Discover shared tastes and new recommendations.</p>
+              <p className="text-muted-foreground mt-2 text-sm md:text-base">Discover shared tastes and new recommendations.</p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+            <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto">
+              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-[320px] md:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'common', label: 'Common' },
@@ -143,7 +143,7 @@ const Compare = () => {
                     key={btn.id}
                     onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
                     className={cn(
-                      "px-6 py-2 rounded-lg text-sm font-bold transition-all",
+                      "flex-1 md:flex-none px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all",
                       filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
                     )}
                   >
@@ -207,7 +207,7 @@ const Compare = () => {
                   />
                   {myIds.has(item.content_id) && (
                     <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">
-                      <CheckCircle2 size={10} /> Shared
+                      <CheckCircle2 size(10) /> Shared
                     </div>
                   )}
                 </div>
