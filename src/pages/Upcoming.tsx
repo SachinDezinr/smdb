@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon, LayoutGrid, ChevronDown } from 'lucide-react';
+import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon, LayoutGrid, ChevronDown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { showError } from '@/utils/toast';
@@ -149,14 +149,14 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {/* Category Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/10">
-                    <LayoutGrid size={18} />
+                  <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/10">
+                    <LayoutGrid size={16} />
                     {CATEGORIES.find(c => c.value === activeCategory)?.label || 'Category'}
-                    <ChevronDown size={16} />
+                    <ChevronDown size={14} />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
@@ -172,15 +172,6 @@ const Upcoming = () => {
                       {cat.label}
                     </DropdownMenuItem>
                   ))}
-                  <DropdownMenuItem 
-                    onClick={() => { setActiveYear(2027); }}
-                    className={cn(
-                      "cursor-pointer focus:bg-primary focus:text-black font-medium",
-                      activeYear === 2027 && "bg-primary/20 text-primary"
-                    )}
-                  >
-                    2027 Releases
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -188,10 +179,10 @@ const Upcoming = () => {
               {showRegionFilters && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">
-                      <Filter size={18} className="text-primary" />
+                    <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all">
+                      <Filter size={16} className="text-primary" />
                       {REGIONS.find(r => r.value === activeRegion)?.label || 'Filter'}
-                      <ChevronDown size={16} />
+                      <ChevronDown size={14} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
@@ -212,6 +203,26 @@ const Upcoming = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+
+              {/* Standalone 2027 Releases Button */}
+              <button 
+                onClick={() => { 
+                  if (activeYear === 2027) {
+                    setActiveYear(null);
+                  } else {
+                    setActiveYear(2027);
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                  activeYear === 2027 
+                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5" 
+                    : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                )}
+              >
+                <Sparkles size={16} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
+                2027 Releases
+              </button>
             </div>
           )}
         </header>

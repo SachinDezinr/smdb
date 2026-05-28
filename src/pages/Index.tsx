@@ -214,14 +214,14 @@ const Index = () => {
           </div>
 
           {!isSearching && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {/* Category Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/10">
-                    <LayoutGrid size={18} />
+                  <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary/10">
+                    <LayoutGrid size={16} />
                     {CATEGORIES.find(c => c.value === activeCategory)?.label || 'Category'}
-                    <ChevronDown size={16} />
+                    <ChevronDown size={14} />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
@@ -244,10 +244,10 @@ const Index = () => {
               {showRegionFilters && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">
-                      <Filter size={18} className="text-primary" />
+                    <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all">
+                      <Filter size={16} className="text-primary" />
                       {REGIONS.find(r => r.value === activeRegion)?.label || 'Filter'}
-                      <ChevronDown size={16} />
+                      <ChevronDown size={14} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
