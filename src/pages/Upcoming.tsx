@@ -4,10 +4,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon } from 'lucide-react';
+import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon, LayoutGrid, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { showError } from '@/utils/toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -17,7 +23,7 @@ const CATEGORIES: { label: string; value: MediaType }[] = [
 ];
 
 const REGIONS: { label: string; value: Region }[] = [
-  { label: 'All', value: 'all' },
+  { label: 'All Regions', value: 'all' },
   { label: 'Hollywood', value: 'hollywood' },
   { label: 'Bollywood', value: 'bollywood' },
   { label: 'Punjabi', value: 'punjabi' },
@@ -143,62 +149,68 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => { setActiveCategory(cat.value); setActiveYear(null); setActiveRegion('all'); }}
+            <div className="flex flex-wrap gap-3">
+              {/* Category Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/10">
+                    <LayoutGrid size={18} />
+                    {CATEGORIES.find(c => c.value === activeCategory)?.label || 'Category'}
+                    <ChevronDown size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+                  {CATEGORIES.map((cat) => (
+                    <DropdownMenuItem 
+                      key={cat.value}
+                      onClick={() => { setActiveCategory(cat.value); setActiveYear(null); setActiveRegion('all'); }}
+                      className={cn(
+                        "cursor-pointer focus:bg-primary focus:text-black font-medium",
+                        activeCategory === cat.value && !activeYear && "bg-primary/20 text-primary"
+                      )}
+                    >
+                      {cat.label}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem 
+                    onClick={() => { setActiveYear(2027); }}
                     className={cn(
-                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                      activeCategory === cat.value && !activeYear
-                        ? "bg-primary text-black" 
-                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+                      "cursor-pointer focus:bg-primary focus:text-black font-medium",
+                      activeYear === 2027 && "bg-primary/20 text-primary"
                     )}
                   >
-                    {cat.label}
-                  </button>
-                ))}
-                <button
-                  onClick={() => { 
-                    const nextYear = activeYear === 2027 ? null : 2027;
-                    setActiveYear(nextYear);
-                    if (nextYear === null && activeRegion === 'korean') {
-                      setActiveRegion('all');
-                    }
-                  }}
-                  className={cn(
-                    "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border",
-                    activeYear === 2027 
-                      ? "bg-primary border-primary text-black" 
-                      : "bg-white/5 border-white/10 text-primary hover:bg-primary/10"
-                  )}
-                >
-                  <CalendarIcon size={16} />
-                  2027 Releases
-                </button>
-              </div>
+                    2027 Releases
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
+              {/* Filter Dropdown */}
               {showRegionFilters && (
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Filter size={16} className="text-primary mr-2" />
-                  {REGIONS
-                    .filter(reg => reg.value !== 'korean' || activeYear === 2027)
-                    .map((reg) => (
-                      <button
-                        key={reg.value}
-                        onClick={() => setActiveRegion(reg.value)}
-                        className={cn(
-                          "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                          activeRegion === reg.value 
-                            ? "border-primary bg-primary/10 text-primary" 
-                            : "border-white/10 text-muted-foreground hover:border-white/30"
-                        )}
-                      >
-                        {reg.label}
-                      </button>
-                    ))}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">
+                      <Filter size={18} className="text-primary" />
+                      {REGIONS.find(r => r.value === activeRegion)?.label || 'Filter'}
+                      <ChevronDown size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+                    {REGIONS
+                      .filter(reg => reg.value !== 'korean' || activeYear === 2027)
+                      .map((reg) => (
+                        <DropdownMenuItem 
+                          key={reg.value}
+                          onClick={() => setActiveRegion(reg.value)}
+                          className={cn(
+                            "cursor-pointer focus:bg-primary focus:text-black font-medium",
+                            activeRegion === reg.value && "bg-primary/20 text-primary"
+                          )}
+                        >
+                          {reg.label}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           )}

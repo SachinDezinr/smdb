@@ -5,12 +5,18 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -20,7 +26,7 @@ const CATEGORIES: { label: string; value: MediaType }[] = [
 ];
 
 const REGIONS: { label: string; value: Region }[] = [
-  { label: 'All', value: 'all' },
+  { label: 'All Regions', value: 'all' },
   { label: 'Hollywood', value: 'hollywood' },
   { label: 'Bollywood', value: 'bollywood' },
   { label: 'Punjabi', value: 'punjabi' },
@@ -208,42 +214,57 @@ const Index = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setActiveCategory(cat.value)}
-                    className={cn(
-                      "px-6 py-2 rounded-full text-sm font-semibold transition-all",
-                      activeCategory === cat.value 
-                        ? "bg-primary text-black" 
-                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    {cat.label}
+            <div className="flex flex-wrap gap-3">
+              {/* Category Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/10">
+                    <LayoutGrid size={18} />
+                    {CATEGORIES.find(c => c.value === activeCategory)?.label || 'Category'}
+                    <ChevronDown size={16} />
                   </button>
-                ))}
-              </div>
-
-              {showRegionFilters && (
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Filter size={16} className="text-primary mr-2" />
-                  {REGIONS.map((reg) => (
-                    <button
-                      key={reg.value}
-                      onClick={() => setActiveRegion(reg.value as Region)}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+                  {CATEGORIES.map((cat) => (
+                    <DropdownMenuItem 
+                      key={cat.value}
+                      onClick={() => setActiveCategory(cat.value)}
                       className={cn(
-                        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border",
-                        activeRegion === reg.value 
-                          ? "border-primary bg-primary/10 text-primary" 
-                          : "border-white/10 text-muted-foreground hover:border-white/30"
+                        "cursor-pointer focus:bg-primary focus:text-black font-medium",
+                        activeCategory === cat.value && "bg-primary/20 text-primary"
                       )}
                     >
-                      {reg.label}
-                    </button>
+                      {cat.label}
+                    </DropdownMenuItem>
                   ))}
-                </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Filter Dropdown */}
+              {showRegionFilters && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">
+                      <Filter size={18} className="text-primary" />
+                      {REGIONS.find(r => r.value === activeRegion)?.label || 'Filter'}
+                      <ChevronDown size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white min-w-[160px]">
+                    {REGIONS.map((reg) => (
+                      <DropdownMenuItem 
+                        key={reg.value}
+                        onClick={() => setActiveRegion(reg.value)}
+                        className={cn(
+                          "cursor-pointer focus:bg-primary focus:text-black font-medium",
+                          activeRegion === reg.value && "bg-primary/20 text-primary"
+                        )}
+                      >
+                        {reg.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           )}
