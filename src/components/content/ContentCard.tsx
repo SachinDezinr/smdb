@@ -105,7 +105,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
 
         {/* Category Pill */}
         {showCategory && (
-          <div className="absolute top-3 left-3 z-20">
+          <div className="absolute top-2 left-2 z-20">
             <span className="bg-black/60 backdrop-blur-md text-primary text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 uppercase tracking-wider">
               {getCategoryLabel(item.media_type)}
             </span>
@@ -170,7 +170,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
         )}
 
         {isWatched && (
-          <div className="absolute top-3 right-3 bg-primary text-black p-1.5 rounded-full shadow-lg z-10">
+          <div className="absolute top-2 right-2 bg-primary text-black p-1.5 rounded-full shadow-lg z-10">
             <CheckCircle2 size={16} />
           </div>
         )}
