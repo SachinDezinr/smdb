@@ -58,8 +58,6 @@ const Compare = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // If it's an undo, we explicitly want to REMOVE it
-    // Otherwise, we check if it's currently in the collection
     const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
 
     if (isUndo || isCurrentlyWatched) {
@@ -200,6 +198,7 @@ const Compare = () => {
                     }} 
                     isWatched={myIds.has(item.content_id)}
                     onToggleWatched={() => toggleWatched(item)}
+                    showCategory={true}
                   />
                   {myIds.has(item.content_id) && (
                     <div className="absolute top-2 left-2 bg-primary/90 text-black px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-lg">

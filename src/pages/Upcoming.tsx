@@ -224,7 +224,12 @@ const Upcoming = () => {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {(isSearching ? searchResults : items).map((item) => (
-                <ContentCard key={item.id} item={item} showReleaseDate />
+                <ContentCard 
+                  key={item.id} 
+                  item={item} 
+                  showReleaseDate 
+                  showCategory={isSearching}
+                />
               ))}
             </div>
             

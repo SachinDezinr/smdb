@@ -301,6 +301,7 @@ const Index = () => {
                       item={item} 
                       isWatched={watchedIds.includes(item.id)}
                       onToggleWatched={() => toggleWatched(item)}
+                      showCategory={true}
                     />
                   ))}
                 </div>

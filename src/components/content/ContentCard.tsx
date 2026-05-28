@@ -11,10 +11,11 @@ interface ContentCardProps {
   isWatched?: boolean;
   onToggleWatched?: (id: number) => void;
   showReleaseDate?: boolean;
+  showCategory?: boolean;
 }
 
-export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate }: ContentCardProps) => {
-  const [showCredits, setShowCredits] = useState(false);
+export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
+  const [showCredits, setShowCredits] = useState(false) => {
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
@@ -29,11 +30,20 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
     }
   };
 
+  const getCategoryLabel = (type: string) => {
+    switch (type) {
+      case 'movie': return 'Movie';
+      case 'tv': return 'Series';
+      case 'anime': return 'Anime';
+      case 'k-drama': return 'K-Drama';
+      default: return type;
+    }
+  };
+
   const today = new Date().toISOString().split('T')[0];
   const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
   const handlePosterClick = async () => {
-    // Always allow viewing credits for unreleased content or when explicitly requested
     if (!showReleaseDate && !isFuture) return;
     
     if (showCredits) {
@@ -89,6 +99,15 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate 
             <Film className="text-primary/20 mb-4" size={48} strokeWidth={1} />
             <span className="text-sm font-serif font-bold text-white/80 line-clamp-4 relative z-10">
               {item.title}
+            </span>
+          </div>
+        )}
+
+        {/* Category Pill */}
+        {showCategory && (
+          <div className="absolute top-3 left-3 z-20">
+            <span className="bg-black/60 backdrop-blur-md text-primary text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 uppercase tracking-wider">
+              {getCategoryLabel(item.media_type)}
             </span>
           </div>
         )}
