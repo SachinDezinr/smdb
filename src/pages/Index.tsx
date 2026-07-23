@@ -71,14 +71,14 @@ const Index = () => {
     setIsSearching(true);
     setLoadingYears({ 0: true });
     try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all');
+      const results = await fetchContent(activeCategory, undefined, 1, query, activeRegion);
       setSearchResults(results);
     } catch (error) {
       showError("Search failed. Please try again.");
     } finally {
       setLoadingYears({ 0: false });
     }
-  }, []);
+  }, [activeCategory, activeRegion]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

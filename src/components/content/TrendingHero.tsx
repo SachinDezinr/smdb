@@ -111,21 +111,23 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/30 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent pointer-events-none" />
+          {/* Enhanced Dark Vignette Overlays for maximum clarity */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/50 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_20%,_rgba(0,0,0,0.7)_100%)] pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button 
           onClick={() => paginate(-1)}
-          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
+          className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
         >
           <ChevronLeft size={24} />
         </button>
         <button 
           onClick={() => paginate(1)}
-          className="p-3 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
+          className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
         >
           <ChevronRight size={24} />
         </button>
@@ -140,18 +142,18 @@ export const TrendingHero = () => {
           className="space-y-2 lg:space-y-3"
         >
           <div className="flex items-center gap-2">
-            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Trending</span>
+            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest shadow-md">Trending</span>
             <div className="flex items-center gap-1 text-primary">
               <Star size={14} fill="currentColor" />
               <span className="text-sm font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
           </div>
           
-          <h2 className="text-xl md:text-3xl lg:text-5xl font-serif font-bold leading-tight">
+          <h2 className="text-xl md:text-3xl lg:text-5xl font-serif font-bold leading-tight drop-shadow-lg">
             {current.title}
           </h2>
           
-          <p className="text-muted-foreground text-[10px] md:text-xs lg:text-sm line-clamp-2 max-w-lg">
+          <p className="text-white/80 text-[10px] md:text-xs lg:text-sm line-clamp-2 max-w-lg drop-shadow-md">
             {current.overview}
           </p>
 
@@ -177,8 +179,8 @@ export const TrendingHero = () => {
               resetTimer();
             }}
             className={cn(
-              "h-1 rounded-full transition-all duration-500",
-              currentIndex === i ? "w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/20 hover:bg-white/40"
+              "h-1.5 rounded-full transition-all duration-500",
+              currentIndex === i ? "w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/30 hover:bg-white/50"
             )}
           />
         ))}

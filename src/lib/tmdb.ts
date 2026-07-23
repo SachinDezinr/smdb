@@ -104,12 +104,14 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
   return (results || [])
     .filter((item: any) => {
       if (item.adult) return false;
-      if (!item.poster_path) return false;
       
-      const title = (item.title || item.name || '').toLowerCase();
+      const title = (item.title || item.name || '').trim();
+      if (!title) return false;
+
       const overview = (item.overview || '').toLowerCase();
+      const titleLower = title.toLowerCase();
       
-      const isAdultContent = adultKeywords.some(kw => title.includes(kw) || overview.includes(kw));
+      const isAdultContent = adultKeywords.some(kw => titleLower.includes(kw) || overview.includes(kw));
       if (isAdultContent) return false;
       
       return true;
@@ -132,7 +134,7 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
         vote_average: item.vote_average || 0,
         media_type: type,
         genre_ids: item.genre_ids || [],
-        overview: item.overview,
+        overview: item.overview || "",
         popularity: item.popularity || 0,
         adult: item.adult,
         videos: item.videos
@@ -182,6 +184,7 @@ const sortYearContent = (items: ContentItem[]) => {
 };
 
 export const fetchTrending = async (): Promise<ContentItem[]> => {
+  const today = new Date().toISOString().split('T')[0];
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
@@ -196,7 +199,10 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const an = mapResults(anime.results || [], 'anime');
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
-  const combined = interleave(gm, im, gt, an, kd);
+  const combined = interleave(gm, im, gt, an, kd).filter(item => {
+    return !item.release_date || item.release_date === "TBA" || item.release_date <= today;
+  });
+
   return uniqueById(combined).slice(0, 12);
 };
 
@@ -261,10 +267,12 @@ export const fetchContent = async (
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  // Add release date filter to avoid future/unreleased content in year sections
+  // Add release date filter to avoid future/unreleased content in home sections
   if (targetYear <= currentYear) {
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
+
+  let finalItems: ContentItem[] = [];
 
   if (region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
@@ -276,21 +284,31 @@ export const fetchContent = async (
     ]);
 
     const combined = interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type));
-    return sortYearContent(uniqueById(combined));
+    finalItems = sortYearContent(uniqueById(combined));
+  } else {
+    let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
+    let params: any = { ...baseParams, ...getRegionParams(region) };
+
+    if (type === "anime") {
+      params.with_keywords = '210024';
+      params.with_original_language = 'ja';
+    } else if (type === "k-drama") {
+      params.with_original_language = 'ko';
+    }
+
+    const data = await fetchFromProxy(path, params);
+    finalItems = sortYearContent(uniqueById(mapResults(data.results || [], type)));
   }
 
-  let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
-  let params: any = { ...baseParams, ...getRegionParams(region) };
-
-  if (type === "anime") {
-    params.with_keywords = '210024';
-    params.with_original_language = 'ja';
-  } else if (type === "k-drama") {
-    params.with_original_language = 'ko';
+  // Filter out any unreleased/future content when requesting Home Page content
+  if (targetYear <= currentYear) {
+    finalItems = finalItems.filter(item => {
+      if (!item.release_date || item.release_date === "TBA") return true;
+      return item.release_date <= today;
+    });
   }
 
-  const data = await fetchFromProxy(path, params);
-  return sortYearContent(uniqueById(mapResults(data.results || [], type)));
+  return finalItems;
 };
 
 export const fetchCredits = async (id: number, type: 'movie' | 'tv') => {
