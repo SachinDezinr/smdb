@@ -23,7 +23,6 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'Pollywood', value: 'punjabi' },
   { label: 'Tollywood', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
-  { label: 'Korean', value: 'korean' },
 ];
 
 const Upcoming = () => {
@@ -186,22 +185,20 @@ const Upcoming = () => {
                 </div>
                 {showRegionFilters && (
                   <div className="flex flex-wrap gap-2 justify-center">
-                    {REGIONS
-                      .filter(reg => reg.value !== 'korean' || activeYear === 2027)
-                      .map((reg) => (
-                        <button
-                          key={reg.value}
-                          onClick={() => setActiveRegion(reg.value)}
-                          className={cn(
-                            "px-4 py-2 rounded-xl font-bold text-xs transition-all border",
-                            activeRegion === reg.value 
-                              ? "bg-white/20 border-primary text-primary" 
-                              : "bg-white/5 border-white/5 text-muted-foreground hover:text-white"
-                          )}
-                        >
-                          {reg.label}
-                        </button>
-                      ))}
+                    {REGIONS.map((reg) => (
+                      <button
+                        key={reg.value}
+                        onClick={() => setActiveRegion(reg.value)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl font-bold text-xs transition-all border",
+                          activeRegion === reg.value 
+                            ? "bg-white/20 border-primary text-primary" 
+                            : "bg-white/5 border-white/5 text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        {reg.label}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
