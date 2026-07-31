@@ -1,0 +1,41 @@
+{
+  "pages": {
+    "/login/page": [
+      "static/chunks/dyad-apps_SSUS_src_app_globals_1ff83be1.css",
+      "static/chunks/2c18b__pnpm_be94be78._.js",
+      "static/chunks/dyad-apps_SSUS_src_lib_auth-context_tsx_25c940cb._.js",
+      "static/chunks/dyad-apps_SSUS_src_app_layout_tsx_ee5ff9a8._.js",
+      "static/chunks/4a5d6_next_dist_client_components_builtin_global-error_03f11670.js",
+      "static/chunks/2c18b__pnpm_7119dc36._.js",
+      "static/chunks/dyad-apps_SSUS_src_af70aa2a._.js",
+      "static/chunks/dyad-apps_SSUS_src_app_login_page_tsx_03f11670._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_1ef08dac._.js",
+      "static/chunks/4a5d6_next_dist_compiled_react-dom_c686ebd3._.js",
+      "static/chunks/4a5d6_next_dist_compiled_next-devtools_index_df847a4e.js",
+      "static/chunks/4a5d6_next_dist_compiled_9dc46b4b._.js",
+      "static/chunks/4a5d6_next_dist_client_531f130d._.js",
+      "static/chunks/4a5d6_next_dist_bb01376e._.js",
+      "static/chunks/876e9_@swc_helpers_cjs_3285be20._.js",
+      "static/chunks/dyad-apps_SSUS_a0ff3932._.js",
+      "static/chunks/turbopack-dyad-apps_SSUS_a2aa17a4._.js"
+    ],
+    "/page": [
+      "static/chunks/dyad-apps_SSUS_src_app_globals_1ff83be1.css",
+      "static/chunks/2c18b__pnpm_be94be78._.js",
+      "static/chunks/dyad-apps_SSUS_src_lib_auth-context_tsx_25c940cb._.js",
+      "static/chunks/dyad-apps_SSUS_src_app_layout_tsx_ee5ff9a8._.js",
+      "static/chunks/4a5d6_next_dist_client_components_builtin_global-error_03f11670.js",
+      "static/chunks/dyad-apps_SSUS_0e7f856e._.js",
+      "static/chunks/dyad-apps_SSUS_src_app_page_tsx_03f11670._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_1ef08dac._.js",
+      "static/chunks/4a5d6_next_dist_compiled_react-dom_c686ebd3._.js",
+      "static/chunks/4a5d6_next_dist_compiled_next-devtools_index_df847a4e.js",
+      "static/chunks/4a5d6_next_dist_compiled_9dc46b4b._.js",
+      "static/chunks/4a5d6_next_dist_client_531f130d._.js",
+      "static/chunks/4a5d6_next_dist_bb01376e._.js",
+      "static/chunks/876e9_@swc_helpers_cjs_3285be20._.js",
+      "static/chunks/dyad-apps_SSUS_a0ff3932._.js",
+      "static/chunks/turbopack-dyad-apps_SSUS_a2aa17a4._.js"
+    ]
+  }
+}

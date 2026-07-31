@@ -113,7 +113,12 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       
       const isAdultContent = adultKeywords.some(kw => titleLower.includes(kw) || overview.includes(kw));
       if (isAdultContent) return false;
-      
+
+      // Hide content with no poster AND no rating (vote_average is 0 or missing)
+      const hasPoster = !!item.poster_path;
+      const hasRating = typeof item.vote_average === 'number' && item.vote_average > 0;
+      if (!hasPoster && !hasRating) return false;
+
       return true;
     })
     .map((item: any) => {
@@ -267,7 +272,6 @@ export const fetchContent = async (
     [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  // Add release date filter to avoid future/unreleased content in home sections
   if (targetYear <= currentYear) {
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
@@ -300,7 +304,6 @@ export const fetchContent = async (
     finalItems = sortYearContent(uniqueById(mapResults(data.results || [], type)));
   }
 
-  // Filter out any unreleased/future content when requesting Home Page content
   if (targetYear <= currentYear) {
     finalItems = finalItems.filter(item => {
       if (!item.release_date || item.release_date === "TBA") return true;

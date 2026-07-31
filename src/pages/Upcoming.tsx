@@ -26,8 +26,8 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'All Regions', value: 'all' },
   { label: 'Hollywood', value: 'hollywood' },
   { label: 'Bollywood', value: 'bollywood' },
-  { label: 'Punjabi', value: 'punjabi' },
-  { label: 'South Indian', value: 'south-indian' },
+  { label: 'Pollywood', value: 'punjabi' },
+  { label: 'Tollywood', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
   { label: 'Korean', value: 'korean' },
 ];
@@ -54,11 +54,9 @@ const Upcoming = () => {
 
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
-        // Strictly future releases for Upcoming
         data = data.filter(item => item.release_date > today);
       } else {
         data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
-        // Ensure strictly future releases even from the upcoming endpoint
         data = data.filter(item => item.release_date > today);
       }
       
@@ -84,7 +82,6 @@ const Upcoming = () => {
     try {
       const results = await fetchContent('movie', undefined, 1, query, 'all');
       const today = new Date().toISOString().split('T')[0];
-      // Strictly future releases for search results in Upcoming page
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
       showError("Search failed");

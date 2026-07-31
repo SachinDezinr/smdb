@@ -29,8 +29,8 @@ const REGIONS: { label: string; value: Region }[] = [
   { label: 'All Regions', value: 'all' },
   { label: 'Hollywood', value: 'hollywood' },
   { label: 'Bollywood', value: 'bollywood' },
-  { label: 'Punjabi', value: 'punjabi' },
-  { label: 'South Indian', value: 'south-indian' },
+  { label: 'Pollywood', value: 'punjabi' },
+  { label: 'Tollywood', value: 'south-indian' },
   { label: 'Animated', value: 'animated' },
 ];
 
