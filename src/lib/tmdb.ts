@@ -305,23 +305,30 @@ export const fetchContent = async (
       const yearParam = type === 'movie' ? 'primary_release_year' : 'first_air_date_year';
       const dateGte = type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte';
       const dateLte = type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte';
+      const dateAscSort = type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc';
 
       const params1 = { ...params, [yearParam]: targetYear };
       const params2 = { ...params, [dateGte]: `${targetYear}-01-01`, [dateLte]: `${targetYear}-12-31` };
       const params3 = { ...params, [dateGte]: `${targetYear}-01-01` };
+      const params4 = { ...params, sort_by: dateAscSort, [dateGte]: `${targetYear}-01-01` };
+      const params5 = { ...params, sort_by: dateAscSort, [yearParam]: targetYear };
 
-      const [res1, res2, res3] = await Promise.all([
+      const [res1, res2, res3, res4, res5] = await Promise.all([
         fetchFromProxy(path, params1),
         fetchFromProxy(path, params2),
-        fetchFromProxy(path, params3)
+        fetchFromProxy(path, params3),
+        fetchFromProxy(path, params4),
+        fetchFromProxy(path, params5)
       ]);
 
       const combined = [
         ...(res1.results || []),
         ...(res2.results || []),
-        ...(res3.results || [])
+        ...(res3.results || []),
+        ...(res4.results || []),
+        ...(res5.results || [])
       ];
-      finalItems = sortYearContent(uniqueById(mapResults(combined, type)));
+      finalItems = uniqueById(mapResults(combined, type));
     } else {
       const data = await fetchFromProxy(path, params);
       finalItems = sortYearContent(uniqueById(mapResults(data.results || [], type)));

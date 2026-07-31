@@ -4,16 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, Loader2, Filter, Plus, X, Calendar as CalendarIcon, LayoutGrid, ChevronDown, Sparkles } from 'lucide-react';
+import { Search, Loader2, Plus, X, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { showError } from '@/utils/toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const CATEGORIES: { label: string; value: MediaType }[] = [
   { label: 'Movies', value: 'movie' },
@@ -54,10 +48,22 @@ const Upcoming = () => {
 
       if (activeYear) {
         data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
-        data = data.filter(item => item.release_date > today);
+        data = data.filter(item => {
+          if (!item.release_date || item.release_date === "TBA") return true;
+          return item.release_date > today;
+        });
+        // Sort future items chronologically by release date
+        data.sort((a, b) => {
+          if (a.release_date === "TBA") return 1;
+          if (b.release_date === "TBA") return -1;
+          return a.release_date.localeCompare(b.release_date);
+        });
       } else {
         data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
-        data = data.filter(item => item.release_date > today);
+        data = data.filter(item => {
+          if (!item.release_date || item.release_date === "TBA") return true;
+          return item.release_date > today;
+        });
       }
       
       setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
@@ -147,16 +153,16 @@ const Upcoming = () => {
 
           {!isSearching && (
             <div className="space-y-4">
-              {/* Desktop Controls */}
-              <div className="hidden lg:flex flex-col gap-4 items-center">
+              {/* Category and 2027 Year Filter */}
+              <div className="flex flex-col gap-4 items-center">
                 <div className="flex flex-wrap gap-2 items-center justify-center">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
-                      onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}
+                      onClick={() => { setActiveCategory(cat.value); }}
                       className={cn(
                         "px-4 py-2 rounded-xl font-bold text-sm transition-all border",
-                        activeCategory === cat.value && !activeYear
+                        activeCategory === cat.value 
                           ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
                           : "bg-white/5 border-white/10 text-white hover:bg-white/10"
                       )}
@@ -164,7 +170,7 @@ const Upcoming = () => {
                       {cat.label}
                     </button>
                   ))}
-                  <div className="w-px h-6 bg-white/10 mx-2" />
+                  <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
                   <button 
                     onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
                     className={cn(
@@ -199,50 +205,6 @@ const Upcoming = () => {
                   </div>
                 )}
               </div>
-
-              {/* Mobile Controls */}
-              <div className="lg:hidden flex flex-wrap gap-2 justify-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm">
-                      <LayoutGrid size={16} />
-                      {activeYear === 2027 ? '2027 Releases' : CATEGORIES.find(c => c.value === activeCategory)?.label}
-                      <ChevronDown size={14} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
-                    {CATEGORIES.map((cat) => (
-                      <DropdownMenuItem key={cat.value} onClick={() => { setActiveCategory(cat.value); setActiveYear(null); }}>
-                        {cat.label}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuItem onClick={() => setActiveYear(2027)}>
-                      2027 Releases
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {showRegionFilters && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm">
-                        <Filter size={16} className="text-primary" />
-                        {REGIONS.find(r => r.value === activeRegion)?.label}
-                        <ChevronDown size={14} />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
-                      {REGIONS
-                        .filter(reg => reg.value !== 'korean' || activeYear === 2027)
-                        .map((reg) => (
-                          <DropdownMenuItem key={reg.value} onClick={() => setActiveRegion(reg.value)}>
-                            {reg.label}
-                          </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
             </div>
           )}
         </header>
@@ -259,7 +221,7 @@ const Upcoming = () => {
                   key={item.id} 
                   item={item} 
                   showReleaseDate 
-                  showCategory={isSearching}
+                  showCategory={isSearching || activeYear === 2027}
                 />
               ))}
             </div>
