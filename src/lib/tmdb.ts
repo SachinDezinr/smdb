@@ -128,7 +128,7 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       const isKorean = item.original_language === 'ko';
 
       if (isJapanese && isAnimated) type = 'anime';
-      else if (isKorean && (item.media_type === 'tv' || type === 'tv')) type = 'k-drama';
+      else if (isKorean && (item.media_type === 'tv' || type === 'tv' || defaultType === 'k-drama')) type = 'k-drama';
 
       return {
         id: item.id,
@@ -264,21 +264,22 @@ export const fetchContent = async (
 
   const currentYear = new Date().getFullYear();
   const targetYear = year || currentYear;
+  const isFutureYear = targetYear > currentYear;
 
   const baseParams: any = {
     page,
     include_adult: false,
     sort_by: 'popularity.desc',
-    [type === 'movie' ? 'primary_release_year' : 'first_air_date_year']: targetYear
   };
 
-  if (targetYear <= currentYear) {
+  if (!isFutureYear) {
+    baseParams[type === 'movie' ? 'primary_release_year' : 'first_air_date_year'] = targetYear;
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
 
   let finalItems: ContentItem[] = [];
 
-  if (region === "all" && (type === "movie" || type === "tv")) {
+  if (!isFutureYear && region === "all" && (type === "movie" || type === "tv")) {
     const hollywoodParams = { ...baseParams, ...getRegionParams('hollywood') };
     const indianParams = { ...baseParams, region: 'IN', with_original_language: 'hi|te|ta|kn|ml|pa' };
 
@@ -300,11 +301,34 @@ export const fetchContent = async (
       params.with_original_language = 'ko';
     }
 
-    const data = await fetchFromProxy(path, params);
-    finalItems = sortYearContent(uniqueById(mapResults(data.results || [], type)));
+    if (isFutureYear) {
+      const yearParam = type === 'movie' ? 'primary_release_year' : 'first_air_date_year';
+      const dateGte = type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte';
+      const dateLte = type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte';
+
+      const params1 = { ...params, [yearParam]: targetYear };
+      const params2 = { ...params, [dateGte]: `${targetYear}-01-01`, [dateLte]: `${targetYear}-12-31` };
+      const params3 = { ...params, [dateGte]: `${targetYear}-01-01` };
+
+      const [res1, res2, res3] = await Promise.all([
+        fetchFromProxy(path, params1),
+        fetchFromProxy(path, params2),
+        fetchFromProxy(path, params3)
+      ]);
+
+      const combined = [
+        ...(res1.results || []),
+        ...(res2.results || []),
+        ...(res3.results || [])
+      ];
+      finalItems = sortYearContent(uniqueById(mapResults(combined, type)));
+    } else {
+      const data = await fetchFromProxy(path, params);
+      finalItems = sortYearContent(uniqueById(mapResults(data.results || [], type)));
+    }
   }
 
-  if (targetYear <= currentYear) {
+  if (!isFutureYear) {
     finalItems = finalItems.filter(item => {
       if (!item.release_date || item.release_date === "TBA") return true;
       return item.release_date <= today;
