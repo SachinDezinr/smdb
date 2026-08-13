@@ -75,7 +75,7 @@ const Contact = () => {
                 <Code size={24} />
               </div>
               <div>
-                <h3 className="text-xl font-serif font-bold mb-1">Developed By</h3>
+                <h3 className="text-xl font-serif font-bold mb-1">Created By</h3>
                 <p className="text-primary font-bold">Sachin Panwar</p>
               </div>
             </div>
