@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { motion } from 'framer-motion';
-import { User, Settings, LogOut, Shield, Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock } from 'lucide-react';
+import { Edit3, Check, Loader2, Info, Mail, ChevronRight, Users, Lock, LogOut } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -206,8 +205,8 @@ const Profile = () => {
             </Link>
           </section>
 
-          {/* Help & Info Section (Mobile Only) */}
-          <section className="lg:hidden glass-card p-6 lg:p-8 border-white/5">
+          {/* Help & Info Section */}
+          <section className="glass-card p-6 lg:p-8 border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
               <Info size={20} className="text-primary" />
               Help & Information

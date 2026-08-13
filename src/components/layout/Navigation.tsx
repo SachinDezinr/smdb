@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Library, User, Info, Mail, Film, BarChart3, Users } from 'lucide-react';
+import { Home, Calendar, Library, User, Film, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 
@@ -20,11 +20,6 @@ const mobileNavItems = [
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
-];
-
-const footerItems = [
-  { icon: Info, label: 'About', path: '/about' },
-  { icon: Mail, label: 'Contact', path: '/contact' },
 ];
 
 /**
@@ -95,26 +90,10 @@ export const Navigation = () => {
         </nav>
 
         {/* Desktop Footer Section */}
-        <div className="pt-6 border-t border-white/10 space-y-2">
-          {footerItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 text-sm",
-                location.pathname === item.path 
-                  ? "text-primary" 
-                  : "text-muted-foreground hover:text-white"
-              )}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </Link>
-          ))}
-          
-          <div className="mt-6 px-4 text-[10px] text-muted-foreground leading-relaxed">
+        <div className="pt-6 border-t border-white/10">
+          <div className="px-2 text-[10px] text-muted-foreground leading-relaxed">
             <p>© 2026 SMDB. All Rights Reserved.</p>
-            <p className="mt-2 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
+            <p className="mt-1 opacity-50">Unauthorized copying of code, design, or content is strictly prohibited.</p>
           </div>
         </div>
       </aside>
