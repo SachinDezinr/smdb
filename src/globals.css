@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    --background: 240 10% 5%;
+    --background: 0 0% 0%; /* Pure AMOLED Black */
     --foreground: 0 0% 98%;
-    --card: 240 10% 5%;
+    --card: 0 0% 3%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 5%;
+    --popover: 0 0% 2%;
     --popover-foreground: 0 0% 98%;
     --primary: 45 91% 53%; /* IMDb Gold #F5C518 */
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 16%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 60%;
     --accent: 45 91% 53%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 16%;
-    --input: 240 3.7% 16%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
     --ring: 45 91% 53%;
     --radius: 0.75rem;
   }
@@ -32,11 +32,11 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-black text-foreground antialiased;
     font-family: 'Poppins', sans-serif;
+    background-color: #000000;
     background-image: 
-      radial-gradient(circle at 50% 0%, rgba(245, 197, 24, 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 0% 100%, rgba(218, 112, 214, 0.03) 0%, transparent 50%);
+      radial-gradient(circle at 50% 0%, rgba(245, 197, 24, 0.04) 0%, transparent 40%);
     background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -46,11 +46,11 @@
 }
 
 .glass-card {
-  @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl;
+  @apply bg-black/60 backdrop-blur-md border border-white/10 rounded-xl;
 }
 
 .cinematic-glow {
-  box-shadow: 0 0 20px rgba(245, 196, 25, 0.15);
+  box-shadow: 0 0 25px rgba(245, 196, 25, 0.12);
 }
 
 .watched-glow {
@@ -62,7 +62,7 @@
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  @apply bg-black;
 }
 ::-webkit-scrollbar-thumb {
   @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
