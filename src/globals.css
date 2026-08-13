@@ -22,8 +22,8 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 12%;
     --input: 0 0% 12%;
-    --ring: 45 91% 53%;
-    --radius: 0.75rem;
+    --ring: 45 92% 55%;
+    --radius: 0.77rem;
   }
 }
 
@@ -50,7 +50,7 @@
 }
 
 .cinematic-glow {
-  box-shadow: 0 0 25px rgba(245, 196, 25, 0.12);
+  box-shadow: 0 0 26px rgba(245, 196, 25, 0.12);
 }
 
 .watched-glow {
