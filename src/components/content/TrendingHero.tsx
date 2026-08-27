@@ -56,7 +56,7 @@ export const TrendingHero = () => {
   };
 
   if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-3xl border border-white/5" />
+    <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/5 mb-5" />
   );
 
   const current = trending[currentIndex];
@@ -79,7 +79,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] rounded-3xl overflow-hidden mb-8 group touch-pan-y border border-white/10 shadow-2xl">
+    <div className="relative w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] rounded-2xl md:rounded-3xl overflow-hidden mb-5 group touch-pan-y border border-white/10 shadow-2xl">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -133,45 +133,45 @@ export const TrendingHero = () => {
         </button>
       </div>
 
-      <div className="absolute inset-0 p-6 md:p-8 lg:p-10 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
+      <div className="absolute inset-0 p-4 md:p-8 lg:p-10 flex flex-col justify-end max-w-3xl z-10 pointer-events-none">
         <motion.div
           key={`info-${current.id}`}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="space-y-2 lg:space-y-2.5"
+          className="space-y-1.5 md:space-y-2 lg:space-y-2.5"
         >
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 bg-primary text-black text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md">
-              <Sparkles size={11} /> Trending Now
+            <span className="inline-flex items-center gap-1 bg-primary text-black text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
+              <Sparkles size={10} /> Trending
             </span>
             <div className="flex items-center gap-1 text-primary bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-primary/30">
-              <Star size={12} fill="currentColor" />
-              <span className="text-xs font-bold">{current.vote_average.toFixed(1)}</span>
+              <Star size={11} fill="currentColor" />
+              <span className="text-[11px] md:text-xs font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
           </div>
           
-          <h2 className="text-xl md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg">
+          <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
           </h2>
           
-          <p className="text-white/80 text-xs md:text-sm line-clamp-2 max-w-lg drop-shadow-md leading-relaxed">
+          <p className="hidden sm:line-clamp-2 text-white/80 text-xs md:text-sm max-w-lg drop-shadow-md leading-relaxed">
             {current.overview}
           </p>
 
-          <div className="flex items-center gap-3 pt-1 pointer-events-auto">
+          <div className="flex items-center gap-3 pt-0.5 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-black px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-black px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-[11px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              <Play size={13} fill="currentColor" />
+              <Play size={12} fill="currentColor" />
               Watch Trailer
             </button>
           </div>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-4 lg:bottom-6 right-6 lg:right-10 flex gap-1.5 z-20">
+      <div className="absolute bottom-3 md:bottom-4 lg:bottom-6 right-4 md:right-6 lg:right-10 flex gap-1.5 z-20">
         {trending.map((_, i) => (
           <button
             key={i}
@@ -182,7 +182,7 @@ export const TrendingHero = () => {
             }}
             className={cn(
               "h-1.5 rounded-full transition-all duration-500",
-              currentIndex === i ? "w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/30 hover:bg-white/50"
+              currentIndex === i ? "w-5 md:w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/30 hover:bg-white/50"
             )}
           />
         ))}
