@@ -8,10 +8,13 @@ import { Search, Library, Trash2, Loader2, ChevronUp, Plus, Film, Tv, Sparkles, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { fetchUserCollection, getCachedCollection, removeCollectionItem } from '@/lib/collectionStore';
+import { setCatalogState, getCatalogState } from '@/lib/catalogStore';
 
 const Collection = () => {
-  const [watchedItems, setWatchedItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedCollection();
+  const [watchedItems, setWatchedItems] = useState<any[]>(cached || []);
+  const [loading, setLoading] = useState(cached === null);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -20,22 +23,17 @@ const Collection = () => {
 
   const currentYear = new Date().getFullYear();
 
-  const fetchWatched = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('watched_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!error) setWatchedItems(data || []);
-    setLoading(false);
+  const loadData = async (force = false) => {
+    if (!cached || force) {
+      if (!cached) setLoading(true);
+      const items = await fetchUserCollection(force);
+      setWatchedItems(items);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchWatched();
+    loadData();
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -44,13 +42,23 @@ const Collection = () => {
   const removeWatched = async (id: number) => {
     if (!confirm("Are you sure you want to remove this from your collection?")) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { error } = await supabase
       .from('watched_content')
       .delete()
-      .eq('content_id', id);
+      .eq('content_id', id)
+      .eq('user_id', user.id);
 
     if (!error) {
+      removeCollectionItem(id);
       setWatchedItems(prev => prev.filter(item => item.content_id !== id));
+      
+      const currentWatchedIds = getCatalogState().watchedIds;
+      setCatalogState({
+        watchedIds: currentWatchedIds.filter(wid => wid !== id)
+      });
     }
   };
 
