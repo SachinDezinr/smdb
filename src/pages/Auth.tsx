@@ -91,7 +91,7 @@ const Auth = () => {
         className="w-full max-w-md glass-card p-8 border-primary/20 rounded-3xl cinematic-glow relative z-10"
       >
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 bg-gradient-to-tr from-primary/30 to-primary rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-primary/25 border border-primary/40">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-3 shadow-xl shadow-primary/30 border border-primary/40">
             <Film className="text-black" size={30} />
           </div>
           <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
