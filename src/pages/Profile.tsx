@@ -19,13 +19,11 @@ import {
   Calendar,
   KeyRound,
   UserCheck,
-  ExternalLink,
   MessageSquare
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
@@ -265,7 +263,26 @@ const Profile = () => {
                 <UserCheck size={18} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white<dyad-write path="src/pages/Profile.tsx" description="Modernize the Settings and Profile page UI with sleek typography, stats overview, and refined aesthetic.">
+                <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
+                <p className="text-xs text-muted-foreground">Manage your display username and public handle.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Username</label>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 px-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Used for friend searches and social comparisons.</p>
+                </div>
+
+<dyad-write path="src/pages/Profile.tsx" description="Complete and fix Profile.tsx cleanly">
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -287,52 +304,11 @@ import {
   Calendar,
   KeyRound,
   UserCheck,
-  ExternalLink,
   MessageSquare
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-
-const Profile = () => {
-  const [user, setUser] = useState<any>(null);
-  const [username, setUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [passLoading, setPassLoading] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const<dyad-write path="src/pages/Profile.tsx" description="Modernize the Settings and Profile page UI with sleek typography, stats overview, and refined aesthetic.">
-"use client";
-
-import React, { useState, useEffect } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
-import { supabase } from '@/lib/supabase';
-import { 
-  Edit3, 
-  Check, 
-  Loader2, 
-  Info, 
-  Mail, 
-  ChevronRight, 
-  Users, 
-  Lock, 
-  LogOut, 
-  Film, 
-  ShieldCheck, 
-  Sparkles, 
-  Calendar,
-  KeyRound,
-  UserCheck,
-  ExternalLink,
-  MessageSquare
-} from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
