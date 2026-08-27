@@ -16,7 +16,6 @@ interface ContentCardProps {
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
   const [showCredits, setShowCredits] = useState(false);
-  const [showActionOverlay, setShowActionOverlay] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
@@ -67,8 +66,10 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       return;
     }
 
-    // For regular catalog items on touch/mobile: toggle the Add to Watched overlay on tap
-    setShowActionOverlay(prev => !prev);
+    // Direct toggle on click/tap: adds on 1st click, removes on 2nd click
+    if (onToggleWatched) {
+      onToggleWatched(item.id);
+    }
   };
 
   const hasPoster = item.poster_path && item.poster_path !== "";
@@ -83,8 +84,8 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-500 bg-neutral-900 cursor-pointer shadow-lg select-none",
-          isWatched ? "border-primary/80 ring-2 ring-primary/30 cinematic-glow" : "border-white/10 group-hover:border-white/25"
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none active:scale-[0.98]",
+          isWatched ? "border-primary/80 ring-2 ring-primary/40 cinematic-glow" : "border-white/10 group-hover:border-white/25"
         )}
       >
         {hasPoster ? (
@@ -92,15 +93,16 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             src={item.poster_path}
             alt={item.title}
             className={cn(
-              "w-full h-full object-cover transition-all duration-700 pointer-events-none",
-              (showCredits || showActionOverlay) ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105"
+              "w-full h-full object-cover transition-all duration-500 pointer-events-none",
+              showCredits ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105",
+              isWatched && "brightness-[0.92]"
             )}
             loading="lazy"
           />
         ) : (
           <div className={cn(
             "w-full h-full flex flex-col items-center justify-center p-5 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative",
-            (showCredits || showActionOverlay) && "blur-md opacity-30"
+            showCredits && "blur-md opacity-30"
           )}>
             <Film className="text-primary/30 mb-3" size={40} strokeWidth={1.5} />
             <span className="text-xs font-semibold text-white/90 line-clamp-3 leading-snug tracking-tight">
@@ -118,7 +120,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           </div>
         )}
 
-        {/* Credits Overlay */}
+        {/* Credits Overlay for Upcoming */}
         <AnimatePresence>
           {showCredits && (
             <motion.div 
@@ -155,37 +157,15 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           )}
         </AnimatePresence>
         
-        {/* Watch Action Overlay (Desktop hover + Mobile click-to-toggle) */}
-        {!showReleaseDate && !showCredits && !isFuture && (
-          <div className={cn(
-            "absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 flex flex-col items-center justify-center gap-2 z-20",
-            showActionOverlay ? "opacity-100 pointer-events-auto" : "opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
-          )}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleWatched?.(item.id);
-                setShowActionOverlay(false);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-xl font-bold text-xs tracking-wide transition-all shadow-lg transform active:scale-95",
-                isWatched 
-                  ? "bg-primary text-black" 
-                  : "bg-white text-black hover:bg-primary"
-              )}
-            >
-              {isWatched ? "Watched" : "Add to Watched"}
-            </button>
-            {showActionOverlay && (
-              <span className="text-[10px] text-white/60 font-medium">Tap poster to close</span>
-            )}
-          </div>
-        )}
-
+        {/* Watched Badge */}
         {isWatched && (
-          <div className="absolute top-2.5 right-2.5 bg-primary text-black p-1 rounded-full shadow-md z-10">
-            <CheckCircle2 size={15} />
-          </div>
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute top-2.5 right-2.5 bg-primary text-black p-1.5 rounded-full shadow-lg z-10 font-bold"
+          >
+            <CheckCircle2 size={16} />
+          </motion.div>
         )}
       </div>
 
