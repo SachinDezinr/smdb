@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Film, User, Users, Loader2 } from 'lucide-react';
+import { Check, Plus, Film, User, Users, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentItem, fetchCredits } from '@/lib/tmdb';
 
@@ -16,6 +16,7 @@ interface ContentCardProps {
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
   const [showCredits, setShowCredits] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
@@ -43,8 +44,8 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
   const today = new Date().toISOString().split('T')[0];
   const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
-  const handlePosterClick = async () => {
-    // For upcoming/future items, toggle credits
+  const handlePosterClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    // For upcoming/future items, toggle credits info
     if (showReleaseDate || isFuture) {
       if (showCredits) {
         setShowCredits(false);
@@ -66,7 +67,26 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       return;
     }
 
-    // Direct toggle on click/tap: adds on 1st click, removes on 2nd click
+    if (!onToggleWatched) return;
+
+    // Calculate vertical click position within poster (0 = top, 1 = bottom)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickY = (e.clientY - rect.top) / rect.height;
+
+    // Center zone is roughly between 30% and 70% height
+    const isCenterClick = clickY >= 0.28 && clickY <= 0.72;
+
+    if (isCenterClick) {
+      // Direct center click triggers the toggle action immediately
+      onToggleWatched(item.id);
+    } else {
+      // Top or bottom click toggles visibility of the action button overlay
+      setShowOverlay(prev => !prev);
+    }
+  };
+
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (onToggleWatched) {
       onToggleWatched(item.id);
     }
@@ -84,7 +104,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none active:scale-[0.98]",
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
           isWatched ? "border-primary/80 ring-2 ring-primary/40 cinematic-glow" : "border-white/10 group-hover:border-white/25"
         )}
       >
@@ -94,7 +114,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             alt={item.title}
             className={cn(
               "w-full h-full object-cover transition-all duration-500 pointer-events-none",
-              showCredits ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105",
+              showCredits || showOverlay ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105",
               isWatched && "brightness-[0.92]"
             )}
             loading="lazy"
@@ -102,7 +122,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
         ) : (
           <div className={cn(
             "w-full h-full flex flex-col items-center justify-center p-5 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative",
-            showCredits && "blur-md opacity-30"
+            (showCredits || showOverlay) && "blur-md opacity-30"
           )}>
             <Film className="text-primary/30 mb-3" size={40} strokeWidth={1.5} />
             <span className="text-xs font-semibold text-white/90 line-clamp-3 leading-snug tracking-tight">
@@ -120,14 +140,59 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           </div>
         )}
 
-        {/* Credits Overlay for Upcoming */}
+        {/* Watched Badge on Top-Right */}
+        {isWatched && (
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute top-2.5 right-2.5 bg-primary text-black p-1.5 rounded-full shadow-lg z-20 font-bold"
+          >
+            <CheckCircle2 size={16} />
+          </motion.div>
+        )}
+
+        {/* Action Button Overlay: Appears on top/bottom click or on desktop hover */}
+        {!showReleaseDate && !isFuture && onToggleWatched && (
+          <div 
+            className={cn(
+              "absolute inset-0 z-30 flex items-center justify-center p-3 transition-opacity duration-200 pointer-events-none",
+              showOverlay ? "opacity-100 bg-black/40 backdrop-blur-xs pointer-events-auto" : "opacity-0 lg:group-hover:opacity-100 lg:group-hover:pointer-events-auto"
+            )}
+          >
+            <button
+              type="button"
+              onClick={handleActionClick}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-xl active:scale-95",
+                isWatched 
+                  ? "bg-primary text-black border border-primary hover:bg-red-500 hover:border-red-500 hover:text-white group/btn" 
+                  : "bg-black/85 text-primary border border-primary/40 hover:bg-primary hover:text-black hover:border-primary backdrop-blur-md"
+              )}
+            >
+              {isWatched ? (
+                <>
+                  <Check size={14} className="group-hover/btn:hidden" />
+                  <span className="group-hover/btn:hidden">Watched</span>
+                  <span className="hidden group-hover/btn:inline">Remove</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={14} />
+                  <span>Add to Watched</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Credits Overlay for Upcoming Titles */}
         <AnimatePresence>
           {showCredits && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 p-4 flex flex-col justify-center gap-3.5 z-20 bg-black/75 backdrop-blur-md"
+              className="absolute inset-0 p-4 flex flex-col justify-center gap-3.5 z-30 bg-black/80 backdrop-blur-md"
             >
               {loadingCredits ? (
                 <div className="flex justify-center"><Loader2 className="animate-spin text-primary" size={24} /></div>
@@ -156,17 +221,6 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {/* Watched Badge */}
-        {isWatched && (
-          <motion.div 
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute top-2.5 right-2.5 bg-primary text-black p-1.5 rounded-full shadow-lg z-10 font-bold"
-          >
-            <CheckCircle2 size={16} />
-          </motion.div>
-        )}
       </div>
 
       <div className="flex flex-col gap-1 px-0.5">
