@@ -91,13 +91,20 @@ const Auth = () => {
         className="w-full max-w-md glass-card p-8 border-primary/20 rounded-3xl cinematic-glow relative z-10"
       >
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-3 shadow-xl shadow-primary/30 border border-primary/40">
-            <Film className="text-black" size={30} />
+          {/* Logo with subtle gradient, gentle ambient glow, and refined border */}
+          <div className="relative mb-3 group">
+            <div className="absolute -inset-1 bg-gradient-to-tr from-primary/30 via-primary/10 to-amber-200/20 rounded-2xl blur-sm opacity-80" />
+            <div className="relative w-16 h-16 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] rounded-2xl flex items-center justify-center shadow-xl shadow-primary/25 border border-white/20">
+              <Film className="text-black/90 drop-shadow-sm" size={30} />
+            </div>
           </div>
+
           <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
             <Sparkles size={11} /> Cinematic Journey Tracker
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">SMDB</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
+            SMDB
+          </h1>
           <p className="text-muted-foreground text-xs mt-1">
             {mode === 'login' ? "Sign in to track your watch history" : 
              mode === 'register' ? "Create your personalized cinephile vault" : 
