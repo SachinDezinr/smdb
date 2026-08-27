@@ -25,45 +25,64 @@ import {
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  fetchProfileData, 
-  getCachedProfile, 
-  setCachedProfile, 
-  clearCachedProfile 
-} from '@/lib/profileStore';
 
 const Profile = () => {
-  const cached = getCachedProfile();
-  const [user, setUser] = useState<any>(cached?.user || null);
-  const [username, setUsername] = useState(cached?.username || '');
+  const [user, setUser] = useState<any>(null);
+  const [username, setUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [pageLoading, setPageLoading] = useState(cached === null);
+  const [pageLoading, setPageLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
-  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
-  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
-  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
-  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [watchedCount, setWatchedCount] = useState(0);
+  const [joinedDate, setJoinedDate] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!cached) setPageLoading(true);
-      const data = await fetchProfileData(false);
-      if (data) {
-        setUser(data.user);
-        setUsername(data.username);
-        setJoinedDate(data.joinedDate);
-        setPendingCount(data.pendingCount);
-        setFriendsCount(data.friendsCount);
-        setWatchedCount(data.watchedCount);
+    const fetchUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setPageLoading(false);
+        return;
       }
+
+      setUser(user);
+      setUsername(user.user_metadata?.username || '');
+
+      if (user.created_at) {
+        const date = new Date(user.created_at);
+        setJoinedDate(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+      }
+
+      // Fetch pending friend requests
+      const { data: pendingData } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('friend_id', user.id)
+        .eq('status', 'pending');
+      setPendingCount(pendingData?.length || 0);
+
+      // Fetch accepted friends count
+      const { data: friendsData } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+      setFriendsCount(friendsData?.length || 0);
+
+      // Fetch watched items count
+      const { count: watchedTotal } = await supabase
+        .from('watched_content')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      setWatchedCount(watchedTotal || 0);
       setPageLoading(false);
     };
 
-    loadProfile();
+    fetchUserData();
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -88,7 +107,6 @@ const Profile = () => {
       
       if (profileError) throw profileError;
 
-      setCachedProfile({ username });
       showSuccess("Profile updated successfully!");
       setIsEditing(false);
     } catch (error: any) {
@@ -126,175 +144,6 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    clearCachedProfile();
-    await supabase.auth.signOut();
-    navigate('/auth');
-  };
-
-  if (pageLoading) {
-    return (
-      <div className="flex min-h-screen bg-background items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={48} />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
-  const initial = (username || user.email || '?')[0].toUpperCase();
-
-  const getTierBadge = (count: number) => {
-    if (count >= 100) return { label: "Master Cinephile", color: "bg-amber-400/20 text-amber-300 border-amber-400/40" };
-    if (count >= 50) return { label: "Elite Cinephile", color: "bg-primary/20 text-primary border-primary/40" };
-    if (count >= 20) return { label: "Dedicated Cinephile", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" };
-    return { label: "Cinephile", color: "bg-primary/15 text-primary border-primary/30" };
-  };
-
-  const tier = getTierBadge(watchedCount);
-
-  return (
-    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
-      
-      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-5xl mx-auto w-full">
-        {/* Page Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
-            <Sparkles size={14} /> Account & Preferences
-          </div>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-            Settings & <span className="text-primary">Profile</span>
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1"><dyad-write path="src/pages/Profile.tsx" description="Complete and clean implementation of Profile component with instant caching">
-"use client";
-
-import React, { useState, useEffect } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
-import { supabase } from '@/lib/supabase';
-import { 
-  Edit3, 
-  Check, 
-  Loader2, 
-  Info, 
-  Mail, 
-  ChevronRight, 
-  Users, 
-  Lock, 
-  LogOut, 
-  Film, 
-  ShieldCheck, 
-  Sparkles, 
-  Calendar,
-  KeyRound,
-  UserCheck,
-  MessageSquare,
-  Award
-} from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  fetchProfileData, 
-  getCachedProfile, 
-  setCachedProfile, 
-  clearCachedProfile 
-} from '@/lib/profileStore';
-
-const Profile = () => {
-  const cached = getCachedProfile();
-  const [user, setUser] = useState<any>(cached?.user || null);
-  const [username, setUsername] = useState(cached?.username || '');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [pageLoading, setPageLoading] = useState(cached === null);
-  const [loading, setLoading] = useState(false);
-  const [passLoading, setPassLoading] = useState(false);
-  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
-  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
-  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
-  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!cached) setPageLoading(true);
-      const data = await fetchProfileData(false);
-      if (data) {
-        setUser(data.user);
-        setUsername(data.username);
-        setJoinedDate(data.joinedDate);
-        setPendingCount(data.pendingCount);
-        setFriendsCount(data.friendsCount);
-        setWatchedCount(data.watchedCount);
-      }
-      setPageLoading(false);
-    };
-
-    loadProfile();
-  }, []);
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const usernameRegex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
-    if (!usernameRegex.test(username)) {
-      showError("Username must start/end with letters, and only contain letters, numbers, _ or .");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error: authError } = await supabase.auth.updateUser({
-        data: { username }
-      });
-      if (authError) throw authError;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ username })
-        .eq('id', user.id);
-      
-      if (profileError) throw profileError;
-
-      setCachedProfile({ username });
-      showSuccess("Profile updated successfully!");
-      setIsEditing(false);
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      showError("Password must be at least 6 characters long.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showError("Passwords do not match.");
-      return;
-    }
-
-    setPassLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      if (error) throw error;
-      showSuccess("Password updated successfully!");
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setPassLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    clearCachedProfile();
     await supabase.auth.signOut();
     navigate('/auth');
   };
@@ -364,7 +213,7 @@ const Profile = () => {
                   <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
                     {username || 'Anonymous User'}
                   </h2>
-                  {/* Cinephile Badge */}
+                  {/* Cinephile Badge displayed directly under username */}
                   <div className="flex items-center justify-center md:justify-start gap-2 pt-0.5">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm`}>
                       <Award size={13} className="text-primary" />
