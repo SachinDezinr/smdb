@@ -25,64 +25,132 @@ import {
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { 
+  fetchProfileData, 
+  getCachedProfile, 
+  setCachedProfile, 
+  clearCachedProfile 
+} from '@/lib/profileStore';
 
 const Profile = () => {
-  const [user, setUser] = useState<any>(null);
-  const [username, setUsername] = useState('');
+  const cached = getCachedProfile();
+  const [user, setUser] = useState<any>(cached?.user || null);
+  const [username, setUsername] = useState(cached?.username || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(cached === null);
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [friendsCount, setFriendsCount] = useState(0);
-  const [watchedCount, setWatchedCount] = useState(0);
-  const [joinedDate, setJoinedDate] = useState<string>('');
+  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
+  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
+  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
+  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setPageLoading(false);
-        return;
+    const loadProfile = async () => {
+      // If we don't have cache, show initial loader, otherwise refresh in background
+      if (!cached) setPageLoading(true);
+      const data = await fetchProfileData(false);
+      if (data) {
+        setUser(data.user);
+        setUsername(data.username);
+        setJoinedDate(data.joinedDate);
+        setPendingCount(data.pendingCount);
+        setFriendsCount(data.friendsCount);
+        setWatchedCount(data.watchedCount);
       }
-
-      setUser(user);
-      setUsername(user.user_metadata?.username || '');
-
-      if (user.created_at) {
-        const date = new Date(user.created_at);
-        setJoinedDate(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
-      }
-
-      // Fetch pending friend requests
-      const { data: pendingData } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('friend_id', user.id)
-        .eq('status', 'pending');
-      setPendingCount(pendingData?.length || 0);
-
-      // Fetch accepted friends count
-      const { data: friendsData } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
-      setFriendsCount(friendsData?.length || 0);
-
-      // Fetch watched items count
-      const { count: watchedTotal } = await supabase
-        .from('watched_content')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-      setWatchedCount(watchedTotal || 0);
       setPageLoading(false);
     };
 
-    fetchUserData();
+    loadProfile();
+  }, []);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const usernameRegex =<dyad-write path="src/pages/Profile.tsx" description="Use cached profile store for instant page loading without reload spinners">
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { supabase } from '@/lib/supabase';
+import { 
+  Edit3, 
+  Check, 
+  Loader2, 
+  Info, 
+  Mail, 
+  ChevronRight, 
+  Users, 
+  Lock, 
+  Log<dyad-write path="src/pages/Profile.tsx" description="Use cached profile store for instant page loading without reload spinners">
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { supabase } from '@/lib/supabase';
+import { 
+  Edit3, 
+  Check, 
+  Loader2, 
+  Info, 
+  Mail, 
+  ChevronRight, 
+  Users, 
+  Lock, 
+  LogOut, 
+  Film, 
+  ShieldCheck, 
+  Sparkles, 
+  Calendar,
+  KeyRound,
+  UserCheck,
+  MessageSquare,
+  Award
+} from 'lucide-react';
+import { showSuccess, showError } from '@/utils/toast';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { 
+  fetchProfileData, 
+  getCachedProfile, 
+  setCachedProfile, 
+  clearCachedProfile 
+} from '@/lib/profileStore';
+
+const Profile = () => {
+  const cached = getCachedProfile();
+  const [user, setUser] = useState<any>(cached?.user || null);
+  const [username, setUsername] = useState(cached?.username || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [pageLoading, setPageLoading] = useState(cached === null);
+  const [loading, setLoading] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
+  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
+  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
+  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!cached) setPageLoading(true);
+      const data = await fetchProfileData(false);
+      if (data) {
+        setUser(data.user);
+        setUsername(data.username);
+        setJoinedDate(data.joinedDate);
+        setPendingCount(data.pendingCount);
+        setFriendsCount(data.friendsCount);
+        setWatchedCount(data.watchedCount);
+      }
+      setPageLoading(false);
+    };
+
+    loadProfile();
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -107,6 +175,7 @@ const Profile = () => {
       
       if (profileError) throw profileError;
 
+      setCachedProfile({ username });
       showSuccess("Profile updated successfully!");
       setIsEditing(false);
     } catch (error: any) {
@@ -144,6 +213,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
+    clearCachedProfile();
     await supabase.auth.signOut();
     navigate('/auth');
   };
