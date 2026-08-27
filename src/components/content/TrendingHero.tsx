@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Star, ChevronLeft<dyad-write path="src/components/content/TrendingHero.tsx" description="Complete implementation of TrendingHero with trailer player and fallback">
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
@@ -54,8 +59,7 @@ export const TrendingHero = () => {
       if (url) {
         setTrailerUrl(url);
       } else {
-        // Direct search fallback
-        const query = encodeURIComponent(`${item.title} trailer`);
+        const query = encodeURIComponent(`${item.title} official trailer`);
         window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       }
     } catch (err) {
@@ -126,7 +130,6 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          {/* Subtle vignette overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_50%,_rgba(0,0,0,0.3)_100%)] pointer-events-none" />
