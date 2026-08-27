@@ -87,96 +87,6 @@ const Index = () => {
       } else {
         setIsSearching(false);
       }
-    }, 300);<dyad-write path="src/pages/Index.tsx" description="Complete Index page with updated search bar height, Collection-matching spacing, centered filter controls, and standardized heading">
-"use client";
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
-import { ContentCard } from '@/components/content/ContentCard';
-import { TrendingHero } from '@/components/content/TrendingHero';
-import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
-import { showSuccess, showError } from '@/utils/toast';
-import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-const CATEGORIES: { label: string; value: MediaType }[] = [
-  { label: 'Movies', value: 'movie' },
-  { label: 'Web Series', value: 'tv' },
-  { label: 'Anime', value: 'anime' },
-  { label: 'K-Drama', value: 'k-drama' },
-];
-
-const REGIONS: { label: string; value: Region }[] = [
-  { label: 'All Regions', value: 'all' },
-  { label: 'Hollywood', value: 'hollywood' },
-  { label: 'Bollywood', value: 'bollywood' },
-  { label: 'Pollywood', value: 'punjabi' },
-  { label: 'Tollywood', value: 'south-indian' },
-  { label: 'Animated', value: 'animated' },
-];
-
-const Index = () => {
-  const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
-  const [activeRegion, setActiveRegion] = useState<Region>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
-  const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
-  const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
-  const [yearPages, setYearPages] = useState<Record<number, number>>({});
-  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
-  const [watchedIds, setWatchedIds] = useState<number[]>([]);
-
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
-
-  const fetchWatchedIds = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('watched_content')
-      .select('content_id')
-      .eq('user_id', user.id);
-    
-    if (data) setWatchedIds(data.map(item => item.content_id));
-  };
-
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setIsSearching(false);
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    setLoadingYears({ 0: true });
-    try {
-      const results = await fetchContent(activeCategory, undefined, 1, query, activeRegion);
-      setSearchResults(results);
-    } catch (error) {
-      showError("Search failed. Please try again.");
-    } finally {
-      setLoadingYears({ 0: false });
-    }
-  }, [activeCategory, activeRegion]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) {
-        performSearch(searchQuery);
-      } else {
-        setIsSearching(false);
-      }
     }, 300);
 
     return () => clearTimeout(timer);
@@ -287,12 +197,12 @@ const Index = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="relative group flex-1 sm:w-72">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={19} />
+              <div className="relative group flex-1 sm:w-64">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder="Search catalog..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
