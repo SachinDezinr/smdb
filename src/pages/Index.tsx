@@ -181,28 +181,28 @@ const Index = () => {
       <Navigation />
       <ScrollToTop />
       
-      <main className="flex-1 p-4 md:p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-4 space-y-3.5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 md:gap-4">
+      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
+        <header className="mb-6 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-0.5">
-                <Compass size={13} /> Cinema Catalog
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <Compass size={14} /> Cinema Catalog
               </div>
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Discover <span className="text-primary">SMDB</span>
               </h1>
-              <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
+              <p className="text-muted-foreground text-sm mt-1">
                 Explore movies, series, and anime categorized by release year.
               </p>
             </div>
             
             <div className="relative group max-w-md w-full flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={17} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder="Search titles, cast, or directors..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl md:rounded-2xl py-2.5 pl-10 pr-9 text-xs md:text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -210,9 +210,9 @@ const Index = () => {
                   <button 
                     type="button"
                     onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
                   >
-                    <X size={15} />
+                    <X size={16} />
                   </button>
                 )}
               </div>
@@ -220,10 +220,10 @@ const Index = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-2.5 pt-0.5">
-              {/* Desktop Controls */}
-              <div className="hidden lg:flex flex-col gap-2.5 items-center">
-                <div className="flex flex-wrap gap-2 justify-center">
+            <div className="space-y-2.5 pt-1">
+              {/* Desktop Controls - Centered */}
+              <div className="hidden lg:flex flex-col gap-2.5 items-center justify-center">
+                <div className="flex flex-wrap gap-2 justify-center items-center">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
@@ -240,13 +240,13 @@ const Index = () => {
                   ))}
                 </div>
                 {showRegionFilters && (
-                  <div className="flex flex-wrap gap-1.5 justify-center">
+                  <div className="flex flex-wrap gap-1.5 justify-center items-center">
                     {REGIONS.map((reg) => (
                       <button
                         key={reg.value}
                         onClick={() => setActiveRegion(reg.value)}
                         className={cn(
-                          "px-3.5 py-1 rounded-xl font-semibold text-[11px] tracking-wide transition-all border",
+                          "px-3.5 py-1.5 rounded-xl font-semibold text-[11px] tracking-wide transition-all border",
                           activeRegion === reg.value 
                             ? "bg-white/15 border-primary/60 text-primary shadow-sm" 
                             : "bg-white/[0.02] border-white/5 text-muted-foreground hover:text-white"
@@ -259,11 +259,11 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Mobile Controls */}
-              <div className="lg:hidden flex flex-wrap gap-2 justify-start sm:justify-center">
+              {/* Mobile Controls - Centered */}
+              <div className="lg:hidden flex flex-wrap gap-2 justify-center items-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-black rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">
+                    <button className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">
                       <LayoutGrid size={14} />
                       {CATEGORIES.find(c => c.value === activeCategory)?.label}
                       <ChevronDown size={12} />
@@ -281,7 +281,7 @@ const Index = () => {
                 {showRegionFilters && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.04] border border-white/10 text-white rounded-xl font-semibold text-xs tracking-wide">
+                      <button className="flex items-center gap-1.5 px-4 py-2.5 bg-white/[0.04] border border-white/10 text-white rounded-xl font-semibold text-xs tracking-wide">
                         <Filter size={13} className="text-primary" />
                         {REGIONS.find(r => r.value === activeRegion)?.label}
                         <ChevronDown size={12} />
