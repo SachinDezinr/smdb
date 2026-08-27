@@ -31,6 +31,7 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -42,7 +43,10 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setPageLoading(false);
+        return;
+      }
 
       setUser(user);
       setUsername(user.user_metadata?.username || '');
@@ -74,6 +78,7 @@ const Profile = () => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
       setWatchedCount(watchedTotal || 0);
+      setPageLoading(false);
     };
 
     fetchUserData();
@@ -141,6 +146,14 @@ const Profile = () => {
     await supabase.auth.signOut();
     navigate('/auth');
   };
+
+  if (pageLoading) {
+    return (
+      <div className="flex min-h-screen bg-background items-center justify-center">
+        <Loader2 className="animate-spin text-primary" size={48} />
+      </div>
+    );
+  }
 
   if (!user) return null;
 
