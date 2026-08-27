@@ -124,8 +124,8 @@ const Upcoming = () => {
       <ScrollToTop />
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
-        <header className="mb-8 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <header className="mb-6 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <CalendarIcon size={14} /> Premiere Schedule
@@ -138,7 +138,7 @@ const Upcoming = () => {
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <div className="relative group flex-1 sm:w-64">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
@@ -162,9 +162,9 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-3 pt-1">
+            <div className="space-y-2.5">
               {/* Desktop Controls - Centered */}
-              <div className="hidden lg:flex flex-col gap-2.5 items-center justify-center">
+              <div className="hidden lg:flex flex-col gap-2 items-center justify-center">
                 <div className="flex flex-wrap gap-2 items-center justify-center">
                   {CATEGORIES.map((cat) => (
                     <button
@@ -214,8 +214,8 @@ const Upcoming = () => {
                 )}
               </div>
 
-              {/* Mobile Controls - Centered */}
-              <div className="lg:hidden flex flex-wrap gap-2 justify-center items-center">
+              {/* Mobile Controls - Centered & Compact */}
+              <div className="lg:hidden flex flex-wrap gap-2 justify-center items-center pt-0.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">
