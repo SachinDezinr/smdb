@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 
@@ -56,7 +56,7 @@ export const TrendingHero = () => {
   };
 
   if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900 animate-pulse rounded-3xl" />
+    <div className="w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-3xl border border-white/5" />
   );
 
   const current = trending[currentIndex];
@@ -79,7 +79,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] rounded-[2rem] overflow-hidden mb-8 group touch-pan-y">
+    <div className="relative w-full aspect-[16/10] md:aspect-[21/9] lg:aspect-[32/10] rounded-3xl overflow-hidden mb-8 group touch-pan-y border border-white/10 shadow-2xl">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -111,9 +111,9 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-          {/* Subtle/Low-Opacity Vignette Overlays for higher poster clarity */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/25 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-transparent to-transparent pointer-events-none" />
+          {/* Subtle vignette overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_50%,_rgba(0,0,0,0.3)_100%)] pointer-events-none" />
         </motion.div>
       </AnimatePresence>
@@ -123,13 +123,13 @@ export const TrendingHero = () => {
           onClick={() => paginate(-1)}
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
         >
-          <ChevronLeft size={24} />
+          <ChevronLeft size={22} />
         </button>
         <button 
           onClick={() => paginate(1)}
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
         >
-          <ChevronRight size={24} />
+          <ChevronRight size={22} />
         </button>
       </div>
 
@@ -139,30 +139,32 @@ export const TrendingHero = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="space-y-2 lg:space-y-3"
+          className="space-y-2 lg:space-y-2.5"
         >
           <div className="flex items-center gap-2">
-            <span className="bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest shadow-md">Trending</span>
-            <div className="flex items-center gap-1 text-primary">
-              <Star size={14} fill="currentColor" />
-              <span className="text-sm font-bold">{current.vote_average.toFixed(1)}</span>
+            <span className="inline-flex items-center gap-1 bg-primary text-black text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md">
+              <Sparkles size={11} /> Trending Now
+            </span>
+            <div className="flex items-center gap-1 text-primary bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-primary/30">
+              <Star size={12} fill="currentColor" />
+              <span className="text-xs font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
           </div>
           
-          <h2 className="text-xl md:text-3xl lg:text-5xl font-serif font-bold leading-tight drop-shadow-lg">
+          <h2 className="text-xl md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg">
             {current.title}
           </h2>
           
-          <p className="text-white/80 text-[10px] md:text-xs lg:text-sm line-clamp-2 max-w-lg drop-shadow-md">
+          <p className="text-white/80 text-xs md:text-sm line-clamp-2 max-w-lg drop-shadow-md leading-relaxed">
             {current.overview}
           </p>
 
-          <div className="flex items-center gap-4 pt-1 pointer-events-auto">
+          <div className="flex items-center gap-3 pt-1 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="flex items-center gap-2 bg-primary text-black px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-[10px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-black px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              <Play size={12} fill="currentColor" />
+              <Play size={13} fill="currentColor" />
               Watch Trailer
             </button>
           </div>
@@ -199,7 +201,7 @@ export const TrendingHero = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
+              className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <iframe
