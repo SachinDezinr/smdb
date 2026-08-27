@@ -2,11 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft<dyad-write path="src/components/content/TrendingHero.tsx" description="Complete implementation of TrendingHero with trailer player and fallback">
-"use client";
-
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
@@ -74,27 +69,29 @@ export const TrendingHero = () => {
     return Math.abs(offset) * velocity;
   };
 
-  if (loading || trending.length === 0) return (
-    <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/5 mb-5" />
-  );
+  if (loading || trending.length === 0) {
+    return (
+      <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/5 mb-5" />
+    );
+  }
 
   const current = trending[currentIndex];
 
   const variants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0
+    enter: (dir: number) => ({
+      x: dir > 0 ? 1000 : -1000,
+      opacity: 0,
     }),
     center: {
       zIndex: 1,
       x: 0,
-      opacity: 1
+      opacity: 1,
     },
-    exit: (direction: number) => ({
+    exit: (dir: number) => ({
       zIndex: 0,
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0
-    })
+      x: dir < 0 ? 1000 : -1000,
+      opacity: 0,
+    }),
   };
 
   return (
@@ -109,7 +106,7 @@ export const TrendingHero = () => {
           exit="exit"
           transition={{
             x: { type: "spring", stiffness: 300, damping: 30 },
-            opacity: { duration: 0.4 }
+            opacity: { duration: 0.4 },
           }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
@@ -125,8 +122,8 @@ export const TrendingHero = () => {
           }}
           className="absolute inset-0 cursor-grab active:cursor-grabbing"
         >
-          <img 
-            src={current.backdrop_path || current.poster_path} 
+          <img
+            src={current.backdrop_path || current.poster_path}
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
@@ -137,13 +134,13 @@ export const TrendingHero = () => {
       </AnimatePresence>
 
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
-        <button 
+        <button
           onClick={() => paginate(-1)}
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
         >
           <ChevronLeft size={22} />
         </button>
-        <button 
+        <button
           onClick={() => paginate(1)}
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
         >
@@ -168,17 +165,17 @@ export const TrendingHero = () => {
               <span className="text-[11px] md:text-xs font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
           </div>
-          
+
           <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
           </h2>
-          
+
           <p className="hidden sm:line-clamp-2 text-white/80 text-xs md:text-sm max-w-lg drop-shadow-md leading-relaxed">
             {current.overview}
           </p>
 
           <div className="flex items-center gap-3 pt-0.5 pointer-events-auto">
-            <button 
+            <button
               onClick={() => handleWatchTrailer(current)}
               disabled={loadingTrailer}
               className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-black px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-[11px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20 disabled:opacity-50"
@@ -229,7 +226,7 @@ export const TrendingHero = () => {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
-              <button 
+              <button
                 onClick={() => setTrailerUrl(null)}
                 className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white z-10"
               >
