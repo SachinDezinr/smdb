@@ -1,10 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Navigation } from '@/components/layout/Navigation<dyad-write path="src/pages/Index.tsx" description="Cleanly restore Index component and fix syntax duplication">
-"use client";
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { TrendingHero } from '@/components/content/TrendingHero';
