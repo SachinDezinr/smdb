@@ -19,7 +19,8 @@ import {
   Calendar,
   KeyRound,
   UserCheck,
-  MessageSquare
+  MessageSquare,
+  Award
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
@@ -159,6 +160,15 @@ const Profile = () => {
 
   const initial = (username || user.email || '?')[0].toUpperCase();
 
+  const getTierBadge = (count: number) => {
+    if (count >= 100) return { label: "Master Cinephile", color: "bg-amber-400/20 text-amber-300 border-amber-400/40" };
+    if (count >= 50) return { label: "Elite Cinephile", color: "bg-primary/20 text-primary border-primary/40" };
+    if (count >= 20) return { label: "Dedicated Cinephile", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" };
+    return { label: "Cinephile", color: "bg-primary/15 text-primary border-primary/30" };
+  };
+
+  const tier = getTierBadge(watchedCount);
+
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
@@ -199,16 +209,18 @@ const Profile = () => {
             {/* Profile Info */}
             <div className="flex-1 text-center md:text-left space-y-3 w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center justify-center md:justify-start gap-2.5">
-                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-                      {username || 'Anonymous User'}
-                    </h2>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-primary/15 text-primary border border-primary/30">
-                      Cinephile
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                    {username || 'Anonymous User'}
+                  </h2>
+                  {/* Cinephile Badge displayed directly under username */}
+                  <div className="flex items-center justify-center md:justify-start gap-2 pt-0.5">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm`}>
+                      <Award size={13} className="text-primary" />
+                      {tier.label}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-muted-foreground mt-1.5">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-muted-foreground pt-1">
                     <span className="flex items-center gap-1.5">
                       <Mail size={13} className="text-primary/70" />
                       {user.email}
@@ -225,7 +237,7 @@ const Profile = () => {
                 {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm self-center md:self-start"
                   >
                     <Edit3 size={14} />
                     Edit Profile
