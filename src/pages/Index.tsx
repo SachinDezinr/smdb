@@ -46,6 +46,116 @@ const Index = () => {
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
 
+  const currentYear<dyad-write path="src/pages/Index.tsx" description="Complete Index.tsx with compact spacing between search bar and filter controls and standardized heading on mobile">
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { ContentCard } from '@/components/content/ContentCard';
+import { TrendingHero } from '@/components/content/TrendingHero';
+import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { showSuccess, showError } from '@/utils/toast';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const CATEGORIES: { label: string; value: MediaType }[] = [
+  { label: 'Movies', value: 'movie' },
+  { label: 'Web Series', value: 'tv' },
+  { label: 'Anime', value: 'anime' },
+  { label: 'K-Drama', value: 'k-drama' },
+];
+
+const REGIONS: { label: string; value: Region }[] = [
+  { label: 'All Regions', value: 'all' },
+  { label: 'Hollywood', value: 'hollywood' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Pollywood', value: 'punjabi' },
+  { label: 'Tollywood', value: 'south-indian' },
+  { label: 'Animated', value: 'animated' },
+];
+
+const Index = () => {
+  const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
+  const [activeRegion, setActiveRegion] = useState<Region>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
+  const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
+  const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
+  const [yearPages, setYearPages] = useState<Record<number, number>>({});
+  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
+
+  const fetchWatchedIds = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('watched_content')
+      .select('content_id')
+      .eq('user_id', user.id);
+    
+    if (data) setWatchedIds(data.map(item => item.content_id));<dyad-write path="src/pages/Index.tsx" description="Complete Index page with reduced spacing between search and buttons and standardized mobile heading size">
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { ContentCard } from '@/components/content/ContentCard';
+import { TrendingHero } from '@/components/content/TrendingHero';
+import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { showSuccess, showError } from '@/utils/toast';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const CATEGORIES: { label: string; value: MediaType }[] = [
+  { label: 'Movies', value: 'movie' },
+  { label: 'Web Series', value: 'tv' },
+  { label: 'Anime', value: 'anime' },
+  { label: 'K-Drama', value: 'k-drama' },
+];
+
+const REGIONS: { label: string; value: Region }[] = [
+  { label: 'All Regions', value: 'all' },
+  { label: 'Hollywood', value: 'hollywood' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Pollywood', value: 'punjabi' },
+  { label: 'Tollywood', value: 'south-indian' },
+  { label: 'Animated', value: 'animated' },
+];
+
+const Index = () => {
+  const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
+  const [activeRegion, setActiveRegion] = useState<Region>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
+  const [expandedYears, setExpandedYears] = useState<number[]>([new Date().getFullYear()]);
+  const [yearData, setYearData] = useState<Record<number, ContentItem[]>>({});
+  const [yearPages, setYearPages] = useState<Record<number, number>>({});
+  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
 
@@ -182,8 +292,8 @@ const Index = () => {
       <ScrollToTop />
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
-        <header className="mb-8 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <header className="mb-6 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <Compass size={14} /> Cinema Catalog
@@ -196,8 +306,8 @@ const Index = () => {
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="relative group flex-1 sm:w-64">
+            <div className="w-full lg:w-72">
+              <div className="relative group w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
@@ -220,9 +330,9 @@ const Index = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-3 pt-1">
-              {/* Desktop Controls - Centered */}
-              <div className="hidden lg:flex flex-col gap-2.5 items-center justify-center">
+            <div className="space-y-2.5 pt-0.5">
+              {/* Desktop Controls */}
+              <div className="hidden lg:flex flex-col gap-2 items-center justify-center">
                 <div className="flex flex-wrap gap-2 justify-center items-center">
                   {CATEGORIES.map((cat) => (
                     <button
@@ -259,7 +369,7 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Mobile Controls - Centered */}
+              {/* Mobile Controls */}
               <div className="lg:hidden flex flex-wrap gap-2 justify-center items-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
