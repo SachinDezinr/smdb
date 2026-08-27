@@ -5,7 +5,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Film } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -136,7 +136,7 @@ const Compare = () => {
               <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
-              <p className="text-muted-foreground text-sm mt-1">Discover common favorites and personal recommendations.</p>
+              <p className="text-muted-foreground text-sm mt-1">Discover common favorites, unique titles, and taste compatibility.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -162,25 +162,34 @@ const Compare = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <div className="glass-card p-6 border-primary/20 rounded-2xl cinematic-glow text-center">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Common Interests</p>
-            <p className="text-4xl font-bold text-primary tracking-tight">{commonItems.length}</p>
+        {/* Comparison Overview Metrics (Including Friend's Total Watched) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="glass-card p-5 border-white/10 rounded-2xl text-center">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Friend's Watched</p>
+            <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">{friendCollection.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total in {friendProfile?.username || 'their'} vault</p>
+          </div>
+          
+          <div className="glass-card p-5 border-primary/30 rounded-2xl cinematic-glow text-center">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-primary mb-1">Common Interests</p>
+            <p className="text-3xl md:text-4xl font-bold text-primary tracking-tight">{commonItems.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Titles you both watched</p>
           </div>
-          <div className="glass-card p-6 border-white/10 rounded-2xl text-center">
+
+          <div className="glass-card p-5 border-white/10 rounded-2xl text-center">
             <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Friend's Unique</p>
-            <p className="text-4xl font-bold text-white tracking-tight">{uniqueToFriend.length}</p>
+            <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">{uniqueToFriend.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Recommendations for you</p>
           </div>
-          <div className="glass-card p-6 border-white/10 rounded-2xl text-center">
+
+          <div className="glass-card p-5 border-white/10 rounded-2xl text-center">
             <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Compatibility</p>
-            <p className="text-4xl font-bold text-white tracking-tight">
+            <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">
               {friendCollection.length > 0 
                 ? Math.round((commonItems.length / friendCollection.length) * 100) 
                 : 0}%
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Based on {friendProfile?.username || 'their'} list</p>
+            <p className="text-xs text-muted-foreground mt-1">Taste alignment score</p>
           </div>
         </div>
 

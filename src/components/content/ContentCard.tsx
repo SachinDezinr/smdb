@@ -104,8 +104,10 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
-          isWatched ? "border-primary/80 ring-2 ring-primary/40 cinematic-glow" : "border-white/10 group-hover:border-white/25"
+          "relative aspect-[2/3] overflow-hidden rounded-2xl transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
+          isWatched 
+            ? "border-[2.5px] border-primary ring-2 ring-primary/50 cinematic-glow" 
+            : "border border-white/10 group-hover:border-white/25"
         )}
       >
         {hasPoster ? (

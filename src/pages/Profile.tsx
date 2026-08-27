@@ -25,64 +25,39 @@ import {
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { getCachedProfile, fetchProfileData, setCachedProfile, clearCachedProfile } from '@/lib/profileStore';
 
 const Profile = () => {
-  const [user, setUser] = useState<any>(null);
-  const [username, setUsername] = useState('');
+  const cached = getCachedProfile();
+  const [user, setUser] = useState<any>(cached?.user || null);
+  const [username, setUsername] = useState(cached?.username || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(!cached);
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [friendsCount, setFriendsCount] = useState(0);
-  const [watchedCount, setWatchedCount] = useState(0);
-  const [joinedDate, setJoinedDate] = useState<string>('');
+  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
+  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
+  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
+  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setPageLoading(false);
-        return;
+    const loadProfile = async () => {
+      const data = await fetchProfileData(false);
+      if (data) {
+        setUser(data.user);
+        setUsername(data.username);
+        setJoinedDate(data.joinedDate);
+        setPendingCount(data.pendingCount);
+        setFriendsCount(data.friendsCount);
+        setWatchedCount(data.watchedCount);
       }
-
-      setUser(user);
-      setUsername(user.user_metadata?.username || '');
-
-      if (user.created_at) {
-        const date = new Date(user.created_at);
-        setJoinedDate(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
-      }
-
-      // Fetch pending friend requests
-      const { data: pendingData } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('friend_id', user.id)
-        .eq('status', 'pending');
-      setPendingCount(pendingData?.length || 0);
-
-      // Fetch accepted friends count
-      const { data: friendsData } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
-      setFriendsCount(friendsData?.length || 0);
-
-      // Fetch watched items count
-      const { count: watchedTotal } = await supabase
-        .from('watched_content')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-      setWatchedCount(watchedTotal || 0);
       setPageLoading(false);
     };
 
-    fetchUserData();
+    loadProfile();
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -107,6 +82,7 @@ const Profile = () => {
       
       if (profileError) throw profileError;
 
+      setCachedProfile({ username });
       showSuccess("Profile updated successfully!");
       setIsEditing(false);
     } catch (error: any) {
@@ -144,11 +120,12 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
+    clearCachedProfile();
     await supabase.auth.signOut();
     navigate('/auth');
   };
 
-  if (pageLoading) {
+  if (pageLoading && !user) {
     return (
       <div className="flex min-h-screen bg-background items-center justify-center">
         <Loader2 className="animate-spin text-primary" size={48} />
@@ -213,7 +190,7 @@ const Profile = () => {
                   <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
                     {username || 'Anonymous User'}
                   </h2>
-                  {/* Cinephile Badge displayed directly under username */}
+                  {/* Cinephile Badge */}
                   <div className="flex items-center justify-center md:justify-start gap-2 pt-0.5">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm`}>
                       <Award size={13} className="text-primary" />
