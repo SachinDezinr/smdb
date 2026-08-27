@@ -5,7 +5,7 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -177,26 +177,32 @@ const Index = () => {
   const showRegionFilters = !isSearching && activeCategory !== 'anime' && activeCategory !== 'k-drama';
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
       <ScrollToTop />
       
-      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
         <header className="mb-8 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <Compass size={14} /> Cinema Catalog
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Discover <span className="text-primary">SMDB</span>
               </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Explore movies, series, and anime categorized by release year.
+              </p>
             </div>
             
             <div className="relative group max-w-md w-full flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder="Search titles, cast, or directors..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -204,9 +210,9 @@ const Index = () => {
                   <button 
                     type="button"
                     onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 )}
               </div>
@@ -214,19 +220,19 @@ const Index = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               {/* Desktop Controls */}
-              <div className="hidden lg:flex flex-col gap-4 items-center">
+              <div className="hidden lg:flex flex-col gap-3.5 items-center">
                 <div className="flex flex-wrap gap-2 justify-center">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
                       onClick={() => setActiveCategory(cat.value)}
                       className={cn(
-                        "px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                        "px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border",
                         activeCategory === cat.value 
-                          ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
-                          : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                          ? "bg-primary border-primary text-black shadow-lg shadow-primary/20 scale-[1.02]" 
+                          : "bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.07] hover:text-white"
                       )}
                     >
                       {cat.label}
@@ -240,10 +246,10 @@ const Index = () => {
                         key={reg.value}
                         onClick={() => setActiveRegion(reg.value)}
                         className={cn(
-                          "px-4 py-2 rounded-xl font-bold text-xs transition-all border",
+                          "px-4 py-1.5 rounded-xl font-semibold text-[11px] tracking-wide transition-all border",
                           activeRegion === reg.value 
-                            ? "bg-white/20 border-primary text-primary" 
-                            : "bg-white/5 border-white/5 text-muted-foreground hover:text-white"
+                            ? "bg-white/15 border-primary/60 text-primary shadow-sm" 
+                            : "bg-white/[0.02] border-white/5 text-muted-foreground hover:text-white"
                         )}
                       >
                         {reg.label}
@@ -257,15 +263,15 @@ const Index = () => {
               <div className="lg:hidden flex flex-wrap gap-2 justify-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm">
-                      <LayoutGrid size={16} />
+                    <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">
+                      <LayoutGrid size={15} />
                       {CATEGORIES.find(c => c.value === activeCategory)?.label}
-                      <ChevronDown size={14} />
+                      <ChevronDown size={13} />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
+                  <DropdownMenuContent className="bg-neutral-950 border-white/10 text-white">
                     {CATEGORIES.map((cat) => (
-                      <DropdownMenuItem key={cat.value} onClick={() => setActiveCategory(cat.value)}>
+                      <DropdownMenuItem key={cat.value} onClick={() => setActiveCategory(cat.value)} className="text-xs font-semibold py-2">
                         {cat.label}
                       </DropdownMenuItem>
                     ))}
@@ -275,15 +281,15 @@ const Index = () => {
                 {showRegionFilters && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-sm">
-                        <Filter size={16} className="text-primary" />
+                      <button className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-white/10 text-white rounded-xl font-semibold text-xs tracking-wide">
+                        <Filter size={14} className="text-primary" />
                         {REGIONS.find(r => r.value === activeRegion)?.label}
-                        <ChevronDown size={14} />
+                        <ChevronDown size={13} />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-neutral-900 border-white/10 text-white">
+                    <DropdownMenuContent className="bg-neutral-950 border-white/10 text-white">
                       {REGIONS.map((reg) => (
-                        <DropdownMenuItem key={reg.value} onClick={() => setActiveRegion(reg.value)}>
+                        <DropdownMenuItem key={reg.value} onClick={() => setActiveRegion(reg.value)} className="text-xs font-semibold py-2">
                           {reg.label}
                         </DropdownMenuItem>
                       ))}
@@ -299,14 +305,17 @@ const Index = () => {
 
         <div className="space-y-4">
           {isSearching ? (
-            <div className="glass-card p-6 md:p-8 border-primary/20">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-serif font-bold">Search Results for "{searchQuery}"</h2>
+            <div className="glass-card p-6 md:p-8 border-primary/20 rounded-3xl">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-primary">Query</span>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Results for "{searchQuery}"</h2>
+                </div>
                 <button 
                   onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                  className="text-sm text-primary hover:underline"
+                  className="text-xs font-bold text-primary hover:underline uppercase tracking-wider"
                 >
-                  Back to Years
+                  Clear Search
                 </button>
               </div>
               
@@ -315,8 +324,9 @@ const Index = () => {
                   <Loader2 className="animate-spin text-primary" size={48} />
                 </div>
               ) : searchResults.length === 0 ? (
-                <div className="text-center py-20 opacity-50">
-                  <p className="text-xl">No result found.</p>
+                <div className="text-center py-20 opacity-50 space-y-2">
+                  <p className="text-xl font-semibold">No results found</p>
+                  <p className="text-xs text-muted-foreground">Try a different spelling or search keyword</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
@@ -334,19 +344,19 @@ const Index = () => {
             </div>
           ) : (
             years.map((year) => (
-              <div key={year} className="glass-card overflow-hidden border-white/5">
+              <div key={year} className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all">
                 <button
                   onClick={() => toggleYear(year)}
-                  className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between p-5 hover:bg-white/[0.04] transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-2xl font-serif font-bold text-primary">{year}</span>
-                    <span className="text-sm text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
-                      {yearData[year] ? `${yearData[year].length}+ Items` : "Loading..."}
+                    <span className="text-2xl md:text-3xl font-bold tracking-tight text-primary">{year}</span>
+                    <span className="text-xs font-semibold text-muted-foreground bg-white/[0.04] border border-white/5 px-3 py-1 rounded-full">
+                      {yearData[year] ? `${yearData[year].length}+ Titles` : "Loading..."}
                     </span>
                   </div>
                   <ChevronDown 
-                    className={cn("transition-transform duration-300", expandedYears.includes(year) && "rotate-180")} 
+                    className={cn("transition-transform duration-300 text-muted-foreground", expandedYears.includes(year) && "rotate-180 text-primary")} 
                     size={20} 
                   />
                 </button>
@@ -380,10 +390,10 @@ const Index = () => {
                             <div className="mt-8 flex justify-center">
                               <button
                                 onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
-                                className="flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-bold text-sm border border-white/10"
+                                className="flex items-center gap-2 px-8 py-3 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                               >
                                 <Plus size={16} />
-                                Load More
+                                Load More for {year}
                               </button>
                             </div>
                           )

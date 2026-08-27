@@ -114,26 +114,32 @@ const Upcoming = () => {
   const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
       <ScrollToTop />
       
-      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
         <header className="mb-8 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-serif font-bold">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <CalendarIcon size={14} /> Premiere Schedule
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Upcoming <span className="text-primary">Releases</span>
               </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Anticipated cinema and streaming drops slated for the near future.
+              </p>
             </div>
             
             <div className="relative group max-w-md w-full flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder="Search upcoming..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -141,9 +147,9 @@ const Upcoming = () => {
                   <button 
                     type="button"
                     onClick={() => { setSearchQuery(''); setIsSearching(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 )}
               </div>
@@ -151,19 +157,18 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-4">
-              {/* Category and 2027 Year Filter */}
-              <div className="flex flex-col gap-4 items-center">
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col gap-3.5 items-center">
                 <div className="flex flex-wrap gap-2 items-center justify-center">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
                       onClick={() => { setActiveCategory(cat.value); }}
                       className={cn(
-                        "px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                        "px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border",
                         activeCategory === cat.value 
-                          ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
-                          : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                          ? "bg-primary border-primary text-black shadow-lg shadow-primary/20 scale-[1.02]" 
+                          : "bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.07] hover:text-white"
                       )}
                     >
                       {cat.label}
@@ -173,14 +178,14 @@ const Upcoming = () => {
                   <button 
                     onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                      "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border",
                       activeYear === 2027 
-                        ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5" 
-                        : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                        ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5 scale-[1.02]" 
+                        : "bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.07]"
                     )}
                   >
-                    <Sparkles size={16} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
-                    2027 Releases
+                    <Sparkles size={14} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
+                    2027 Lineup
                   </button>
                 </div>
                 {showRegionFilters && (
@@ -190,10 +195,10 @@ const Upcoming = () => {
                         key={reg.value}
                         onClick={() => setActiveRegion(reg.value)}
                         className={cn(
-                          "px-4 py-2 rounded-xl font-bold text-xs transition-all border",
+                          "px-4 py-1.5 rounded-xl font-semibold text-[11px] tracking-wide transition-all border",
                           activeRegion === reg.value 
-                            ? "bg-white/20 border-primary text-primary" 
-                            : "bg-white/5 border-white/5 text-muted-foreground hover:text-white"
+                            ? "bg-white/15 border-primary/60 text-primary shadow-sm" 
+                            : "bg-white/[0.02] border-white/5 text-muted-foreground hover:text-white"
                         )}
                       >
                         {reg.label}
@@ -224,19 +229,20 @@ const Upcoming = () => {
             </div>
             
             {isSearching && searchResults.length === 0 && (
-              <div className="text-center py-20 opacity-50">
-                <p className="text-xl">No result found.</p>
+              <div className="text-center py-20 opacity-50 space-y-2">
+                <p className="text-xl font-semibold">No upcoming results found</p>
+                <p className="text-xs text-muted-foreground">Try another title or release keyword</p>
               </div>
             )}
 
             {!isSearching && items.length === 0 && (
               <div className="text-center py-32 opacity-50 flex flex-col items-center justify-center">
-                <CalendarIcon size={64} className="mb-4 text-primary/20" />
-                <h2 className="text-2xl font-serif font-bold">No Upcoming Content</h2>
-                <p className="text-muted-foreground mt-2">
+                <CalendarIcon size={56} className="mb-4 text-primary/30" />
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white">No Announced Releases</h2>
+                <p className="text-muted-foreground text-xs mt-1 max-w-sm">
                   {activeRegion !== 'all' 
                     ? `No ${activeRegion} content announced yet${activeYear ? ` for ${activeYear}` : ''}.` 
-                    : `Nothing announced for this category yet${activeYear ? ` for ${activeYear}` : ''}.`}
+                    : `Nothing officially dated for this category yet${activeYear ? ` for ${activeYear}` : ''}.`}
                 </p>
               </div>
             )}
@@ -246,10 +252,10 @@ const Upcoming = () => {
                 <button
                   onClick={() => load(page + 1)}
                   disabled={loadingMore}
-                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10 disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10 disabled:opacity-50"
                 >
-                  {loadingMore ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} />}
-                  Load More Upcoming
+                  {loadingMore ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                  Load More Releases
                 </button>
               </div>
             )}
