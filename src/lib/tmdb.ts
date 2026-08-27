@@ -215,10 +215,13 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
 export const fetchTrailers = async (id: number, type: MediaType, title?: string): Promise<string | null> => {
   const tmdbType = (type === 'movie') ? 'movie' : 'tv';
   try {
-    const data = await fetchFromProxy(`/${tmdbType}/${id}/videos`);
+    // Request multi-language videos so regional (Indian, Anime, K-Drama) trailers are included
+    const data = await fetchFromProxy(`/${tmdbType}/${id}/videos`, {
+      include_video_language: 'en,hi,te,ta,kn,ml,pa,ko,ja,null'
+    });
     const results = data.results || [];
     
-    // 1. Look for official YouTube Trailer
+    // 1. Look for official YouTube Trailer (any language)
     let video = results.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer' && v.official);
     
     // 2. Look for any YouTube Trailer
@@ -226,7 +229,7 @@ export const fetchTrailers = async (id: number, type: MediaType, title?: string)
       video = results.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer');
     }
 
-    // 3. Look for Teaser or Clip on YouTube
+    // 3. Look for Teaser, Promo or Clip on YouTube
     if (!video) {
       video = results.find((v: any) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip' || v.type === 'Featurette'));
     }
@@ -242,7 +245,10 @@ export const fetchTrailers = async (id: number, type: MediaType, title?: string)
 
     // 5. Try the alternate media type in case category was slightly misassigned
     const altType = tmdbType === 'movie' ? 'tv' : 'movie';
-    const altData = await fetchFromProxy(`/${altType}/${id}/videos`).catch(() => null);
+    const altData = await fetchFromProxy(`/${altType}/${id}/videos`, {
+      include_video_language: 'en,hi,te,ta,kn,ml,pa,ko,ja,null'
+    }).catch(() => null);
+
     if (altData?.results?.length) {
       const altVideo = altData.results.find((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')) || altData.results.find((v: any) => v.site === 'YouTube' && v.key);
       if (altVideo?.key) {
@@ -251,12 +257,6 @@ export const fetchTrailers = async (id: number, type: MediaType, title?: string)
     }
   } catch (err) {
     console.warn("[tmdb] Error fetching trailer videos:", err);
-  }
-
-  // 6. Direct fallback search query embed
-  if (title) {
-    const query = encodeURIComponent(`${title} official trailer`);
-    return `https://www.youtube.com/embed?listType=search&list=${query}`;
   }
 
   return null;
