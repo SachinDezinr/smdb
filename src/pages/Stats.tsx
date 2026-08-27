@@ -128,66 +128,66 @@ const Stats = () => {
           </p>
         </section>
 
-        {/* Wrapped Modal Overlay */}
+        {/* Wrapped Modal Overlay with Balanced Spacing */}
         <AnimatePresence>
           {showWrapped && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/95 backdrop-blur-md">
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative w-full max-w-sm aspect-[9/16] bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/20 rounded-[2.5rem] p-8 flex flex-col items-center justify-between border border-white/10 shadow-2xl overflow-hidden"
+                className="relative w-full max-w-sm bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/20 rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between border border-white/10 shadow-2xl overflow-hidden gap-6"
               >
                 <button 
                   onClick={() => setShowWrapped(false)}
-                  className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors z-50 text-white"
+                  className="absolute top-5 right-5 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors z-50 text-white"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
 
-                <div className="text-center mt-6">
-                  <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-primary/30">
-                    <Film className="text-black" size={28} />
+                {/* Header */}
+                <div className="text-center pt-2">
+                  <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-lg shadow-primary/30">
+                    <Film className="text-black" size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold tracking-tight text-primary">SMDB</h3>
-                  <p className="text-white/60 text-[11px] uppercase tracking-widest font-semibold mt-1">Wrapped {currentYear}</p>
+                  <h3 className="text-xl font-bold tracking-tight text-primary">SMDB</h3>
+                  <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold mt-0.5">Wrapped {currentYear}</p>
                 </div>
 
-                {/* Centered Count Section */}
-                <div className="w-full flex flex-col items-center justify-center flex-1 py-4">
-                  <div className="text-center flex flex-col items-center justify-center flex-1">
-                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-2">Titles Watched in {currentYear}</p>
-                    <p className="text-7xl font-bold text-white tracking-tighter">{stats.yearTotal}</p>
-                  </div>
+                {/* Main Metric */}
+                <div className="w-full flex flex-col items-center justify-center my-1 text-center">
+                  <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Titles Watched in {currentYear}</p>
+                  <p className="text-6xl font-bold text-white tracking-tighter">{stats?.yearTotal || 0}</p>
+                </div>
 
-                  {/* Category Grid */}
-                  <div className="grid grid-cols-2 gap-3 w-full mt-auto">
-                    <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <PlayCircle className="text-primary mb-1.5" size={18} />
-                      <p className="text-xl font-bold text-white">{stats.counts.movie}</p>
-                      <p className="text-[9px] text-white/40 uppercase font-bold tracking-wider">Movies</p>
-                    </div>
-                    <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Tv className="text-primary mb-1.5" size={18} />
-                      <p className="text-xl font-bold text-white">{stats.counts.tv}</p>
-                      <p className="text-[9px] text-white/40 uppercase font-bold tracking-wider">Series</p>
-                    </div>
-                    <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Sparkles className="text-primary mb-1.5" size={18} />
-                      <p className="text-xl font-bold text-white">{stats.counts.anime}</p>
-                      <p className="text-[9px] text-white/40 uppercase font-bold tracking-wider">Anime</p>
-                    </div>
-                    <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                      <Heart className="text-primary mb-1.5" size={18} />
-                      <p className="text-xl font-bold text-white">{stats.counts.kdrama}</p>
-                      <p className="text-[9px] text-white/40 uppercase font-bold tracking-wider">K-Drama</p>
-                    </div>
+                {/* Category Grid */}
+                <div className="grid grid-cols-2 gap-2.5 w-full">
+                  <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                    <PlayCircle className="text-primary mb-1" size={16} />
+                    <p className="text-lg font-bold text-white">{stats?.counts?.movie || 0}</p>
+                    <p className="text-[9px] text-white/50 uppercase font-bold tracking-wider">Movies</p>
+                  </div>
+                  <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                    <Tv className="text-primary mb-1" size={16} />
+                    <p className="text-lg font-bold text-white">{stats?.counts?.tv || 0}</p>
+                    <p className="text-[9px] text-white/50 uppercase font-bold tracking-wider">Series</p>
+                  </div>
+                  <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                    <Sparkles className="text-primary mb-1" size={16} />
+                    <p className="text-lg font-bold text-white">{stats?.counts?.anime || 0}</p>
+                    <p className="text-[9px] text-white/50 uppercase font-bold tracking-wider">Anime</p>
+                  </div>
+                  <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                    <Heart className="text-primary mb-1" size={16} />
+                    <p className="text-lg font-bold text-white">{stats?.counts?.kdrama || 0}</p>
+                    <p className="text-[9px] text-white/50 uppercase font-bold tracking-wider">K-Drama</p>
                   </div>
                 </div>
 
-                <div className="w-full text-center pb-2">
-                  <p className="text-white/40 text-[11px] italic font-medium">"Your cinematic journey, tracked."</p>
-                  <p className="text-primary font-bold text-xs mt-1">smdb.app</p>
+                {/* Footer */}
+                <div className="w-full text-center pt-1 border-t border-white/5">
+                  <p className="text-white/40 text-[10px] italic font-medium">"Your cinematic journey, tracked."</p>
+                  <p className="text-primary font-bold text-xs mt-0.5">smdb.app</p>
                 </div>
               </motion.div>
             </div>

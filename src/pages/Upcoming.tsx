@@ -57,7 +57,125 @@ const Upcoming = () => {
           if (!item.release_date || item.release_date === "TBA") return true;
           return item.release_date > today;
         });
-        // Sort future items chronologically by release date
+        data.sort((a, b) => {
+          if (a.release_date === "TBA") return 1;
+          if (b.release_date === "TBA") return -1;
+          return a.release_date.localeCompare(b.release_date);
+        });
+      } else {
+        data = await fetchUpcoming(activeCategory, activeRegion, pageNum);
+        data = data.filter(item => {
+          if (!item.release_date || item.release_date === "TBA") return true;
+          return item.release_date > today;
+        });
+      }
+      
+      setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
+      setPage(pageNum);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    setLoading(true);
+    try {
+      const results = await fetchContent('movie', undefined, 1, query, 'all');
+      const today = new Date().toISOString().split('T')[0];
+      setSearchResults(results.filter(item => item.release_date > today));
+    } catch (error) {
+      showError("Search failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        <dyad-write path="src/pages/Upcoming.tsx" description="Complete Upcoming page matching Collection header layout, search bar, and centered controls">
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { ContentCard } from '@/components/content/ContentCard';
+import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, Loader2, Plus, X, Calendar as CalendarIcon, Sparkles, LayoutGrid, ChevronDown, Filter } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { showError } from '@/utils/toast';
+import {
+  DropdownMenu,
+  Dropdown<dyad-write path="src/pages/Upcoming.tsx" description="Complete Upcoming page with updated header layout, search bar, and centered controls matching Collection page">
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
+import { ContentCard } from '@/components/content/ContentCard';
+import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { Search, Loader2, Plus, X, Calendar as CalendarIcon, Sparkles, LayoutGrid, ChevronDown, Filter } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { showError } from '@/utils/toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const CATEGORIES: { label: string; value: MediaType }[] = [
+  { label: 'Movies', value: 'movie' },
+  { label: 'Web Series', value: 'tv' },
+  { label: 'Anime', value: 'anime' },
+  { label: 'K-Drama', value: 'k-drama' },
+];
+
+const REGIONS: { label: string; value: Region }[] = [
+  { label: 'All Regions', value: 'all' },
+  { label: 'Hollywood', value: 'hollywood' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Pollywood', value: 'punjabi' },
+  { label: 'Tollywood', value: 'south-indian' },
+  { label: 'Animated', value: 'animated' },
+];
+
+const Upcoming = () => {
+  const [activeCategory, setActiveCategory] = useState<MediaType>('movie');
+  const [activeRegion, setActiveRegion] = useState<Region>('all');
+  const [activeYear, setActiveYear] = useState<number | null>(null);
+  const [items, setItems] = useState<ContentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
+
+  const load = async (pageNum: number = 1) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      let data: ContentItem[];
+      const today = new Date().toISOString().split('T')[0];
+
+      if (activeYear) {
+        data = await fetchContent(activeCategory, activeYear, pageNum, "", activeRegion);
+        data = data.filter(item => {
+          if (!item.release_date || item.release_date === "TBA") return true;
+          return item.release_date > today;
+        });
         data.sort((a, b) => {
           if (a.release_date === "TBA") return 1;
           if (b.release_date === "TBA") return -1;
@@ -140,12 +258,12 @@ const Upcoming = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-              <div className="relative group flex-1 sm:w-72">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={19} />
+              <div className="relative group flex-1 sm:w-64">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder="Search upcoming..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
