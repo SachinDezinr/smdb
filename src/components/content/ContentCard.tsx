@@ -16,6 +16,7 @@ interface ContentCardProps {
 
 export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
   const [showCredits, setShowCredits] = useState(false);
+  const [showActionOverlay, setShowActionOverlay] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
 
@@ -44,25 +45,30 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
   const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
 
   const handlePosterClick = async () => {
-    if (!showReleaseDate && !isFuture) return;
-    
-    if (showCredits) {
-      setShowCredits(false);
+    // For upcoming/future items, toggle credits
+    if (showReleaseDate || isFuture) {
+      if (showCredits) {
+        setShowCredits(false);
+        return;
+      }
+
+      if (!credits) {
+        setLoadingCredits(true);
+        try {
+          const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
+          setCredits(data);
+        } catch (err) {
+          console.error("Failed to fetch credits", err);
+        } finally {
+          setLoadingCredits(false);
+        }
+      }
+      setShowCredits(true);
       return;
     }
 
-    if (!credits) {
-      setLoadingCredits(true);
-      try {
-        const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-        setCredits(data);
-      } catch (err) {
-        console.error("Failed to fetch credits", err);
-      } finally {
-        setLoadingCredits(false);
-      }
-    }
-    setShowCredits(true);
+    // For regular catalog items on touch/mobile: toggle the Add to Watched overlay on tap
+    setShowActionOverlay(prev => !prev);
   };
 
   const hasPoster = item.poster_path && item.poster_path !== "";
@@ -77,7 +83,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-500 bg-neutral-900 cursor-pointer shadow-lg",
+          "relative aspect-[2/3] overflow-hidden rounded-2xl border transition-all duration-500 bg-neutral-900 cursor-pointer shadow-lg select-none",
           isWatched ? "border-primary/80 ring-2 ring-primary/30 cinematic-glow" : "border-white/10 group-hover:border-white/25"
         )}
       >
@@ -86,15 +92,15 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             src={item.poster_path}
             alt={item.title}
             className={cn(
-              "w-full h-full object-cover transition-all duration-700",
-              showCredits ? "blur-xl scale-110 opacity-30" : "group-hover:scale-105"
+              "w-full h-full object-cover transition-all duration-700 pointer-events-none",
+              (showCredits || showActionOverlay) ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105"
             )}
             loading="lazy"
           />
         ) : (
           <div className={cn(
             "w-full h-full flex flex-col items-center justify-center p-5 text-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-primary/10 relative",
-            showCredits && "blur-md opacity-30"
+            (showCredits || showActionOverlay) && "blur-md opacity-30"
           )}>
             <Film className="text-primary/30 mb-3" size={40} strokeWidth={1.5} />
             <span className="text-xs font-semibold text-white/90 line-clamp-3 leading-snug tracking-tight">
@@ -149,16 +155,20 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           )}
         </AnimatePresence>
         
-        {/* Watch Action Overlay */}
+        {/* Watch Action Overlay (Desktop hover + Mobile click-to-toggle) */}
         {!showReleaseDate && !showCredits && !isFuture && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className={cn(
+            "absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 flex flex-col items-center justify-center gap-2 z-20",
+            showActionOverlay ? "opacity-100 pointer-events-auto" : "opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
+          )}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleWatched?.(item.id);
+                setShowActionOverlay(false);
               }}
               className={cn(
-                "px-4 py-2 rounded-xl font-bold text-xs tracking-wide transition-all transform translate-y-2 group-hover:translate-y-0 shadow-lg",
+                "px-4 py-2 rounded-xl font-bold text-xs tracking-wide transition-all shadow-lg transform active:scale-95",
                 isWatched 
                   ? "bg-primary text-black" 
                   : "bg-white text-black hover:bg-primary"
@@ -166,6 +176,9 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             >
               {isWatched ? "Watched" : "Add to Watched"}
             </button>
+            {showActionOverlay && (
+              <span className="text-[10px] text-white/60 font-medium">Tap poster to close</span>
+            )}
           </div>
         )}
 

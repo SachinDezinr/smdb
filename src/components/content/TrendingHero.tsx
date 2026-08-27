@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react';
+import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
+import { showError } from '@/utils/toast';
 
 export const TrendingHero = () => {
   const [trending, setTrending] = useState<ContentItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingTrailer, setLoadingTrailer] = useState(false);
   const [direction, setDirection] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -46,8 +48,21 @@ export const TrendingHero = () => {
   };
 
   const handleWatchTrailer = async (item: ContentItem) => {
-    const url = await fetchTrailers(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-    setTrailerUrl(url);
+    setLoadingTrailer(true);
+    try {
+      const url = await fetchTrailers(item.id, item.media_type, item.title);
+      if (url) {
+        setTrailerUrl(url);
+      } else {
+        // Direct search fallback
+        const query = encodeURIComponent(`${item.title} trailer`);
+        window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+      }
+    } catch (err) {
+      showError("Could not load trailer");
+    } finally {
+      setLoadingTrailer(false);
+    }
   };
 
   const swipeConfidenceThreshold = 10000;
@@ -162,10 +177,11 @@ export const TrendingHero = () => {
           <div className="flex items-center gap-3 pt-0.5 pointer-events-auto">
             <button 
               onClick={() => handleWatchTrailer(current)}
-              className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-black px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-[11px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+              disabled={loadingTrailer}
+              className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-black px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-[11px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20 disabled:opacity-50"
             >
-              <Play size={12} fill="currentColor" />
-              Watch Trailer
+              {loadingTrailer ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
+              {loadingTrailer ? "Loading..." : "Watch Trailer"}
             </button>
           </div>
         </motion.div>
@@ -205,14 +221,14 @@ export const TrendingHero = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <iframe
-                src={`${trailerUrl}?autoplay=1`}
+                src={`${trailerUrl}${trailerUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0`}
                 className="w-full h-full"
-                allow="autoplay; encrypted-media"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
               <button 
                 onClick={() => setTrailerUrl(null)}
-                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white z-10"
               >
                 <X size={20} />
               </button>
