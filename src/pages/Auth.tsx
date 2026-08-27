@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Film, Mail, Lock, User, Loader2, ArrowLeft } from 'lucide-react';
+import { Film, Mail, Lock, User, Loader2, ArrowLeft, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Auth = () => {
@@ -81,94 +81,94 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden">
-      {/* Increased intensity of yellow glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/25 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/15 rounded-full blur-[120px]" />
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden selection:bg-primary/20 selection:text-primary">
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md glass-card p-8 border-primary/20 cinematic-glow relative z-10"
+        className="w-full max-w-md glass-card p-8 border-primary/20 rounded-3xl cinematic-glow relative z-10"
       >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-            <Film className="text-black" size={32} />
+        <div className="flex flex-col items-center mb-8 text-center">
+          <div className="w-16 h-16 bg-gradient-to-tr from-primary/30 to-primary rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-primary/25 border border-primary/40">
+            <Film className="text-black" size={30} />
           </div>
-          <h1 className="text-3xl font-serif font-bold text-primary">SMDB</h1>
-          <p className="text-muted-foreground text-sm mt-2 text-center">
-            {mode === 'login' ? "Sign in to track your journey" : 
-             mode === 'register' ? "Create your cinematic profile" : 
-             "Reset your password"}
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
+            <Sparkles size={11} /> Cinematic Journey Tracker
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">SMDB</h1>
+          <p className="text-muted-foreground text-xs mt-1">
+            {mode === 'login' ? "Sign in to track your watch history" : 
+             mode === 'register' ? "Create your personalized cinephile vault" : 
+             "Recover and reset your password"}
           </p>
         </div>
 
-        <div className="space-y-4">
-          <form onSubmit={handleAuth} className="space-y-4">
-            {(mode === 'register' || mode === 'forgot') && (
-              <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Username"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-            )}
-            
+        <form onSubmit={handleAuth} className="space-y-3.5">
+          {(mode === 'register' || mode === 'forgot') && (
             <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={17} />
               <input
-                type="email"
-                placeholder="Email Address"
+                type="text"
+                placeholder="Username"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
+          )}
+          
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={17} />
+            <input
+              type="email"
+              placeholder="Email Address"
+              required
+              className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-            {mode !== 'forgot' && (
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            )}
+          {mode !== 'forgot' && (
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={17} />
+              <input
+                type="password"
+                placeholder="Password"
+                required
+                className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 
-               (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Verify & Reset")}
-            </button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-black font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-4 shadow-lg shadow-primary/20 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : 
+             (mode === 'login' ? "Sign In" : mode === 'register' ? "Create Account" : "Verify & Reset")}
+          </button>
+        </form>
 
-        <div className="mt-8 flex flex-col gap-3 text-center">
+        <div className="mt-6 flex flex-col gap-2.5 text-center">
           {mode === 'login' ? (
             <>
-              <button onClick={() => setMode('register')} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Don't have an account? Register
+              <button onClick={() => setMode('register')} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                Don't have an account? <span className="font-semibold text-white">Register</span>
               </button>
-              <button onClick={() => setMode('forgot')} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <button onClick={() => setMode('forgot')} className="text-xs text-muted-foreground hover:text-primary transition-colors">
                 Forgot Password?
               </button>
             </>
           ) : (
-            <button onClick={() => setMode('login')} className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
-              <ArrowLeft size={14} /> Back to Login
+            <button onClick={() => setMode('login')} className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1.5">
+              <ArrowLeft size={13} /> Back to Login
             </button>
           )}
         </div>

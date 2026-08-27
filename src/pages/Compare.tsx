@@ -5,7 +5,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, Plus, ChevronUp } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -106,7 +106,11 @@ const Compare = () => {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="animate-spin text-primary" size={48} /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Loader2 className="animate-spin text-primary" size={48} />
+    </div>
+  );
 
   const myIds = new Set(myCollection.map(i => i.content_id));
   const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
@@ -115,25 +119,28 @@ const Compare = () => {
   const displayedItems = (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).slice(0, visibleCount);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
       
-      <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 max-w-7xl mx-auto w-full">
-        <header className="mb-10">
-          <Link to="/friends" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-6">
-            <ArrowLeft size={18} /> Back to Friends
+      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
+        <header className="mb-8">
+          <Link to="/friends" className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
+            <ArrowLeft size={15} /> Back to Friends
           </Link>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 text-center md:text-left">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <Sparkles size={14} /> Shared Taste Analysis
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
-              <p className="text-muted-foreground mt-2 text-sm md:text-base">Discover shared tastes and new recommendations.</p>
+              <p className="text-muted-foreground text-sm mt-1">Discover common favorites and personal recommendations.</p>
             </div>
 
-            <div className="flex flex-col items-center gap-4 w-full md:w-auto">
-              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-[320px] md:w-auto justify-center">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex bg-white/[0.04] p-1 rounded-2xl border border-white/10 w-full sm:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'common', label: 'Common' },
@@ -143,47 +150,45 @@ const Compare = () => {
                     key={btn.id}
                     onClick={() => { setFilter(btn.id as any); setVisibleCount(12); }}
                     className={cn(
-                      "flex-1 md:flex-none px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all",
-                      filter === btn.id ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
+                      "px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                      filter === btn.id ? "bg-primary text-black shadow-md" : "text-muted-foreground hover:text-white"
                     )}
                   >
                     {btn.label}
                   </button>
                 ))}
               </div>
-              <div className="text-primary font-bold whitespace-nowrap text-sm">
-                Total Watched: {friendCollection.length}
-              </div>
             </div>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="glass-card p-6 border-primary/20 cinematic-glow text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Common Interests</p>
-            <p className="text-4xl font-bold text-primary">{commonItems.length}</p>
-            <p className="text-xs text-muted-foreground mt-2">Titles you both watched</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          <div className="glass-card p-6 border-primary/20 rounded-2xl cinematic-glow text-center">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Common Interests</p>
+            <p className="text-4xl font-bold text-primary tracking-tight">{commonItems.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Titles you both watched</p>
           </div>
-          <div className="glass-card p-6 border-white/5 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Friend's Unique</p>
-            <p className="text-4xl font-bold text-white">{uniqueToFriend.length}</p>
-            <p className="text-xs text-muted-foreground mt-2">Recommendations for you</p>
+          <div className="glass-card p-6 border-white/10 rounded-2xl text-center">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Friend's Unique</p>
+            <p className="text-4xl font-bold text-white tracking-tight">{uniqueToFriend.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Recommendations for you</p>
           </div>
-          <div className="glass-card p-6 border-white/5 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Compatibility</p>
-            <p className="text-4xl font-bold text-white">
+          <div className="glass-card p-6 border-white/10 rounded-2xl text-center">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Compatibility</p>
+            <p className="text-4xl font-bold text-white tracking-tight">
               {friendCollection.length > 0 
                 ? Math.round((commonItems.length / friendCollection.length) * 100) 
                 : 0}%
             </p>
-            <p className="text-xs text-muted-foreground mt-2">Based on {friendProfile?.username || 'their'} list</p>
+            <p className="text-xs text-muted-foreground mt-1">Based on {friendProfile?.username || 'their'} list</p>
           </div>
         </div>
 
         {displayedItems.length === 0 ? (
-          <div className="text-center py-20 opacity-50">
-            <Users size={64} className="mx-auto mb-4" />
-            <p className="text-xl">No items found for this filter.</p>
+          <div className="text-center py-24 opacity-50 space-y-2">
+            <Users size={56} className="mx-auto mb-2 text-primary/30" />
+            <h2 className="text-xl font-bold text-white">No titles found for this filter</h2>
+            <p className="text-xs text-muted-foreground">Try switching to the 'All' tab to see their full list.</p>
           </div>
         ) : (
           <>
@@ -213,10 +218,10 @@ const Compare = () => {
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="flex items-center gap-2 px-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all font-bold text-sm border border-white/10"
+                  className="flex items-center gap-2 px-8 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                 >
-                  <Plus size={20} />
-                  Load More
+                  <Plus size={16} />
+                  Load More Titles
                 </button>
               </div>
             )}
@@ -232,7 +237,7 @@ const Compare = () => {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="fixed bottom-24 right-6 p-4 bg-primary text-black rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
             >
-              <ChevronUp size={24} />
+              <ChevronUp size={20} />
             </motion.button>
           )}
         </AnimatePresence>
