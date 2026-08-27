@@ -71,7 +71,7 @@ export const TrendingHero = () => {
 
   if (loading || trending.length === 0) {
     return (
-      <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/5 mb-5" />
+      <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/15 mb-5" />
     );
   }
 
@@ -95,7 +95,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] rounded-2xl md:rounded-3xl overflow-hidden mb-5 group touch-pan-y border border-white/10 shadow-2xl">
+    <div className="relative w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] rounded-2xl md:rounded-3xl overflow-hidden mb-5 group touch-pan-y border border-white/20 hover:border-primary/30 transition-colors duration-300 shadow-2xl">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
