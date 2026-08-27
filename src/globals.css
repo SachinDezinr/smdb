@@ -20,8 +20,8 @@
     --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
+    --border: 0 0% 18%; /* Slightly increased intensity for crisp definition */
+    --input: 0 0% 18%;
     --ring: 45 92% 55%;
     --radius: 0.77rem;
   }
@@ -46,7 +46,7 @@
 }
 
 .glass-card {
-  @apply bg-black/60 backdrop-blur-md border border-white/10 rounded-xl;
+  @apply bg-black/60 backdrop-blur-md border border-white/15 rounded-xl;
 }
 
 .cinematic-glow {
