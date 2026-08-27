@@ -24,33 +24,6 @@ const About = () => {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-2 bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
-            <Sparkles size<dyad-write path="src/pages/About.tsx" description="Complete typography and layout update for the About page">
-"use client";
-
-import React from 'react';
-import { Navigation } from '@/components/layout/Navigation';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Users, BarChart3, Calendar, Sparkles, Film } from 'lucide-react';
-
-const features = [
-  { icon: Calendar, title: "Year-based Catalog", desc: "Explore content organized chronologically from 1950 to future releases." },
-  { icon: CheckCircle2, title: "Instant Watch Log", desc: "Track every movie, web series, anime, and drama with a single tap." },
-  { icon: BarChart3, title: "Yearly Wrapped & Stats", desc: "Get rich visual summaries and analytics of your viewing habits." },
-  { icon: Users, title: "Friend Comparison", desc: "Compare vaults with friends and calculate taste compatibility scores." },
-];
-
-const About = () => {
-  return (
-    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
-      
-      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-4xl mx-auto w-full">
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-2 bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
             <Sparkles size={13} /> Platform Overview
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-3">
