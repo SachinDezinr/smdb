@@ -125,8 +125,8 @@ const Upcoming = () => {
       <ScrollToTop />
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
-        <header className="mb-6 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <header className="mb-8 space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <CalendarIcon size={14} /> Premiere Schedule
@@ -139,13 +139,13 @@ const Upcoming = () => {
               </p>
             </div>
             
-            <div className="relative group max-w-md w-full flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+              <div className="relative group flex-1 sm:w-72">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={19} />
                 <input
                   type="text"
                   placeholder="Search upcoming..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -163,7 +163,7 @@ const Upcoming = () => {
           </div>
 
           {!isSearching && (
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-3 pt-1">
               {/* Desktop Controls - Centered */}
               <div className="hidden lg:flex flex-col gap-2.5 items-center justify-center">
                 <div className="flex flex-wrap gap-2 items-center justify-center">
