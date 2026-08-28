@@ -79,7 +79,7 @@ const Contact = () => {
                 <Code size={22} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight mb-0.5">Developed By</h3>
+                <h3 className="text-base font-bold text-white tracking-tight mb-0.5">Created By</h3>
                 <p className="text-primary font-bold text-xs">Sachin Panwar</p>
               </div>
             </div>
