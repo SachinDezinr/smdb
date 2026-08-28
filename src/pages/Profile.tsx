@@ -187,16 +187,17 @@ const Profile = () => {
             <div className="flex-1 text-center md:text-left space-y-3 w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="space-y-1.5">
-                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-                    {username || 'Anonymous User'}
-                  </h2>
-                  {/* Cinephile Badge */}
-                  <div className="flex items-center justify-center md:justify-start gap-2 pt-0.5">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm`}>
+                  {/* Username with Cinephile Badge on the right for laptop/desktop */}
+                  <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2.5">
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                      {username || 'Anonymous User'}
+                    </h2>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm flex-shrink-0`}>
                       <Award size={13} className="text-primary" />
                       {tier.label}
                     </span>
                   </div>
+
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-muted-foreground pt-1">
                     <span className="flex items-center gap-1.5">
                       <Mail size={13} className="text-primary/70" />
