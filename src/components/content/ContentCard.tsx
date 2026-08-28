@@ -106,7 +106,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
         className={cn(
           "relative aspect-[2/3] overflow-hidden rounded-2xl transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
           isWatched 
-            ? "border-[2.5px] border-primary ring-2 ring-primary/50 cinematic-glow" 
+            ? "border-[2px] border-primary ring-2 ring-primary/50 cinematic-glow" 
             : "border border-white/10 group-hover:border-white/25"
         )}
       >
