@@ -20,12 +20,14 @@ import {
   KeyRound,
   UserCheck,
   MessageSquare,
-  Award
+  X,
+  Target
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getCachedProfile, fetchProfileData, setCachedProfile, clearCachedProfile } from '@/lib/profileStore';
+import { getUserBadge, BADGE_TIERS } from '@/lib/badges';
 
 const Profile = () => {
   const cached = getCachedProfile();
@@ -41,6 +43,7 @@ const Profile = () => {
   const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
   const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
   const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
+  const [showTiersModal, setShowTiersModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -137,14 +140,8 @@ const Profile = () => {
 
   const initial = (username || user.email || '?')[0].toUpperCase();
 
-  const getTierBadge = (count: number) => {
-    if (count >= 100) return { label: "Master Cinephile", color: "bg-amber-400/20 text-amber-300 border-amber-400/40" };
-    if (count >= 50) return { label: "Elite Cinephile", color: "bg-primary/20 text-primary border-primary/40" };
-    if (count >= 20) return { label: "Dedicated Cinephile", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" };
-    return { label: "Cinephile", color: "bg-primary/15 text-primary border-primary/30" };
-  };
-
-  const tier = getTierBadge(watchedCount);
+  const badgeInfo = getUserBadge(watchedCount);
+  const CurrentIcon = badgeInfo.current.icon;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -187,16 +184,22 @@ const Profile = () => {
             <div className="flex-1 text-center md:text-left space-y-3 w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="space-y-1.5">
-                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-                    {username || 'Anonymous User'}
-                  </h2>
-                  {/* Cinephile Badge */}
-                  <div className="flex items-center justify-center md:justify-start gap-2 pt-0.5">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${tier.color} shadow-sm`}>
-                      <Award size={13} className="text-primary" />
-                      {tier.label}
-                    </span>
+                  {/* Username with Dynamic Cinephile Badge on the right for laptop/desktop */}
+                  <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2.5">
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                      {username || 'Anonymous User'}
+                    </h2>
+                    
+                    <button
+                      onClick={() => setShowTiersModal(true)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${badgeInfo.current.badgeStyle} shadow-sm flex-shrink-0 hover:scale-105 transition-transform cursor-pointer`}
+                      title="Click to view all badge tiers"
+                    >
+                      <CurrentIcon size={14} className={badgeInfo.current.iconColor} />
+                      {badgeInfo.current.label}
+                    </button>
                   </div>
+
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-muted-foreground pt-1">
                     <span className="flex items-center gap-1.5">
                       <Mail size={13} className="text-primary/70" />
@@ -221,6 +224,31 @@ const Profile = () => {
                   </button>
                 )}
               </div>
+
+              {/* Progress to Next Badge Tier */}
+              {badgeInfo.next ? (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-[11px] mb-1.5">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Target size={12} className="text-primary" />
+                      Next Rank: <strong className="text-white">{badgeInfo.next.label}</strong> ({badgeInfo.next.min} watches)
+                    </span>
+                    <span className="text-primary font-bold">{badgeInfo.neededForNext} more to level up</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${badgeInfo.progress}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="bg-gradient-to-r from-primary/80 to-primary h-full rounded-full"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-2 text-xs text-yellow-400 font-semibold flex items-center justify-center md:justify-start gap-1.5">
+                  <Sparkles size={14} /> Maximum Rank Achieved: Cinema Legend!
+                </div>
+              )}
 
               {/* Quick Metrics Bar */}
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/5 max-w-lg mx-auto md:mx-0">
@@ -486,6 +514,80 @@ const Profile = () => {
 
         </div>
       </main>
+
+      {/* Badge Tiers Modal */}
+      <AnimatePresence>
+        {showTiersModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-neutral-950 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Sparkles className="text-primary" size={18} />
+                    Cinephile Badge Ranks
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Unlock higher badges by expanding your watch history.</p>
+                </div>
+                <button
+                  onClick={() => setShowTiersModal(false)}
+                  className="p-2 text-muted-foreground hover:text-white bg-white/5 rounded-full"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto space-y-2.5 pr-1">
+                {BADGE_TIERS.map((tier) => {
+                  const isCurrent = badgeInfo.current.label === tier.label;
+                  const isUnlocked = watchedCount >= tier.min;
+                  const Icon = tier.icon;
+
+                  return (
+                    <div
+                      key={tier.label}
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                        isCurrent 
+                          ? 'border-primary/60 bg-primary/10' 
+                          : isUnlocked 
+                            ? 'border-white/10 bg-white/[0.03]' 
+                            : 'border-white/5 bg-white/[0.01] opacity-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className={`p-2.5 rounded-xl border ${tier.badgeStyle} flex-shrink-0`}>
+                          <Icon size={18} className={tier.iconColor} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-white truncate">{tier.label}</h4>
+                            {isCurrent && (
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-primary text-black rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate">{tier.description}</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 pl-2">
+                        <span className="text-xs font-bold text-primary">
+                          {tier.max === null ? `${tier.min}+` : `${tier.min} - ${tier.max}`}
+                        </span>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">titles</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
