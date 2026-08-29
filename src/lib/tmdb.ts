@@ -123,13 +123,28 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       return true;
     })
     .map((item: any) => {
-      let type = (item.media_type as MediaType) || defaultType;
-      const isAnimated = item.genre_ids?.includes(16);
+      let type: MediaType = defaultType;
+      const isAnimated = item.genre_ids?.includes(16) || item.genres?.some((g: any) => g.id === 16 || g.name === 'Animation');
       const isJapanese = item.original_language === 'ja';
       const isKorean = item.original_language === 'ko';
+      const isExplicitTv = item.media_type === 'tv' || !!item.first_air_date || (defaultType === 'tv' && !item.title);
+      const isExplicitMovie = item.media_type === 'movie' || (defaultType === 'movie' && !item.first_air_date);
 
-      if (isJapanese && isAnimated) type = 'anime';
-      else if (isKorean && (item.media_type === 'tv' || type === 'tv' || defaultType === 'k-drama')) type = 'k-drama';
+      if (isJapanese && (isAnimated || defaultType === 'anime')) {
+        type = 'anime';
+      } else if (isKorean && (isExplicitTv || defaultType === 'k-drama')) {
+        type = 'k-drama';
+      } else if (defaultType === 'anime') {
+        type = 'anime';
+      } else if (defaultType === 'k-drama') {
+        type = 'k-drama';
+      } else if (isExplicitTv) {
+        type = 'tv';
+      } else if (isExplicitMovie) {
+        type = 'movie';
+      } else {
+        type = (item.media_type as MediaType) || defaultType;
+      }
 
       return {
         id: item.id,
@@ -194,7 +209,7 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
   const [globalMovies, indianMovies, globalTv, anime, kdrama] = await Promise.all([
     fetchFromProxy('/trending/movie/day', { append_to_response: 'videos' }),
     fetchFromProxy('/discover/movie', { region: 'IN', with_original_language: 'hi|te|ta|kn|ml', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
-    fetchFromProxy('/trending/tv/day', { append_to_response: 'videos' }),
+    fetchFromProxy('/trending/tv/day', { without_original_language: 'ja|ko', append_to_response: 'videos' }),
     fetchFromProxy('/discover/tv', { with_keywords: '210024', with_original_language: 'ja', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' }),
     fetchFromProxy('/discover/tv', { with_original_language: 'ko', sort_by: 'popularity.desc', include_adult: false, append_to_response: 'videos' })
   ]);
@@ -215,26 +230,21 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
 export const fetchTrailers = async (id: number, type: MediaType, title?: string): Promise<string | null> => {
   const tmdbType = (type === 'movie') ? 'movie' : 'tv';
   try {
-    // Request multi-language videos so regional (Indian, Anime, K-Drama) trailers are included
     const data = await fetchFromProxy(`/${tmdbType}/${id}/videos`, {
       include_video_language: 'en,hi,te,ta,kn,ml,pa,ko,ja,null'
     });
     const results = data.results || [];
     
-    // 1. Look for official YouTube Trailer (any language)
     let video = results.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer' && v.official);
     
-    // 2. Look for any YouTube Trailer
     if (!video) {
       video = results.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer');
     }
 
-    // 3. Look for Teaser, Promo or Clip on YouTube
     if (!video) {
       video = results.find((v: any) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip' || v.type === 'Featurette'));
     }
 
-    // 4. Any YouTube video
     if (!video) {
       video = results.find((v: any) => v.site === 'YouTube' && v.key);
     }
@@ -243,7 +253,6 @@ export const fetchTrailers = async (id: number, type: MediaType, title?: string)
       return `https://www.youtube.com/embed/${video.key}`;
     }
 
-    // 5. Try the alternate media type in case category was slightly misassigned
     const altType = tmdbType === 'movie' ? 'tv' : 'movie';
     const altData = await fetchFromProxy(`/${altType}/${id}/videos`, {
       include_video_language: 'en,hi,te,ta,kn,ml,pa,ko,ja,null'
@@ -322,6 +331,11 @@ export const fetchContent = async (
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
 
+  // When requesting Web Series (tv), exclude Korean and Japanese Anime content so they stay in their respective categories
+  if (type === 'tv') {
+    baseParams.without_original_language = 'ko|ja';
+  }
+
   let finalItems: ContentItem[] = [];
 
   if (!isFutureYear && region === "all" && (type === "movie" || type === "tv")) {
@@ -340,9 +354,11 @@ export const fetchContent = async (
     let params: any = { ...baseParams, ...getRegionParams(region) };
 
     if (type === "anime") {
+      delete params.without_original_language;
       params.with_keywords = '210024';
       params.with_original_language = 'ja';
     } else if (type === "k-drama") {
+      delete params.without_original_language;
       params.with_original_language = 'ko';
     }
 
@@ -387,6 +403,11 @@ export const fetchContent = async (
     });
   }
 
+  // Filter out any miscategorized anime/k-drama items if current category is Web Series
+  if (type === 'tv') {
+    finalItems = finalItems.filter(item => item.media_type === 'tv');
+  }
+
   return finalItems;
 };
 
@@ -401,14 +422,19 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   const today = new Date().toISOString().split('T')[0];
   
   if (region === "all" && (type === "movie" || type === "tv")) {
-    const hollywoodParams = {
+    const hollywoodParams: any = {
       page,
       include_adult: false,
       sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
       ...getRegionParams('hollywood'),
       [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
     };
-    const indianParams = {
+
+    if (type === 'tv') {
+      hollywoodParams.without_original_language = 'ko|ja';
+    }
+
+    const indianParams: any = {
       page,
       include_adult: false,
       sort_by: type === 'movie' ? 'primary_release_date.asc' : 'first_air_date.asc',
@@ -422,7 +448,8 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
       fetchFromProxy(`/discover/${type === 'movie' ? 'movie' : 'tv'}`, indianParams)
     ]);
 
-    return uniqueById(interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type)));
+    const items = uniqueById(interleave(mapResults(hData.results || [], type), mapResults(iData.results || [], type)));
+    return type === 'tv' ? items.filter(item => item.media_type === 'tv') : items;
   }
 
   let path = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -434,7 +461,9 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
     [type === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today
   };
 
-  if (type === "anime") {
+  if (type === "tv") {
+    params.without_original_language = 'ko|ja';
+  } else if (type === "anime") {
     params.with_keywords = '210024';
     params.with_original_language = 'ja';
   } else if (type === "k-drama") {
@@ -442,7 +471,8 @@ export const fetchUpcoming = async (type: MediaType = "movie", region: Region = 
   }
     
   const data = await fetchFromProxy(path, params);
-  return uniqueById(mapResults(data.results || [], type));
+  const items = uniqueById(mapResults(data.results || [], type));
+  return type === 'tv' ? items.filter(item => item.media_type === 'tv') : items;
 };
 
 export const smartWarmCache = async () => {
