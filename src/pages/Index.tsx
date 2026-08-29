@@ -150,19 +150,21 @@ const Index = () => {
   };
 
   const handleCloseYear = (year: number) => {
+    const el = document.getElementById(`year-section-${year}`);
+    const targetTop = el ? el.getBoundingClientRect().top + window.pageYOffset - 90 : null;
+
     setExpandedYears(prev => {
       const updated = prev.filter(y => y !== year);
       setCatalogState({ expandedYears: updated });
       return updated;
     });
 
-    // Smoothly scroll to the closed year bar
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`year-section-${year}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
+    if (targetTop !== null) {
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: 'smooth',
+      });
+    }
   };
 
   const toggleWatched = async (item: ContentItem) => {
@@ -469,7 +471,7 @@ const Index = () => {
                                 className="flex items-center gap-2 px-6 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                               >
                                 <Plus size={15} />
-                                Load More
+                                Load More for {year}
                               </button>
                               <button
                                 onClick={() => handleCloseYear(year)}
@@ -477,7 +479,7 @@ const Index = () => {
                                 title={`Close ${year}`}
                               >
                                 <ChevronUp size={15} />
-                                Close
+                                Close {year}
                               </button>
                             </div>
                           )
