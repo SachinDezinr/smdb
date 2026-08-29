@@ -5,7 +5,7 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
-import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass } from 'lucide-react';
+import { Search, ChevronDown, Loader2, Filter, Plus, X, LayoutGrid, Compass, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -443,13 +443,21 @@ const Index = () => {
                           </div>
                         ) : (
                           yearData[year] && yearData[year].length > 0 && (
-                            <div className="mt-6 flex justify-center">
+                            <div className="mt-6 flex items-center justify-center gap-3">
                               <button
                                 onClick={() => loadYearContent(year, (yearPages[year] || 1) + 1)}
                                 className="flex items-center gap-2 px-6 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                               >
                                 <Plus size={15} />
                                 Load More for {year}
+                              </button>
+                              <button
+                                onClick={() => toggleYear(year)}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-muted-foreground border border-white/10"
+                                title={`Close ${year}`}
+                              >
+                                <ChevronUp size={15} />
+                                Close {year}
                               </button>
                             </div>
                           )

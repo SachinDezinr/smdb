@@ -125,19 +125,21 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
     .map((item: any) => {
       let type: MediaType = defaultType;
       const isAnimated = item.genre_ids?.includes(16) || item.genres?.some((g: any) => g.id === 16 || g.name === 'Animation');
-      const isJapanese = item.original_language === 'ja';
-      const isKorean = item.original_language === 'ko';
+      const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
+      const isKorean = item.original_language === 'ko' || (Array.isArray(item.origin_country) && item.origin_country.includes('KR'));
       const isExplicitTv = item.media_type === 'tv' || !!item.first_air_date || (defaultType === 'tv' && !item.title);
       const isExplicitMovie = item.media_type === 'movie' || (defaultType === 'movie' && !item.first_air_date);
 
-      if (isJapanese && (isAnimated || defaultType === 'anime')) {
+      // Strict anime identification: Japanese animation or items queried for anime
+      if ((isJapanese && isAnimated) || (isJapanese && defaultType === 'anime') || defaultType === 'anime') {
         type = 'anime';
       } else if (isKorean && (isExplicitTv || defaultType === 'k-drama')) {
         type = 'k-drama';
-      } else if (defaultType === 'anime') {
-        type = 'anime';
       } else if (defaultType === 'k-drama') {
         type = 'k-drama';
+      } else if (isJapanese) {
+        // Any other Japanese series belongs in anime / dedicated section rather than general web series
+        type = 'anime';
       } else if (isExplicitTv) {
         type = 'tv';
       } else if (isExplicitMovie) {
@@ -216,7 +218,7 @@ export const fetchTrending = async (): Promise<ContentItem[]> => {
 
   const gm = mapResults(globalMovies.results || [], 'movie');
   const im = mapResults(indianMovies.results || [], 'movie');
-  const gt = mapResults(globalTv.results || [], 'tv');
+  const gt = mapResults(globalTv.results || [], 'tv').filter(i => i.media_type === 'tv');
   const an = mapResults(anime.results || [], 'anime');
   const kd = mapResults(kdrama.results || [], 'k-drama');
 
@@ -331,7 +333,7 @@ export const fetchContent = async (
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
 
-  // When requesting Web Series (tv), exclude Korean and Japanese Anime content so they stay in their respective categories
+  // When requesting Web Series (tv), explicitly exclude Japanese and Korean series
   if (type === 'tv') {
     baseParams.without_original_language = 'ko|ja';
   }
