@@ -149,6 +149,22 @@ const Index = () => {
     });
   };
 
+  const handleCloseYear = (year: number) => {
+    setExpandedYears(prev => {
+      const updated = prev.filter(y => y !== year);
+      setCatalogState({ expandedYears: updated });
+      return updated;
+    });
+
+    // Smoothly scroll to the closed year bar
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`year-section-${year}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  };
+
   const toggleWatched = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -400,7 +416,11 @@ const Index = () => {
             </div>
           ) : (
             years.map((year) => (
-              <div key={year} className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all">
+              <div 
+                key={year} 
+                id={`year-section-${year}`}
+                className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all scroll-mt-24"
+              >
                 <button
                   onClick={() => toggleYear(year)}
                   className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-white/[0.04] transition-colors"
@@ -452,7 +472,7 @@ const Index = () => {
                                 Load More for {year}
                               </button>
                               <button
-                                onClick={() => toggleYear(year)}
+                                onClick={() => handleCloseYear(year)}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-muted-foreground border border-white/10"
                                 title={`Close ${year}`}
                               >
