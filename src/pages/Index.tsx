@@ -149,31 +149,6 @@ const Index = () => {
     });
   };
 
-  const handleCloseYear = (year: number) => {
-    setExpandedYears(prev => {
-      const updated = prev.filter(y => y !== year);
-      setCatalogState({ expandedYears: updated });
-      return updated;
-    });
-
-    // Scroll smoothly to that particular year section bar
-    setTimeout(() => {
-      const targetElement = document.getElementById(`year-section-${year}`);
-      if (targetElement) {
-        const offset = 90;
-        const bodyRect = document.body.getBoundingClientRect().top;
-        const elementRect = targetElement.getBoundingClientRect().top;
-        const elementPosition = elementRect - bodyRect;
-        const offsetPosition = elementPosition - offset;
-
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-      }
-    }, 50);
-  };
-
   const toggleWatched = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -425,11 +400,7 @@ const Index = () => {
             </div>
           ) : (
             years.map((year) => (
-              <div 
-                key={year} 
-                id={`year-section-${year}`} 
-                className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all scroll-mt-24"
-              >
+              <div key={year} className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all">
                 <button
                   onClick={() => toggleYear(year)}
                   className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-white/[0.04] transition-colors"
@@ -478,15 +449,15 @@ const Index = () => {
                                 className="flex items-center gap-2 px-6 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                               >
                                 <Plus size={15} />
-                                Load More for {year}
+                                Load More
                               </button>
                               <button
-                                onClick={() => handleCloseYear(year)}
+                                onClick={() => toggleYear(year)}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-muted-foreground border border-white/10"
                                 title={`Close ${year}`}
                               >
                                 <ChevronUp size={15} />
-                                Close {year}
+                                Close
                               </button>
                             </div>
                           )
