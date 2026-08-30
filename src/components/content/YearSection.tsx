@@ -97,7 +97,7 @@ export const YearSection = ({
                       className="flex items-center gap-2 px-6 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                     >
                       <Plus size={15} />
-                      Load More for {year}
+                      Load More {year}
                     </button>
                     <button
                       onClick={() => onClose(year)}
