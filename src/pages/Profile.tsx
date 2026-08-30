@@ -21,7 +21,9 @@ import {
   UserCheck,
   MessageSquare,
   X,
-  Target
+  Target,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate, Link } from 'react-router-dom';
@@ -35,6 +37,8 @@ const Profile = () => {
   const [username, setUsername] = useState(cached?.username || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [pageLoading, setPageLoading] = useState(!cached);
   const [loading, setLoading] = useState(false);
@@ -373,12 +377,21 @@ const Profile = () => {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                     <input
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       placeholder="Minimum 6 characters"
-                      className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                      className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors p-1"
+                      title={showNewPassword ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 
@@ -387,12 +400,21 @@ const Profile = () => {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       placeholder="Re-enter password"
-                      className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                      className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors p-1"
+                      title={showConfirmPassword ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
               </div>
