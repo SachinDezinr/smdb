@@ -30,6 +30,40 @@ const inFlight = new Map<string, Promise<any>>();
 let activityScore = 0;
 const ACTIVITY_THRESHOLD = 3;
 
+/**
+ * Returns the earliest relevant start year for each category and regional filter
+ * to avoid rendering years with zero available content on TMDB.
+ */
+export const getStartYear = (category: MediaType, region: Region): number => {
+  if (category === "anime") {
+    return 1961;
+  }
+
+  if (category === "k-drama") {
+    return 1970;
+  }
+
+  if (category === "tv") {
+    switch (region) {
+      case "bollywood": return 1985;
+      case "punjabi": return 2000;
+      case "south-indian": return 1995;
+      case "animated": return 1965;
+      default: return 1960;
+    }
+  }
+
+  // category === "movie"
+  switch (region) {
+    case "punjabi": return 1970;
+    case "south-indian": return 1950;
+    case "animated": return 1960;
+    case "bollywood": return 1950;
+    case "hollywood": return 1950;
+    default: return 1950;
+  }
+};
+
 const getRegionParams = (region: Region): Record<string, string> => {
   switch (region) {
     case "bollywood": return { with_original_language: "hi", region: "IN" };
@@ -138,7 +172,6 @@ const mapResults = (results: any[], defaultType: MediaType): ContentItem[] => {
       } else if (defaultType === 'k-drama') {
         type = 'k-drama';
       } else if (isJapanese) {
-        // Any other Japanese series belongs in anime / dedicated section rather than general web series
         type = 'anime';
       } else if (isExplicitTv) {
         type = 'tv';
@@ -333,7 +366,6 @@ export const fetchContent = async (
     baseParams[type === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte'] = today;
   }
 
-  // When requesting Web Series (tv), explicitly exclude Japanese and Korean series
   if (type === 'tv') {
     baseParams.without_original_language = 'ko|ja';
   }
@@ -405,7 +437,6 @@ export const fetchContent = async (
     });
   }
 
-  // Filter out any miscategorized anime/k-drama items if current category is Web Series
   if (type === 'tv') {
     finalItems = finalItems.filter(item => item.media_type === 'tv');
   }

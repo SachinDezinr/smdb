@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { CatalogFilters } from '@/components/content/CatalogFilters';
 import { CatalogSearchResults } from '@/components/content/CatalogSearchResults';
 import { YearSection } from '@/components/content/YearSection';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
+import { fetchContent, ContentItem, MediaType, Region, getStartYear } from '@/lib/tmdb';
 import { Search, Compass, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
@@ -31,7 +31,13 @@ const Index = () => {
   const isInitialMount = useRef(true);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
+
+  // Dynamically calculate available years based on category and region filter
+  const years = useMemo(() => {
+    const startYear = getStartYear(activeCategory, activeRegion);
+    const count = Math.max(1, currentYear - startYear + 1);
+    return Array.from({ length: count }, (_, i) => currentYear - i);
+  }, [activeCategory, activeRegion, currentYear]);
 
   const fetchWatchedIds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
