@@ -130,7 +130,7 @@ export const TrendingHero = () => {
           {/* Softened Vignettes & Gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/75 via-background/20 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/55 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_65%,_rgba(0,0,0,0.18)_100%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_65%,_rgba(0,0,0,0.18)_90%)] pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 

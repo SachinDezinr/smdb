@@ -150,21 +150,27 @@ const Index = () => {
   };
 
   const handleCloseYear = (year: number) => {
-    const el = document.getElementById(`year-section-${year}`);
-    const targetTop = el ? el.getBoundingClientRect().top + window.pageYOffset - 90 : null;
-
+    // 1. Collapse year state first
     setExpandedYears(prev => {
       const updated = prev.filter(y => y !== year);
       setCatalogState({ expandedYears: updated });
       return updated;
     });
 
-    if (targetTop !== null) {
-      window.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: 'smooth',
-      });
-    }
+    // 2. Perform scroll after the collapse takes effect in mobile and desktop layout
+    setTimeout(() => {
+      const el = document.getElementById(`year-section-${year}`);
+      if (el) {
+        const headerOffset = 80;
+        const elementPosition = el.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth'
+        });
+      }
+    }, 50);
   };
 
   const toggleWatched = async (item: ContentItem) => {
