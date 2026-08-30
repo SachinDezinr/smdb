@@ -218,15 +218,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {!isEditing && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm self-center md:self-start"
-                  >
-                    <Edit3 size={14} />
-                    Edit Profile
-                  </button>
-                )}
               </div>
 
               {/* Progress to Next Badge Tier */}
@@ -300,6 +291,15 @@ const Profile = () => {
                 <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
                 <p className="text-xs text-muted-foreground">Manage your display username and public handle.</p>
               </div>
+              {!isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm self-center md:self-start"
+                  >
+                    <Edit3 size={14} />
+                    Edit Profile
+                  </button>
+                )}
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-4">
