@@ -15,11 +15,13 @@ export const getStartYear = (category: MediaType, region: Region): number => {
 
   if (category === "tv") {
     switch (region) {
+      case "hollywood": return 1950;
+      case "all": return 1950;
       case "bollywood": return 1985;
       case "punjabi": return 2000;
       case "south-indian": return 1995;
       case "animated": return 1965;
-      default: return 1960;
+      default: return 1950;
     }
   }
 
