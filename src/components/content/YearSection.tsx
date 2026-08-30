@@ -42,7 +42,7 @@ export const YearSection = ({
         <div className="flex items-center gap-3 md:gap-4">
           <span className="text-xl md:text-3xl font-bold tracking-tight text-primary">{year}</span>
           <span className="text-[11px] md:text-xs font-semibold text-muted-foreground bg-white/[0.04] border border-white/5 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full">
-            {items ? `Loading...` : "Loading..."}
+            {items ? `${items.length}+ Titles` : "Loading..."}
           </span>
         </div>
         <ChevronDown
