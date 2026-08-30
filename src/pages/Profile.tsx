@@ -317,6 +317,7 @@ const Profile = () => {
                   />
                   <p className="text-[11px] text-muted-foreground">Contact support to change your account email.</p>
                 </div>
+              </div>
                 {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
@@ -326,7 +327,6 @@ const Profile = () => {
                     Edit Profile
                   </button>
                 )}
-              </div>
 
               {isEditing && (
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
