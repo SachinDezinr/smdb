@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 interface YearSectionProps {
   year: number;
   isExpanded: boolean;
+  isHighlighted?: boolean;
   items?: ContentItem[];
   isLoading: boolean;
   watchedIds: number[];
@@ -22,6 +23,7 @@ interface YearSectionProps {
 export const YearSection = ({
   year,
   isExpanded,
+  isHighlighted = false,
   items,
   isLoading,
   watchedIds,
@@ -42,21 +44,42 @@ export const YearSection = ({
   return (
     <div
       id={`year-section-${year}`}
-      className="glass-card overflow-hidden border-white/10 rounded-2xl transition-all scroll-mt-24"
+      className={cn(
+        "glass-card overflow-hidden rounded-2xl transition-all duration-500 scroll-mt-24",
+        isHighlighted
+          ? "border-primary ring-2 ring-primary/50 shadow-xl shadow-primary/20 bg-primary/[0.08]"
+          : isExpanded
+          ? "border-primary/40"
+          : "border-white/10"
+      )}
     >
       <button
         onClick={() => onToggle(year)}
-        className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-white/[0.04] transition-colors"
+        className={cn(
+          "w-full flex items-center justify-between p-4 md:p-5 transition-colors",
+          isHighlighted ? "bg-primary/[0.06]" : "hover:bg-white/[0.04]"
+        )}
       >
         <div className="flex items-center gap-3 md:gap-4">
-          <span className="text-xl md:text-3xl font-bold tracking-tight text-primary">{year}</span>
-          <span className="text-[11px] md:text-xs font-semibold text-muted-foreground bg-white/[0.04] border border-white/5 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full">
+          <span className={cn(
+            "text-xl md:text-3xl font-bold tracking-tight transition-colors",
+            isHighlighted ? "text-primary scale-105" : "text-primary"
+          )}>
+            {year}
+          </span>
+          <span className={cn(
+            "text-[11px] md:text-xs font-semibold px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border transition-colors",
+            isHighlighted 
+              ? "bg-primary/20 text-primary border-primary/40 font-bold" 
+              : "text-muted-foreground bg-white/[0.04] border-white/5"
+          )}>
             {getBadgeText()}
           </span>
         </div>
         <ChevronDown
           className={cn(
-            "transition-transform duration-300 text-muted-foreground",
+            "transition-transform duration-300",
+            isHighlighted ? "text-primary" : "text-muted-foreground",
             isExpanded && "rotate-180 text-primary"
           )}
           size={18}

@@ -26,9 +26,11 @@ const Index = () => {
   const [yearPages, setYearPages] = useState<Record<number, number>>(initialStore.yearPages);
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
   const [watchedIds, setWatchedIds] = useState<number[]>(initialStore.watchedIds);
+  const [highlightedYear, setHighlightedYear] = useState<number | null>(null);
 
   const prevFilters = useRef({ category: activeCategory, region: activeRegion });
   const isInitialMount = useRef(true);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentYear = new Date().getFullYear();
 
@@ -142,6 +144,13 @@ const Index = () => {
       setCatalogState({ expandedYears: updated });
       return updated;
     });
+
+    // Highlight the closed year bar
+    setHighlightedYear(year);
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedYear(null);
+    }, 2500);
 
     setTimeout(() => {
       const el = document.getElementById(`year-section-${year}`);
@@ -324,6 +333,7 @@ const Index = () => {
                 key={year}
                 year={year}
                 isExpanded={expandedYears.includes(year)}
+                isHighlighted={highlightedYear === year}
                 items={yearData[year]}
                 isLoading={!!loadingYears[year]}
                 watchedIds={watchedIds}
