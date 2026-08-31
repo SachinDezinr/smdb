@@ -188,7 +188,7 @@ const Profile = () => {
             <div className="flex-1 text-center md:text-left space-y-3 w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="space-y-1.5">
-                  {/* Username with Dynamic Cinephile Badge on the right for laptop/desktop */}
+                  {/* Username with Dynamic Cinephile Badge */}
                   <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2.5">
                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
                       {username || 'Anonymous User'}
@@ -282,14 +282,27 @@ const Profile = () => {
             transition={{ delay: 0.1 }}
             className="rounded-3xl border border-white/10 bg-neutral-950/70 p-6 md:p-8 backdrop-blur-xl"
           >
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
-              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
-                <UserCheck size={18} />
+            <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <UserCheck size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
+                  <p className="text-xs text-muted-foreground">Manage your display username and public handle.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
-                <p className="text-xs text-muted-foreground">Manage your display username and public handle.</p>
-              </div>
+
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex-shrink-0"
+                >
+                  <Edit3 size={14} />
+                  Edit Profile
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-4">
@@ -317,18 +330,6 @@ const Profile = () => {
                   <p className="text-[11px] text-muted-foreground">Contact support to change your account email.</p>
                 </div>
               </div>
-
-                {!isEditing && (
-                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm self-center md:self-start"
-                  >
-                    <Edit3 size={14} />
-                    Edit Profile
-                  </button>
-                  </div>
-                )}
 
               {isEditing && (
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
