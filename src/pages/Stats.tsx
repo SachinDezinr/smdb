@@ -157,7 +157,7 @@ const Stats = () => {
                 {/* Main Metric */}
                 <div className="w-full flex flex-col items-center justify-center my-1 text-center">
                   <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Titles Watched in {currentYear}</p>
-                  <p className="text-6xl font-bold text-white tracking-tighter">{stats?.yearTotal || 0}</p>
+                  <p className="text-6xl font-bold text-white tracking-tight">{stats?.yearTotal || 0}</p>
                 </div>
 
                 {/* Category Grid */}
