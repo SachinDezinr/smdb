@@ -161,7 +161,7 @@ const Stats = () => {
                 </div>
 
                 {/* Category Grid */}
-                <div className="grid grid-cols-2 gap-2.7 w-full">
+                <div className="grid grid-cols-2 gap-3 w-full">
                   <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
                     <PlayCircle className="text-primary mb-1" size={16} />
                     <p className="text-lg font-bold text-white">{stats?.counts?.movie || 0}</p>
