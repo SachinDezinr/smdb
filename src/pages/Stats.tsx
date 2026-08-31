@@ -148,7 +148,7 @@ const Stats = () => {
                 {/* Header */}
                 <div className="text-center pt-2">
                   <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-lg shadow-primary/30">
-                    <Film className="text-black" size={24} />
+                    <Film className="text-black" size={25} />
                   </div>
                   <h3 className="text-xl font-bold tracking-tight text-primary">SMDB</h3>
                   <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold mt-0.5">Wrapped {currentYear}</p>
@@ -161,7 +161,7 @@ const Stats = () => {
                 </div>
 
                 {/* Category Grid */}
-                <div className="grid grid-cols-2 gap-2.5 w-full">
+                <div className="grid grid-cols-2 gap-2.7 w-full">
                   <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 flex flex-col items-center">
                     <PlayCircle className="text-primary mb-1" size={16} />
                     <p className="text-lg font-bold text-white">{stats?.counts?.movie || 0}</p>
@@ -187,7 +187,7 @@ const Stats = () => {
                 {/* Footer */}
                 <div className="w-full text-center pt-1 border-t border-white/5">
                   <p className="text-white/40 text-[10px] italic font-medium">"Your cinematic journey, tracked."</p>
-                  <p className="text-primary font-bold text-xs mt-0.5">smdb.app</p>
+                  <p className="text-primary font-bold text-xs mt-0.5">smdbhub.app</p>
                 </div>
               </motion.div>
             </div>
