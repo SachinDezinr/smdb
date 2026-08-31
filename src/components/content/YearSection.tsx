@@ -45,32 +45,34 @@ export const YearSection = ({
     <div
       id={`year-section-${year}`}
       className={cn(
-        "glass-card overflow-hidden rounded-2xl transition-all duration-500 scroll-mt-24",
-        isHighlighted
-          ? "border-primary ring-2 ring-primary/50 shadow-xl shadow-primary/20 bg-primary/[0.08]"
-          : isExpanded
-          ? "border-primary/40"
-          : "border-white/10"
+        "glass-card overflow-hidden rounded-2xl transition-all duration-300 scroll-mt-24",
+        isExpanded
+          ? "border-primary/50 shadow-md shadow-primary/5"
+          : isHighlighted
+          ? "border-primary/60 shadow-[0_0_14px_rgba(245,197,24,0.16)] bg-primary/[0.03]"
+          : "border-white/10 hover:border-white/20"
       )}
     >
       <button
         onClick={() => onToggle(year)}
         className={cn(
           "w-full flex items-center justify-between p-4 md:p-5 transition-colors",
-          isHighlighted ? "bg-primary/[0.06]" : "hover:bg-white/[0.04]"
+          isHighlighted && !isExpanded ? "bg-primary/[0.04]" : "hover:bg-white/[0.04]"
         )}
       >
         <div className="flex items-center gap-3 md:gap-4">
           <span className={cn(
             "text-xl md:text-3xl font-bold tracking-tight transition-colors",
-            isHighlighted ? "text-primary scale-105" : "text-primary"
+            isHighlighted || isExpanded ? "text-primary" : "text-white"
           )}>
             {year}
           </span>
           <span className={cn(
             "text-[11px] md:text-xs font-semibold px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border transition-colors",
-            isHighlighted 
-              ? "bg-primary/20 text-primary border-primary/40 font-bold" 
+            isHighlighted && !isExpanded
+              ? "bg-primary/15 text-primary border-primary/30 font-medium" 
+              : isExpanded
+              ? "bg-primary/20 text-primary border-primary/40 font-bold"
               : "text-muted-foreground bg-white/[0.04] border-white/5"
           )}>
             {getBadgeText()}
@@ -79,8 +81,7 @@ export const YearSection = ({
         <ChevronDown
           className={cn(
             "transition-transform duration-300",
-            isHighlighted ? "text-primary" : "text-muted-foreground",
-            isExpanded && "rotate-180 text-primary"
+            isExpanded ? "rotate-180 text-primary" : isHighlighted ? "text-primary" : "text-muted-foreground"
           )}
           size={18}
         />

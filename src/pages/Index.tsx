@@ -30,7 +30,6 @@ const Index = () => {
 
   const prevFilters = useRef({ category: activeCategory, region: activeRegion });
   const isInitialMount = useRef(true);
-  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentYear = new Date().getFullYear();
 
@@ -124,11 +123,16 @@ const Index = () => {
 
   const toggleYear = (year: number) => {
     setExpandedYears((prev) => {
+      const isCurrentlyExpanded = prev.includes(year);
       let updated: number[];
-      if (prev.includes(year)) {
+      if (isCurrentlyExpanded) {
+        // Closing via header click: highlight this year with no time limit
         updated = prev.filter((y) => y !== year);
+        setHighlightedYear(year);
       } else {
+        // Opening a year: remove previous closed highlight
         updated = [...prev, year];
+        setHighlightedYear(null);
         if (!yearData[year]) {
           loadYearContent(year, 1);
         }
@@ -145,12 +149,8 @@ const Index = () => {
       return updated;
     });
 
-    // Highlight the closed year bar
+    // Highlight closed year with no time limit until another year is opened
     setHighlightedYear(year);
-    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-    highlightTimeoutRef.current = setTimeout(() => {
-      setHighlightedYear(null);
-    }, 2500);
 
     setTimeout(() => {
       const el = document.getElementById(`year-section-${year}`);
