@@ -186,7 +186,7 @@ const Stats = () => {
 
                 {/* Footer */}
                 <div className="w-full text-center pt-1 border-t border-white/5">
-                  <p className="text-white/40 text-[10px] italic font-medium">"Your cinematic journey, tracked."</p>
+                  <p className="text-white/40 text-[10px] italic font-medium">Your cinematic journey, tracked.</p>
                   <p className="text-primary font-bold text-xs mt-0.5">smdbhub.app</p>
                 </div>
               </motion.div>
