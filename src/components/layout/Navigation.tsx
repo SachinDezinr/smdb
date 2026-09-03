@@ -291,7 +291,7 @@ export const Navigation = () => {
                       )}
                     />
                     {item.path === '/profile' && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-2.5 border-neutral-950" />
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
                     )}
                   </div>
                   <span
