@@ -12,7 +12,8 @@ import {
   Users, 
   ChevronRight,
   Compass,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -67,21 +68,34 @@ export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadProfileAndRequests = async () => {
-      const data = await fetchProfileData(false);
-      if (data) {
-        setPendingCount(data.pendingCount);
+    const checkAuthAndProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+
+      if (user) {
+        const data = await fetchProfileData(false);
+        if (data) {
+          setPendingCount(data.pendingCount);
+        }
+      } else {
+        setPendingCount(0);
       }
     };
-    loadProfileAndRequests();
 
-    // Listen for friend updates
-    const { data: authListener } = supabase.auth.onAuthStateChange(async () => {
-      const updated = await fetchProfileData(true);
-      if (updated) {
-        setPendingCount(updated.pendingCount);
+    checkAuthAndProfile();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setIsAuthenticated(!!session?.user);
+      if (session?.user) {
+        const updated = await fetchProfileData(true);
+        if (updated) {
+          setPendingCount(updated.pendingCount);
+        }
+      } else {
+        setPendingCount(0);
       }
     });
 
@@ -98,7 +112,8 @@ export const Navigation = () => {
   const handleLogout = async () => {
     clearCachedProfile();
     await supabase.auth.signOut();
-    navigate('/auth');
+    setIsAuthenticated(false);
+    navigate('/login');
   };
 
   return (
@@ -201,16 +216,26 @@ export const Navigation = () => {
           </nav>
         </div>
 
-        {/* Bottom Section: Sign Out & Footer Links */}
+        {/* Bottom Section: Auth Action (Sign Out / Sign In) & Footer Links */}
         <div className="pt-4 border-t border-white/10 space-y-3">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-sm font-semibold transition-all group"
-          >
-            <LogOut size={18} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Sign Out</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-sm font-semibold transition-all group"
+            >
+              <LogOut size={18} className="group-hover:-translate-x-0.5 transition-transform" />
+              <span>Sign Out</span>
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-primary text-black font-bold text-sm transition-all hover:bg-primary/90 shadow-md shadow-primary/20"
+            >
+              <LogIn size={18} />
+              <span>Sign In / Register</span>
+            </Link>
+          )}
 
           {/* Quick Footer Links */}
           <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
@@ -239,7 +264,7 @@ export const Navigation = () => {
                   isActive ? "text-primary" : "text-muted-foreground active:text-white"
                 )}
               >
-                {/* Active Indicator: Fast hardware-accelerated opacity transition without cross-layout thrashing */}
+                {/* Active Indicator */}
                 <div
                   className={cn(
                     "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",

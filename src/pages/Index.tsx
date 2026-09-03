@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { CatalogFilters } from '@/components/content/CatalogFilters';
@@ -15,6 +16,8 @@ import { getCatalogState, setCatalogState } from '@/lib/catalogStore';
 import { addCollectionItem, removeCollectionItem } from '@/lib/collectionStore';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const initialStore = getCatalogState();
   const [activeCategory, setActiveCategory] = useState<MediaType>(initialStore.activeCategory);
   const [activeRegion, setActiveRegion] = useState<Region>(initialStore.activeRegion);
@@ -42,7 +45,11 @@ const Index = () => {
 
   const fetchWatchedIds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setWatchedIds([]);
+      setCatalogState({ watchedIds: [] });
+      return;
+    }
 
     const { data } = await supabase
       .from('watched_content')
@@ -169,8 +176,22 @@ const Index = () => {
 
   const toggleWatched = async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // SOFT GATE: If logged out, redirect to /login with soft-gate parameters
     if (!user) {
-      showError("Please sign in to track movies");
+      const currentPath = location.pathname + location.search;
+      const params = new URLSearchParams({
+        return_to: currentPath || '/',
+        action: 'add_collection',
+        movie_id: String(item.id),
+        media_type: item.media_type || 'movie',
+        title: item.title,
+        poster_path: item.poster_path || '',
+        release_date: item.release_date || '',
+        vote_average: String(item.vote_average || 0),
+      });
+
+      navigate(`/login?${params.toString()}`);
       return;
     }
 

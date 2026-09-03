@@ -73,7 +73,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
     const rect = e.currentTarget.getBoundingClientRect();
     const clickY = (e.clientY - rect.top) / rect.height;
 
-    // Center zone is roughly between 30% and 70% height
+    // Center zone is roughly between 28% and 72% height
     const isCenterClick = clickY >= 0.28 && clickY <= 0.72;
 
     if (isCenterClick) {
@@ -174,12 +174,12 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
               {isWatched ? (
                 <>
                   <Check size={14} />
-                  <span>Watched</span>
+                  <span>In Collection</span>
                 </>
               ) : (
                 <>
                   <Plus size={14} />
-                  <span>Add to Watched</span>
+                  <span>Add to Collection</span>
                 </>
               )}
             </button>
