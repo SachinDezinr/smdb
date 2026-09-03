@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Film, Mail, Lock, User, Loader2, ArrowLeft, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { handlePostLoginRedirect, parseAuthRedirectParams } from '@/lib/authRedirect';
 
 const Auth = () => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -15,6 +16,23 @@ const Auth = () => {
   const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const redirectParams = parseAuthRedirectParams(searchParams);
+  const isAddCollection = redirectParams.action === 'add_collection';
+  const isProfileGate =
+    redirectParams.returnTo === '/profile' || redirectParams.returnTo.startsWith('/profile');
+
+  // If user is already authenticated when arriving at /login, handle redirect immediately
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const destination = await handlePostLoginRedirect(location.search, session.user.id);
+        navigate(destination, { replace: true });
+      }
+    });
+  }, [location.search, navigate]);
 
   const validateUsername = (name: string) => {
     const regex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
@@ -27,10 +45,16 @@ const Auth = () => {
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         showSuccess("Welcome back to SMDB!");
-        navigate('/');
+
+        if (authData.user) {
+          const destination = await handlePostLoginRedirect(location.search, authData.user.id);
+          navigate(destination, { replace: true });
+        } else {
+          navigate(redirectParams.returnTo || '/', { replace: true });
+        }
       } else if (mode === 'register') {
         if (!validateUsername(username)) {
           throw new Error("Username must start/end with letters, and only contain letters, numbers, _ or .");
@@ -44,7 +68,7 @@ const Auth = () => {
         
         if (existing) throw new Error("Username already taken");
 
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: { 
@@ -53,8 +77,14 @@ const Auth = () => {
         });
         if (error) throw error;
         
-        showSuccess("Registration successful! Please check your email for confirmation.");
-        setMode('login');
+        if (signUpData.session && signUpData.user) {
+          showSuccess("Registration successful! Welcome to SMDB.");
+          const destination = await handlePostLoginRedirect(location.search, signUpData.user.id);
+          navigate(destination, { replace: true });
+        } else {
+          showSuccess("Registration successful! Please check your email for confirmation.");
+          setMode('login');
+        }
       } else if (mode === 'forgot') {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -81,6 +111,22 @@ const Auth = () => {
     }
   };
 
+  const getSubtitleText = () => {
+    if (isAddCollection) {
+      return "Sign in to save this to your collection";
+    }
+    if (isProfileGate) {
+      return "Sign in to view your profile";
+    }
+    if (mode === 'login') {
+      return "Sign in to track your watch history";
+    }
+    if (mode === 'register') {
+      return "Create your personalized cinephile vault";
+    }
+    return "Recover and reset your password";
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden selection:bg-primary/20 selection:text-primary">
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
@@ -91,8 +137,8 @@ const Auth = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md glass-card p-8 border-primary/20 rounded-3xl cinematic-glow relative z-10"
       >
-        <div className="flex flex-col items-center mb-8 text-center">
-          {/* Logo with subtle gradient, gentle ambient glow, and refined border */}
+        <div className="flex flex-col items-center mb-6 text-center">
+          {/* Logo */}
           <div className="relative mb-3 group">
             <div className="absolute -inset-1 bg-gradient-to-tr from-primary/30 via-primary/10 to-amber-200/20 rounded-2xl blur-sm opacity-80" />
             <div className="relative w-16 h-16 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] rounded-2xl flex items-center justify-center shadow-xl shadow-primary/25 border border-white/20">
@@ -107,11 +153,21 @@ const Auth = () => {
             SMDB
           </h1>
           <p className="text-muted-foreground text-xs mt-1">
-            {mode === 'login' ? "Sign in to track your watch history" : 
-             mode === 'register' ? "Create your personalized cinephile vault" : 
-             "Recover and reset your password"}
+            {getSubtitleText()}
           </p>
         </div>
+
+        {/* Soft-gate Notice Banner */}
+        {(isAddCollection || isProfileGate) && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center gap-2 text-xs font-semibold text-primary text-center">
+            <Sparkles size={15} className="flex-shrink-0" />
+            <span>
+              {isAddCollection
+                ? "Sign in to save this to your collection"
+                : "Sign in to view your profile"}
+            </span>
+          </div>
+        )}
 
         <form onSubmit={handleAuth} className="space-y-3.5">
           {(mode === 'register' || mode === 'forgot') && (

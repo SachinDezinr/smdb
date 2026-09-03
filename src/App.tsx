@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { showSuccess } from "@/utils/toast";
 import { smartWarmCache } from "@/lib/tmdb";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
 import About from "./pages/About";
@@ -76,16 +77,58 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/upcoming" element={<Upcoming />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/auth" element={session ? <Navigate to="/" replace /> : <Auth />} />
-            <Route path="/" element={session ? <Index /> : <Navigate to="/auth" replace />} />
-            <Route path="/upcoming" element={session ? <Upcoming /> : <Navigate to="/auth" replace />} />
-            <Route path="/collection" element={session ? <Collection /> : <Navigate to="/auth" replace />} />
-            <Route path="/profile" element={session ? <Profile /> : <Navigate to="/auth" replace />} />
-            <Route path="/friends" element={session ? <Friends /> : <Navigate to="/auth" replace />} />
-            <Route path="/stats" element={session ? <Stats /> : <Navigate to="/auth" replace />} />
-            <Route path="/compare/:friendId" element={session ? <Compare /> : <Navigate to="/auth" replace />} />
+            
+            {/* Auth & Login Routes */}
+            <Route path="/login" element={<Auth />} />
+            <Route path="/auth" element={<Navigate to="/login" replace />} />
+
+            {/* Gated Routes */}
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute session={session}>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/collection" 
+              element={
+                <ProtectedRoute session={session}>
+                  <Collection />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/friends" 
+              element={
+                <ProtectedRoute session={session}>
+                  <Friends />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/stats" 
+              element={
+                <ProtectedRoute session={session}>
+                  <Stats />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/compare/:friendId" 
+              element={
+                <ProtectedRoute session={session}>
+                  <Compare />
+                </ProtectedRoute>
+              } 
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
