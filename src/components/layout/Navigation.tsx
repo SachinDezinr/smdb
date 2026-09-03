@@ -223,9 +223,9 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Floating Pill Navigation - Positioned lower towards bottom edge */}
-      <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
-        <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/90 backdrop-blur-2xl border border-white/15 rounded-full px-2 shadow-[0_8px_32px_rgba(0,0,0,0.9)] flex items-center justify-between ring-1 ring-white/10">
+      {/* Mobile Floating Pill Navigation - Hardware accelerated & smooth */}
+      <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+        <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
           {mobileNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -235,28 +235,31 @@ export const Navigation = () => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "relative flex flex-col items-center justify-center flex-1 h-11 rounded-full transition-all duration-300 group select-none",
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-white"
+                  "relative flex flex-col items-center justify-center flex-1 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
+                  isActive ? "text-primary" : "text-muted-foreground active:text-white"
                 )}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobile-nav-pill"
-                    className="absolute inset-0 bg-primary/10 border border-primary/30 rounded-full shadow-[0_0_14px_rgba(245,197,24,0.2)]"
-                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                  />
-                )}
+                {/* Active Indicator: Fast hardware-accelerated opacity transition without cross-layout thrashing */}
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
+                    isActive 
+                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100" 
+                      : "opacity-0 scale-90 pointer-events-none"
+                  )}
+                />
+
                 <div className="relative z-10 flex flex-col items-center gap-0.5">
                   <div className="relative">
                     <Icon
                       size={18}
                       className={cn(
-                        "transition-all duration-300",
-                        isActive ? "scale-105 text-primary drop-shadow-[0_0_8px_rgba(245,197,24,0.5)]" : "text-muted-foreground group-hover:text-white"
+                        "transition-transform duration-200 transform-gpu",
+                        isActive ? "scale-110 text-primary" : "text-muted-foreground"
                       )}
                     />
                     {item.path === '/profile' && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-neutral-950 animate-pulse" />
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-neutral-950" />
                     )}
                   </div>
                   <span
