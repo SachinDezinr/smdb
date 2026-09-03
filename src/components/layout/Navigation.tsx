@@ -47,6 +47,56 @@ const navSections: NavSection[] = [
   },
   {
     title: "Community",
+    items:<dyad-write path="src/components/layout/Navigation.tsx" description="Complete Navigation component with smooth transitions and without forced window.scrollTo">
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { 
+  Home, 
+  Calendar, 
+  Library, 
+  User, 
+  Film, 
+  BarChart3, 
+  Users, 
+  ChevronRight,
+  Compass,
+  LogOut,
+  LogIn
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { motion } from 'framer-motion';
+import { fetchProfileData, clearCachedProfile, getCachedAuthState, setCachedAuthState, getCachedProfile } from '@/lib/profileStore';
+
+interface NavSection {
+  title: string;
+  items: {
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    label: string;
+    path: string;
+    badge?: string;
+  }[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "Discover",
+    items: [
+      { icon: Compass, label: 'Explore Catalog', path: '/' },
+      { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+    ]
+  },
+  {
+    title: "My Vault",
+    items: [
+      { icon: Library, label: 'Collection', path: '/collection' },
+      { icon: BarChart3, label: 'Analytics & Stats', path: '/stats' },
+    ]
+  },
+  {
+    title: "Community",
     items: [
       { icon: Users, label: 'Social Circle', path: '/friends' },
       { icon: User, label: 'Profile & Settings', path: '/profile' },
@@ -121,11 +171,6 @@ export const Navigation = () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
-
-  // Scroll to top on route change
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
 
   const handleLogout = async () => {
     clearCachedProfile();

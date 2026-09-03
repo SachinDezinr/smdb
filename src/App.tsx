@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { showSuccess } from "@/utils/toast";
 import { smartWarmCache } from "@/lib/tmdb";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ScrollRestorationHandler } from "@/components/layout/ScrollRestorationHandler";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
 import About from "./pages/About";
@@ -76,6 +77,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollRestorationHandler />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
