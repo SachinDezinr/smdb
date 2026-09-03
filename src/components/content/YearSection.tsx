@@ -62,8 +62,10 @@ export const YearSection = ({
       >
         <div className="flex items-center gap-3 md:gap-4">
           <span className={cn(
-            "text-xl md:text-3xl font-bold tracking-tight transition-colors",
-            isHighlighted || isExpanded ? "text-primary" : "text-white"
+            "text-xl md:text-3xl font-bold tracking-tight transition-all select-none",
+            isHighlighted || isExpanded 
+              ? "text-primary" 
+              : "bg-gradient-to-b from-white from-70% to-primary bg-clip-text text-transparent drop-shadow-sm"
           )}>
             {year}
           </span>
