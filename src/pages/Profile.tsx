@@ -52,72 +52,73 @@ const Profile = () => {
     navigate('/auth');
   };
 
-  if (pageLoading && !user) {
-    return (
-      <div className="flex min-h-screen bg-background items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={48} />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
-  const currentBadge = getUserBadge(watchedCount).current;
+  const currentBadge = user ? getUserBadge(watchedCount).current : null;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
 
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-5xl mx-auto w-full">
-        {/* Page Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
-            <Sparkles size={14} /> Account & Preferences
+        {pageLoading && !user ? (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <Loader2 className="animate-spin text-primary" size={44} />
           </div>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-            Settings & <span className="text-primary">Profile</span>
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage your account credentials, social connections, and system preferences.
-          </p>
-        </header>
+        ) : user ? (
+          <>
+            {/* Page Header */}
+            <header className="mb-8">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <Sparkles size={14} /> Account & Preferences
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
+                Settings & <span className="text-primary">Profile</span>
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Manage your account credentials, social connections, and system preferences.
+              </p>
+            </header>
 
-        {/* Hero Section */}
-        <ProfileHero
-          user={user}
-          username={username}
-          joinedDate={joinedDate}
-          watchedCount={watchedCount}
-          friendsCount={friendsCount}
-          pendingCount={pendingCount}
-          onOpenBadgeModal={() => setShowTiersModal(true)}
-        />
+            {/* Hero Section */}
+            <ProfileHero
+              user={user}
+              username={username}
+              joinedDate={joinedDate}
+              watchedCount={watchedCount}
+              friendsCount={friendsCount}
+              pendingCount={pendingCount}
+              onOpenBadgeModal={() => setShowTiersModal(true)}
+            />
 
-        {/* Setting Cards Sections */}
-        <div className="space-y-6">
-          <PersonalInfoSection
-            user={user}
-            initialUsername={username}
-            onUsernameUpdated={(newUsername) => setUsername(newUsername)}
-          />
+            {/* Setting Cards Sections */}
+            <div className="space-y-6">
+              <PersonalInfoSection
+                user={user}
+                initialUsername={username}
+                onUsernameUpdated={(newUsername) => setUsername(newUsername)}
+              />
 
-          <SecuritySection />
+              <SecuritySection />
 
-          <SocialLinksSection pendingCount={pendingCount} />
+              <SocialLinksSection pendingCount={pendingCount} />
 
-          <DangerZoneSection onLogout={handleLogout} />
-        </div>
+              <DangerZoneSection onLogout={handleLogout} />
+            </div>
+          </>
+        ) : null}
       </main>
 
       {/* Badge Tiers Modal */}
-      <BadgeTiersModal
-        isOpen={showTiersModal}
-        onClose={() => setShowTiersModal(false)}
-        currentBadge={currentBadge}
-        watchedCount={watchedCount}
-      />
+      {currentBadge && (
+        <BadgeTiersModal
+          isOpen={showTiersModal}
+          onClose={() => setShowTiersModal(false)}
+          currentBadge={currentBadge}
+          watchedCount={watchedCount}
+        />
+      )}
     </div>
   );
+};
 };
 
 export default Profile;
