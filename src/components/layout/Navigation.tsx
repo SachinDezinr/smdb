@@ -18,7 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { fetchProfileData, clearCachedProfile } from '@/lib/profileStore';
+import { fetchProfileData, clearCachedProfile, getCachedAuthState, setCachedAuthState, getCachedProfile } from '@/lib/profileStore';
 
 interface NavSection {
   title: string;
@@ -67,39 +67,57 @@ const mobileNavItems = [
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [pendingCount, setPendingCount] = useState<number>(0);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  
+  // Initialize synchronously with cached state to prevent button flicker on desktop
+  const cachedProfile = getCachedProfile();
+  const cachedAuth = getCachedAuthState();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    cachedAuth !== null ? cachedAuth : !!cachedProfile?.user
+  );
+  const [pendingCount, setPendingCount] = useState<number>(cachedProfile?.pendingCount || 0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuthAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
+      if (!isMounted) return;
+      const isAuth = !!user;
+      setIsAuthenticated(isAuth);
+      setCachedAuthState(isAuth);
 
       if (user) {
         const data = await fetchProfileData(false);
-        if (data) {
+        if (isMounted && data) {
           setPendingCount(data.pendingCount);
         }
       } else {
-        setPendingCount(0);
+        if (isMounted) setPendingCount(0);
       }
     };
 
     checkAuthAndProfile();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsAuthenticated(!!session?.user);
+      if (!isMounted) return;
+      const isAuth = !!session?.user;
+      setIsAuthenticated(isAuth);
+      setCachedAuthState(isAuth);
+
       if (session?.user) {
         const updated = await fetchProfileData(true);
-        if (updated) {
+        if (isMounted && updated) {
           setPendingCount(updated.pendingCount);
         }
       } else {
-        setPendingCount(0);
+        if (isMounted) setPendingCount(0);
       }
     });
 
     return () => {
+      isMounted = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
@@ -111,8 +129,9 @@ export const Navigation = () => {
 
   const handleLogout = async () => {
     clearCachedProfile();
-    await supabase.auth.signOut();
+    setCachedAuthState(false);
     setIsAuthenticated(false);
+    await supabase.auth.signOut();
     navigate('/login');
   };
 

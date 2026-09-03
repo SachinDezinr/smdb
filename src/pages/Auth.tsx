@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Film, Mail, Lock, User, Loader2, ArrowLeft, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { handlePostLoginRedirect, parseAuthRedirectParams } from '@/lib/authRedirect';
+import { setCachedAuthState } from '@/lib/profileStore';
 
 const Auth = () => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -23,11 +24,19 @@ const Auth = () => {
   const isAddCollection = redirectParams.action === 'add_collection';
   const isProfileGate =
     redirectParams.returnTo === '/profile' || redirectParams.returnTo.startsWith('/profile');
+  const isCollectionGate =
+    redirectParams.returnTo === '/collection' || redirectParams.returnTo.startsWith('/collection');
+  const isStatsGate =
+    redirectParams.returnTo === '/stats' || redirectParams.returnTo.startsWith('/stats');
+  const isFriendsGate =
+    redirectParams.returnTo === '/friends' || redirectParams.returnTo.startsWith('/friends');
+  const isCompareGate = redirectParams.returnTo.startsWith('/compare');
 
   // If user is already authenticated when arriving at /login, handle redirect immediately
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        setCachedAuthState(true);
         const destination = await handlePostLoginRedirect(location.search, session.user.id);
         navigate(destination, { replace: true });
       }
@@ -47,6 +56,7 @@ const Auth = () => {
       if (mode === 'login') {
         const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setCachedAuthState(true);
         showSuccess("Welcome back to SMDB!");
 
         if (authData.user) {
@@ -78,6 +88,7 @@ const Auth = () => {
         if (error) throw error;
         
         if (signUpData.session && signUpData.user) {
+          setCachedAuthState(true);
           showSuccess("Registration successful! Welcome to SMDB.");
           const destination = await handlePostLoginRedirect(location.search, signUpData.user.id);
           navigate(destination, { replace: true });
@@ -111,12 +122,30 @@ const Auth = () => {
     }
   };
 
-  const getSubtitleText = () => {
+  const getGateMessage = () => {
     if (isAddCollection) {
       return "Sign in to save this to your collection";
     }
+    if (isCollectionGate) {
+      return "Sign in to see your collection";
+    }
+    if (isStatsGate) {
+      return "Sign in to see your analysis & stats";
+    }
     if (isProfileGate) {
       return "Sign in to view your profile";
+    }
+    if (isFriendsGate || isCompareGate) {
+      return "Sign in to connect with friends and compare vaults";
+    }
+    return null;
+  };
+
+  const gateMessage = getGateMessage();
+
+  const getSubtitleText = () => {
+    if (gateMessage) {
+      return gateMessage;
     }
     if (mode === 'login') {
       return "Sign in to track your watch history";
@@ -158,14 +187,10 @@ const Auth = () => {
         </div>
 
         {/* Soft-gate Notice Banner */}
-        {(isAddCollection || isProfileGate) && (
+        {gateMessage && (
           <div className="mb-6 p-3.5 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center gap-2 text-xs font-semibold text-primary text-center">
             <Sparkles size={15} className="flex-shrink-0" />
-            <span>
-              {isAddCollection
-                ? "Sign in to save this to your collection"
-                : "Sign in to view your profile"}
-            </span>
+            <span>{gateMessage}</span>
           </div>
         )}
 

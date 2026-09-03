@@ -9,11 +9,48 @@ export interface ProfileData {
   watchedCount: number;
 }
 
+let cachedProfile: ProfileData | null = null;<dyad-write path="src/lib/profileStore.ts" description="Add synchronous auth state caching helper to eliminate sidebar button flickering on route changes">
+import { supabase } from './supabase';
+
+export interface ProfileData {
+  user: any;
+  username: string;
+  joinedDate: string;
+  pendingCount: number;
+  friendsCount: number;
+  watchedCount: number;
+}
+
 let cachedProfile: ProfileData | null = null;
+let cachedAuthState: boolean | null = null;
 let lastFetched = 0;
 const CACHE_TTL = 1000 * 60 * 3; // 3 minutes
 
 export const getCachedProfile = (): ProfileData | null => cachedProfile;
+
+export const getCachedAuthState = (): boolean | null => {
+  if (cachedAuthState !== null) return cachedAuthState;
+  // Read synchronously from supabase localStorage keys if present
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('supabase.auth.token') || key?.startsWith('sb-')) {
+        const item = localStorage.getItem(key);
+        if (item && (item.includes('access_token') || item.includes('user'))) {
+          cachedAuthState = true;
+          return true;
+        }
+      }
+    }
+  } catch {
+    // ignore storage access errors
+  }
+  return null;
+};
+
+export const setCachedAuthState = (isAuth: boolean) => {
+  cachedAuthState = isAuth;
+};
 
 export const setCachedProfile = (data: Partial<ProfileData>) => {
   if (!cachedProfile) return;
@@ -27,7 +64,12 @@ export const fetchProfileData = async (force = false): Promise<ProfileData | nul
   }
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) {
+    cachedAuthState = false;
+    return null;
+  }
+
+  cachedAuthState = true;
 
   let joinedDate = '';
   if (user.created_at) {
@@ -68,5 +110,6 @@ export const fetchProfileData = async (force = false): Promise<ProfileData | nul
 
 export const clearCachedProfile = () => {
   cachedProfile = null;
+  cachedAuthState = false;
   lastFetched = 0;
 };
