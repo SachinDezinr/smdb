@@ -218,7 +218,7 @@ export const Navigation = () => {
             <span>•</span>
             <Link to="/contact" className="hover:text-white transition-colors">Support</Link>
             <span>•</span>
-            <span className="text-[10px]">v1.0</span>
+            <span className="text-[10px]">v1.1</span>
           </div>
         </div>
       </aside>
