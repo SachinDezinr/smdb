@@ -257,7 +257,7 @@ export const Navigation = () => {
       </aside>
 
       {/* Mobile Floating Pill Navigation */}
-      <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+      <div className="lg:hidden fixed bottom-3 sm:bottom-3.5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
         <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
           {mobileNavItems.map((item) => {
             const isActive = location.pathname === item.path;
