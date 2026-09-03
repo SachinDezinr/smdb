@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Calendar, 
@@ -10,16 +10,14 @@ import {
   Film, 
   BarChart3, 
   Users, 
-  Sparkles, 
   ChevronRight,
-  ShieldCheck,
-  Compass
+  Compass,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { getCachedProfile, fetchProfileData } from '@/lib/profileStore';
-import { getUserBadge } from '@/lib/badges';
+import { fetchProfileData, clearCachedProfile } from '@/lib/profileStore';
 
 interface NavSection {
   title: string;
@@ -63,18 +61,17 @@ const mobileNavItems = [
 ];
 
 /**
- * Navigation Component: Handles both Desktop Sidebar and Mobile Floating Pill Navigation.
+ * Navigation Component: Handles Desktop Sidebar and Mobile Floating Pill Navigation.
  */
 export const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState<number>(0);
-  const [profile, setProfile] = useState<any>(getCachedProfile());
 
   useEffect(() => {
     const loadProfileAndRequests = async () => {
       const data = await fetchProfileData(false);
       if (data) {
-        setProfile(data);
         setPendingCount(data.pendingCount);
       }
     };
@@ -84,7 +81,6 @@ export const Navigation = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async () => {
       const updated = await fetchProfileData(true);
       if (updated) {
-        setProfile(updated);
         setPendingCount(updated.pendingCount);
       }
     });
@@ -99,8 +95,11 @@ export const Navigation = () => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  const userInitial = (profile?.username || profile?.user?.email || 'U')[0].toUpperCase();
-  const badgeInfo = getUserBadge(profile?.watchedCount || 0);
+  const handleLogout = async () => {
+    clearCachedProfile();
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
 
   return (
     <>
@@ -109,7 +108,7 @@ export const Navigation = () => {
         {/* Subtle Ambient Glow */}
         <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-primary/[0.07] to-transparent pointer-events-none" />
 
-        {/* Top Branding */}
+        {/* Top Branding & Nav */}
         <div>
           <Link to="/" className="flex items-center gap-3.5 px-2 py-1.5 mb-8 group">
             <div className="relative">
@@ -119,11 +118,8 @@ export const Navigation = () => {
               </div>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-white flex items-center gap-1.5 font-['Poppins']">
+              <span className="text-xl font-black tracking-tight text-white font-['Poppins']">
                 SMDB
-                <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 font-bold">
-                  PRO
-                </span>
               </span>
               <span className="text-[10px] text-muted-foreground tracking-wider font-semibold uppercase">
                 Cinema Log & Vault
@@ -205,33 +201,16 @@ export const Navigation = () => {
           </nav>
         </div>
 
-        {/* Bottom User Card / Profile Badge */}
+        {/* Bottom Section: Sign Out & Footer Links */}
         <div className="pt-4 border-t border-white/10 space-y-3">
-          <Link
-            to="/profile"
-            className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-primary/30 transition-all group"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-sm font-semibold transition-all group"
           >
-            <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary/20 via-neutral-800 to-primary/40 border border-primary/40 flex items-center justify-center font-bold text-primary text-sm shadow-md">
-                {userInitial}
-              </div>
-              <span className="absolute -bottom-1 -right-1 p-0.5 bg-neutral-900 rounded-full border border-primary/30 text-primary">
-                <ShieldCheck size={11} />
-              </span>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate group-hover:text-primary transition-colors">
-                {profile?.username || 'Cinephile'}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate font-medium flex items-center gap-1">
-                <Sparkles size={10} className="text-primary" />
-                {badgeInfo.current.label}
-              </p>
-            </div>
-
-            <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </Link>
+            <LogOut size={18} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Sign Out</span>
+          </button>
 
           {/* Quick Footer Links */}
           <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
@@ -244,9 +223,9 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Floating Pill Navigation */}
-      <div className="lg:hidden fixed bottom-4 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto w-full max-w-sm h-16 bg-neutral-950/85 backdrop-blur-2xl border border-white/15 rounded-full px-2 shadow-[0_8px_32px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10">
+      {/* Mobile Floating Pill Navigation - Positioned lower towards bottom edge */}
+      <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+        <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/90 backdrop-blur-2xl border border-white/15 rounded-full px-2 shadow-[0_8px_32px_rgba(0,0,0,0.9)] flex items-center justify-between ring-1 ring-white/10">
           {mobileNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -256,7 +235,7 @@ export const Navigation = () => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "relative flex flex-col items-center justify-center flex-1 h-12 rounded-full transition-all duration-300 group select-none",
+                  "relative flex flex-col items-center justify-center flex-1 h-11 rounded-full transition-all duration-300 group select-none",
                   isActive ? "text-primary" : "text-muted-foreground hover:text-white"
                 )}
               >
@@ -270,19 +249,19 @@ export const Navigation = () => {
                 <div className="relative z-10 flex flex-col items-center gap-0.5">
                   <div className="relative">
                     <Icon
-                      size={19}
+                      size={18}
                       className={cn(
                         "transition-all duration-300",
-                        isActive ? "scale-110 text-primary drop-shadow-[0_0_8px_rgba(245,197,24,0.5)]" : "text-muted-foreground group-hover:text-white"
+                        isActive ? "scale-105 text-primary drop-shadow-[0_0_8px_rgba(245,197,24,0.5)]" : "text-muted-foreground group-hover:text-white"
                       )}
                     />
                     {item.path === '/profile' && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-neutral-950 animate-pulse" />
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-neutral-950 animate-pulse" />
                     )}
                   </div>
                   <span
                     className={cn(
-                      "text-[10px] font-semibold tracking-tight transition-colors duration-200",
+                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
                       isActive ? "text-primary font-bold" : "text-muted-foreground/80"
                     )}
                   >
