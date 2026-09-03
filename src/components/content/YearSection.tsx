@@ -61,12 +61,22 @@ export const YearSection = ({
         )}
       >
         <div className="flex items-center gap-3 md:gap-4">
-          <span className={cn(
-            "text-xl md:text-3xl font-bold tracking-tight transition-all select-none",
-            isHighlighted || isExpanded 
-              ? "text-primary" 
-              : "bg-gradient-to-b from-white from-70% to-primary bg-clip-text text-transparent drop-shadow-sm"
-          )}>
+          <span
+            className={cn(
+              "inline-block text-xl md:text-3xl font-bold tracking-tight transition-all select-none",
+              isHighlighted || isExpanded ? "text-primary" : ""
+            )}
+            style={
+              !isHighlighted && !isExpanded
+                ? {
+                    backgroundImage: "linear-gradient(to bottom, #FFFFFF 60%, #F5C518 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }
+                : undefined
+            }
+          >
             {year}
           </span>
           <span className={cn(
