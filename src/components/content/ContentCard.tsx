@@ -174,7 +174,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
               {isWatched ? (
                 <>
                   <Check size={14} />
-                  <span>In Collection</span>
+                  <span>Watched</span>
                 </>
               ) : (
                 <>
