@@ -47,56 +47,6 @@ const navSections: NavSection[] = [
   },
   {
     title: "Community",
-    items:<dyad-write path="src/components/layout/Navigation.tsx" description="Complete Navigation component with smooth transitions and without forced window.scrollTo">
-"use client";
-
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  Calendar, 
-  Library, 
-  User, 
-  Film, 
-  BarChart3, 
-  Users, 
-  ChevronRight,
-  Compass,
-  LogOut,
-  LogIn
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
-import { motion } from 'framer-motion';
-import { fetchProfileData, clearCachedProfile, getCachedAuthState, setCachedAuthState, getCachedProfile } from '@/lib/profileStore';
-
-interface NavSection {
-  title: string;
-  items: {
-    icon: React.ComponentType<{ size?: number; className?: string }>;
-    label: string;
-    path: string;
-    badge?: string;
-  }[];
-}
-
-const navSections: NavSection[] = [
-  {
-    title: "Discover",
-    items: [
-      { icon: Compass, label: 'Explore Catalog', path: '/' },
-      { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
-    ]
-  },
-  {
-    title: "My Vault",
-    items: [
-      { icon: Library, label: 'Collection', path: '/collection' },
-      { icon: BarChart3, label: 'Analytics & Stats', path: '/stats' },
-    ]
-  },
-  {
-    title: "Community",
     items: [
       { icon: Users, label: 'Social Circle', path: '/friends' },
       { icon: User, label: 'Profile & Settings', path: '/profile' },
@@ -111,14 +61,10 @@ const mobileNavItems = [
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
-/**
- * Navigation Component: Handles Desktop Sidebar and Mobile Floating Pill Navigation.
- */
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Initialize synchronously with cached state to prevent button flicker on desktop
   const cachedProfile = getCachedProfile();
   const cachedAuth = getCachedAuthState();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
@@ -184,7 +130,6 @@ export const Navigation = () => {
     <>
       {/* Desktop Modern Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r border-white/10 bg-neutral-950/70 backdrop-blur-2xl px-5 py-6 z-40 select-none justify-between">
-        {/* Subtle Ambient Glow */}
         <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-primary/[0.07] to-transparent pointer-events-none" />
 
         {/* Top Branding & Nav */}
@@ -230,7 +175,6 @@ export const Navigation = () => {
                             : "text-muted-foreground hover:text-white hover:bg-white/[0.04]"
                         )}
                       >
-                        {/* Animated Active Pill Background */}
                         {isActive && (
                           <motion.div
                             layoutId="desktop-active-pill"
@@ -252,7 +196,6 @@ export const Navigation = () => {
                           <span>{item.label}</span>
                         </div>
 
-                        {/* Request Notification Badge */}
                         {showBadge && (
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide",
@@ -264,7 +207,6 @@ export const Navigation = () => {
                           </span>
                         )}
 
-                        {/* Hover arrow indicator on inactive */}
                         {!isActive && (
                           <ChevronRight
                             size={14}
@@ -301,7 +243,6 @@ export const Navigation = () => {
             </Link>
           )}
 
-          {/* Quick Footer Links */}
           <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
             <Link to="/about" className="hover:text-white transition-colors">About</Link>
             <span>•</span>
@@ -312,7 +253,7 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Floating Pill Navigation - Hardware accelerated & smooth */}
+      {/* Mobile Floating Pill Navigation */}
       <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
         <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
           {mobileNavItems.map((item) => {
@@ -328,7 +269,6 @@ export const Navigation = () => {
                   isActive ? "text-primary" : "text-muted-foreground active:text-white"
                 )}
               >
-                {/* Active Indicator */}
                 <div
                   className={cn(
                     "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",

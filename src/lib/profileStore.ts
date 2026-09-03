@@ -9,18 +9,6 @@ export interface ProfileData {
   watchedCount: number;
 }
 
-let cachedProfile: ProfileData | null = null;<dyad-write path="src/lib/profileStore.ts" description="Add synchronous auth state caching helper to eliminate sidebar button flickering on route changes">
-import { supabase } from './supabase';
-
-export interface ProfileData {
-  user: any;
-  username: string;
-  joinedDate: string;
-  pendingCount: number;
-  friendsCount: number;
-  watchedCount: number;
-}
-
 let cachedProfile: ProfileData | null = null;
 let cachedAuthState: boolean | null = null;
 let lastFetched = 0;
@@ -30,11 +18,10 @@ export const getCachedProfile = (): ProfileData | null => cachedProfile;
 
 export const getCachedAuthState = (): boolean | null => {
   if (cachedAuthState !== null) return cachedAuthState;
-  // Read synchronously from supabase localStorage keys if present
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.includes('supabase.auth.token') || key?.startsWith('sb-')) {
+      if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-'))) {
         const item = localStorage.getItem(key);
         if (item && (item.includes('access_token') || item.includes('user'))) {
           cachedAuthState = true;
