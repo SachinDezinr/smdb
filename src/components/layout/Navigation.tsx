@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { fetchProfileData, clearCachedProfile, getCachedAuthState, setCachedAuthState, getCachedProfile } from '@/lib/profileStore';
+import { clearCachedStats, clearCachedSocialCircle } from '@/lib/pageDataStore';
 
 interface NavSection {
   title: string;
@@ -120,6 +121,8 @@ export const Navigation = () => {
 
   const handleLogout = async () => {
     clearCachedProfile();
+    clearCachedStats();
+    clearCachedSocialCircle();
     setCachedAuthState(false);
     setIsAuthenticated(false);
     await supabase.auth.signOut();

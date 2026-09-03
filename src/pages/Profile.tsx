@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getCachedProfile, fetchProfileData, clearCachedProfile } from '@/lib/profileStore';
+import { clearCachedStats, clearCachedSocialCircle } from '@/lib/pageDataStore';
 import { getUserBadge } from '@/lib/badges';
 import { ProfileHero } from '@/components/profile/ProfileHero';
 import { PersonalInfoSection } from '@/components/profile/PersonalInfoSection';
@@ -45,6 +46,8 @@ const Profile = () => {
 
   const handleLogout = async () => {
     clearCachedProfile();
+    clearCachedStats();
+    clearCachedSocialCircle();
     await supabase.auth.signOut();
     navigate('/auth');
   };

@@ -6,20 +6,24 @@ import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, Users, Loader2, Clock, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Link } from 'react-router-dom';
+import { getCachedSocialCircle, setCachedSocialCircle, SocialCircleData } from '@/lib/pageDataStore';
 
 const Friends = () => {
+  const cached = getCachedSocialCircle();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [friends, setFriends] = useState<any[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
-  const [sentRequests, setSentRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [friends, setFriends] = useState<any[]>(cached?.friends || []);
+  const [incomingRequests, setIncomingRequests] = useState<any[]>(cached?.incomingRequests || []);
+  const [sentRequests, setSentRequests] = useState<any[]>(cached?.sentRequests || []);
+  const [loading, setLoading] = useState(cached === null);
   const [searching, setSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const fetchData = useCallback(async (userId: string) => {
-    setRefreshing(true);
+  const fetchData = useCallback(async (userId: string, isBackground = false) => {
+    if (isBackground) {
+      setRefreshing(true);
+    }
     try {
       const { data: friendsData } = await supabase
         .from('friends')
@@ -31,7 +35,8 @@ const Friends = () => {
         .eq('user_id', userId)
         .eq('status', 'accepted');
       
-      setFriends(friendsData || []);
+      const newFriends = friendsData || [];
+      setFriends(newFriends);
 
       const { data: incomingData } = await supabase
         .from('friends')
@@ -43,7 +48,8 @@ const Friends = () => {
         .eq('friend_id', userId)
         .eq('status', 'pending');
       
-      setIncomingRequests(incomingData || []);
+      const newIncoming = incomingData || [];
+      setIncomingRequests(newIncoming);
 
       const { data: sentData } = await supabase
         .from('friends')
@@ -55,11 +61,19 @@ const Friends = () => {
         .eq('user_id', userId)
         .eq('status', 'pending');
       
-      setSentRequests(sentData || []);
+      const newSent = sentData || [];
+      setSentRequests(newSent);
+
+      setCachedSocialCircle({
+        friends: newFriends,
+        incomingRequests: newIncoming,
+        sentRequests: newSent,
+      });
     } catch (err) {
       console.error("Error fetching social data:", err);
     } finally {
       setRefreshing(false);
+      setLoading(false);
     }
   }, []);
 
@@ -68,9 +82,11 @@ const Friends = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
       if (user) {
-        await fetchData(user.id);
+        // If we have cached data, fetch in background without full-screen loading spinner
+        await fetchData(user.id, !!cached);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
     init();
   }, [fetchData]);
@@ -104,7 +120,7 @@ const Friends = () => {
       showError("Request already exists");
     } else {
       showSuccess("Friend request sent!");
-      fetchData(currentUser.id);
+      fetchData(currentUser.id, true);
     }
   };
 
@@ -133,7 +149,7 @@ const Friends = () => {
       await supabase.from('friends').delete().eq('id', requestId);
       showSuccess("Request declined");
     }
-    fetchData(currentUser.id);
+    fetchData(currentUser.id, true);
   };
 
   const removeFriend = async (friendshipId: string, friendId: string) => {
@@ -141,7 +157,7 @@ const Friends = () => {
     await supabase.from('friends').delete().eq('id', friendshipId);
     await supabase.from('friends').delete().eq('user_id', friendId).eq('friend_id', currentUser.id);
     showSuccess("Friend removed");
-    fetchData(currentUser.id);
+    fetchData(currentUser.id, true);
   };
 
   if (loading) return (

@@ -6,16 +6,25 @@ import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock, Loader2, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getCachedStats, setCachedStats, StatsData } from '@/lib/pageDataStore';
 
 const Stats = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedStats();
+  const [stats, setStats] = useState<StatsData | null>(cached);
+  const [loading, setLoading] = useState(cached === null);
   const [showWrapped, setShowWrapped] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  const fetchStats = async () => {
+  const fetchStats = async (isBackground = false) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (!isBackground && !cached) {
+      setLoading(true);
+    }
 
     const { data: watched } = await supabase
       .from('watched_content')
@@ -43,24 +52,28 @@ const Stats = () => {
 
       const topGenre = Object.entries(genres).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
 
-      setStats({
+      const newStats: StatsData = {
         total: watched.length,
         yearTotal: yearWatched.length,
         topGenre,
         avgRating: (watched.reduce((acc, i) => acc + (i.vote_average || 0), 0) / (watched.length || 1)).toFixed(1),
         counts
-      });
+      };
+
+      setStats(newStats);
+      setCachedStats(newStats);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchStats();
+    // If cached, refresh quietly in background without showing fullscreen loader
+    fetchStats(!!cached);
     
     const channel = supabase
       .channel('stats_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
-        fetchStats();
+        fetchStats(true);
       })
       .subscribe();
 
