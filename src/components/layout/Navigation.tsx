@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -60,6 +60,9 @@ const mobileNavItems = [
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
+/**
+ * Navigation Component: Handles Desktop Sidebar and Mobile Floating Pill Navigation.
+ */
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -97,16 +100,6 @@ export const Navigation = () => {
     await supabase.auth.signOut();
     navigate('/auth');
   };
-
-  // Determine active mobile index reliably including associated sub-routes
-  const activeMobileIndex = useMemo(() => {
-    const path = location.pathname;
-    if (path === '/') return 0;
-    if (path === '/upcoming') return 1;
-    if (path === '/collection' || path === '/stats') return 2;
-    if (path === '/profile' || path === '/friends' || path.startsWith('/compare')) return 3;
-    return -1;
-  }, [location.pathname]);
 
   return (
     <>
@@ -152,7 +145,7 @@ export const Navigation = () => {
                         key={item.path}
                         to={item.path}
                         className={cn(
-                          "relative flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors duration-200 group text-sm font-semibold",
+                          "relative flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-sm font-semibold",
                           isActive
                             ? "text-black font-bold shadow-md shadow-primary/10"
                             : "text-muted-foreground hover:text-white hover:bg-white/[0.04]"
@@ -225,48 +218,41 @@ export const Navigation = () => {
             <span>•</span>
             <Link to="/contact" className="hover:text-white transition-colors">Support</Link>
             <span>•</span>
-            <span className="text-[10px]">v1.1</span>
+            <span className="text-[10px]">v1.0</span>
           </div>
         </div>
       </aside>
 
-      {/* Mobile Floating Pill Navigation - Smooth Consistent Sliding Indicator */}
+      {/* Mobile Floating Pill Navigation - Positioned lower towards bottom edge */}
       <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
-        <nav className="relative pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/95 backdrop-blur-2xl border border-white/15 rounded-full px-2 shadow-[0_8px_32px_rgba(0,0,0,0.9)] flex items-center ring-1 ring-white/10 overflow-hidden">
-          {/* Continuous Sliding Background Highlight */}
-          {activeMobileIndex >= 0 && (
-            <motion.div
-              className="absolute top-1.5 bottom-1.5 w-[calc(25%-4px)] rounded-full bg-primary/15 border border-primary/40 shadow-[0_0_14px_rgba(245,197,24,0.25)] pointer-events-none"
-              animate={{
-                left: `calc(${activeMobileIndex * 25}% + 2px)`,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 450,
-                damping: 34,
-              }}
-            />
-          )}
-
-          {mobileNavItems.map((item, index) => {
-            const isActive = activeMobileIndex === index;
+        <nav className="pointer-events-auto w-full max-w-sm h-14 bg-neutral-950/90 backdrop-blur-2xl border border-white/15 rounded-full px-2 shadow-[0_8px_32px_rgba(0,0,0,0.9)] flex items-center justify-between ring-1 ring-white/10">
+          {mobileNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
             const Icon = item.icon;
 
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className="relative z-10 flex flex-col items-center justify-center flex-1 h-11 rounded-full select-none"
+                className={cn(
+                  "relative flex flex-col items-center justify-center flex-1 h-11 rounded-full transition-all duration-300 group select-none",
+                  isActive ? "text-primary" : "text-muted-foreground hover:text-white"
+                )}
               >
-                <div className="relative flex flex-col items-center gap-0.5">
+                {isActive && (
+                  <motion.div
+                    layoutId="mobile-nav-pill"
+                    className="absolute inset-0 bg-primary/10 border border-primary/30 rounded-full shadow-[0_0_14px_rgba(245,197,24,0.2)]"
+                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  />
+                )}
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
                   <div className="relative">
                     <Icon
                       size={18}
                       className={cn(
-                        "transition-transform duration-200",
-                        isActive
-                          ? "scale-110 text-primary drop-shadow-[0_0_8px_rgba(245,197,24,0.6)]"
-                          : "text-muted-foreground"
+                        "transition-all duration-300",
+                        isActive ? "scale-105 text-primary drop-shadow-[0_0_8px_rgba(245,197,24,0.5)]" : "text-muted-foreground group-hover:text-white"
                       )}
                     />
                     {item.path === '/profile' && pendingCount > 0 && (
@@ -276,7 +262,7 @@ export const Navigation = () => {
                   <span
                     className={cn(
                       "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
-                      isActive ? "text-primary font-bold" : "text-muted-foreground/75"
+                      isActive ? "text-primary font-bold" : "text-muted-foreground/80"
                     )}
                   >
                     {item.label}

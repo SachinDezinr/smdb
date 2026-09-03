@@ -49,7 +49,7 @@ export const YearSection = ({
         isExpanded
           ? "border-primary/50 shadow-md shadow-primary/5"
           : isHighlighted
-          ? "border-primary/60 shadow-[0_0_14px_rgba(245,197,24,0.16)] bg-primary/[0.04]"
+          ? "border-primary/60 shadow-[0_0_14px_rgba(245,197,24,0.16)] bg-primary/[0.03]"
           : "border-white/10 hover:border-white/20"
       )}
     >

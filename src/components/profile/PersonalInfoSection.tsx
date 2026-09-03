@@ -74,7 +74,7 @@ export const PersonalInfoSection = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
-            <p className="text-xs text-muted-foreground">Manage your display username.</p>
+            <p className="text-xs text-muted-foreground">Manage your display username and public handle.</p>
           </div>
         </div>
 
