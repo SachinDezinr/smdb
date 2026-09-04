@@ -1,76 +1,92 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigationType } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
+// Global map keyed by normalized route pathname (and optional query string)
 const scrollPositions = new Map<string, number>();
 
 export const ScrollRestorationHandler = () => {
   const location = useLocation();
-  const navType = useNavigationType();
-  const prevKeyRef = useRef<string>(location.key);
+  const currentPathKey = location.pathname + location.search;
+  const prevPathKeyRef = useRef<string>(currentPathKey);
 
-  // Set browser scroll restoration to manual so our component controls smooth, accurate restoration
+  // Set browser native scroll restoration to manual so we control exact coordinate restoration
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
   }, []);
 
-  // Save scroll position for the current location continuously and upon leaving
+  // Continuously record scroll position for the current path
   useEffect(() => {
-    const recordScroll = () => {
-      const y = window.scrollY || document.documentElement.scrollTop || 0;
-      scrollPositions.set(location.key, y);
-      scrollPositions.set(location.pathname, y);
+    const saveCurrentScroll = () => {
+      const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+      scrollPositions.set(currentPathKey, y);
       try {
-        sessionStorage.setItem(`scroll_${location.key}`, String(y));
-        sessionStorage.setItem(`scroll_${location.pathname}`, String(y));
+        sessionStorage.setItem(`smdb_scroll_${currentPathKey}`, String(y));
       } catch {
-        // ignore storage errors
+        // ignore storage quota errors
       }
     };
 
-    window.addEventListener("scroll", recordScroll, { passive: true });
+    window.addEventListener("scroll", saveCurrentScroll, { passive: true });
+    window.addEventListener("beforeunload", saveCurrentScroll);
+
     return () => {
-      recordScroll();
-      window.removeEventListener("scroll", recordScroll);
+      saveCurrentScroll();
+      window.removeEventListener("scroll", saveCurrentScroll);
+      window.removeEventListener("beforeunload", saveCurrentScroll);
     };
-  }, [location.key, location.pathname]);
+  }, [currentPathKey]);
 
-  // Handle route transitions
+  // When route changes, restore previous scroll if user was already here, or smooth restore
   useEffect(() => {
-    if (navType === "POP") {
-      // User pressed back or forward button: restore previous scroll position
-      const savedY =
-        scrollPositions.get(location.key) ??
-        scrollPositions.get(location.pathname) ??
-        Number(sessionStorage.getItem(`scroll_${location.key}`)) ??
-        Number(sessionStorage.getItem(`scroll_${location.pathname}`)) ??
-        0;
+    // If the path actually changed:
+    if (prevPathKeyRef.current !== currentPathKey) {
+      // Save scroll of previous path one last time
+      const prevY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+      scrollPositions.set(prevPathKeyRef.current, prevY);
 
-      // Restore immediately and schedule follow-ups in case DOM elements are hydrating
-      window.scrollTo(0, savedY);
+      // Target position for the incoming route
+      let targetY = scrollPositions.get(currentPathKey);
 
-      const rafId = requestAnimationFrame(() => {
-        window.scrollTo(0, savedY);
-      });
+      if (targetY === undefined) {
+        const stored = sessionStorage.getItem(`smdb_scroll_${currentPathKey}`);
+        if (stored !== null) {
+          targetY = Number(stored);
+        }
+      }
 
-      const timerId = setTimeout(() => {
-        window.scrollTo(0, savedY);
-      }, 50);
+      if (targetY !== undefined && targetY > 0) {
+        const y = targetY;
+        // Schedule multiple passes to ensure async/rendered lists and images don't collapse scroll
+        window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
 
-      return () => {
-        cancelAnimationFrame(rafId);
-        clearTimeout(timerId);
-      };
-    } else if (navType === "PUSH") {
-      // User clicked a brand new link to navigate forward: start fresh from top
-      window.scrollTo(0, 0);
+        const raf1 = requestAnimationFrame(() => {
+          window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+        });
+
+        const timer1 = setTimeout(() => {
+          window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+        }, 60);
+
+        const timer2 = setTimeout(() => {
+          window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+        }, 220);
+
+        prevPathKeyRef.current = currentPathKey;
+
+        return () => {
+          cancelAnimationFrame(raf1);
+          clearTimeout(timer1);
+          clearTimeout(timer2);
+        };
+      }
+
+      prevPathKeyRef.current = currentPathKey;
     }
-
-    prevKeyRef.current = location.key;
-  }, [location.key, location.pathname, navType]);
+  }, [currentPathKey]);
 
   return null;
 };
