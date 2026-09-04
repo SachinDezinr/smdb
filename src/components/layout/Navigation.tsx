@@ -246,7 +246,7 @@ export const Navigation = () => {
             </Link>
           )}
 
-          <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
+          <div className="flex items-center justify-between px-1.5 text-[11px] text-muted-foreground/70">
             <Link to="/about" className="hover:text-white transition-colors">About</Link>
             <span>•</span>
             <Link to="/contact" className="hover:text-white transition-colors">Support</Link>
