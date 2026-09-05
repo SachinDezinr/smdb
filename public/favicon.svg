@@ -1,93 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <defs>
-    <!-- Background subtle radial highlight -->
-    <radialGradient id="bgGlow" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#1e1338" />
-      <stop offset="60%" stop-color="#0e0a1a" />
-      <stop offset="100%" stop-color="#08050e" />
-    </radialGradient>
-
-    <!-- Vibrant primary cinema gradient -->
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff3b5c" />
-      <stop offset="50%" stop-color="#8a2be2" />
-      <stop offset="100%" stop-color="#4f46e5" />
-    </linearGradient>
-
-    <!-- Clapper gold accent -->
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24" />
-      <stop offset="100%" stop-color="#f59e0b" />
-    </linearGradient>
-
-    <!-- Subtle border gradient -->
-    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff3b5c" stop-opacity="0.8" />
-      <stop offset="50%" stop-color="#8a2be2" stop-opacity="0.5" />
-      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.8" />
-    </linearGradient>
-
-    <!-- Glow drop shadow filter -->
-    <filter id="cinemaGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#ff2e63" flood-opacity="0.45" />
-    </filter>
-
-    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#8a2be2" flood-opacity="0.5" />
-    </filter>
-  </defs>
-
-  <!-- Squircle Base Canvas -->
-  <rect width="512" height="512" rx="120" fill="url(#bgGlow)" />
-  <rect width="508" height="508" x="2" y="2" rx="118" fill="none" stroke="url(#borderGrad)" stroke-width="4" stroke-opacity="0.75" />
-
-  <!-- Clapperboard / Cinema Camera Emblem -->
-  <g transform="translate(0, -10)">
-    <!-- Clapperboard base body -->
-    <rect x="116" y="210" width="280" height="195" rx="24" fill="#141126" stroke="#2e254d" stroke-width="3.5" filter="url(#softGlow)" />
-
-    <!-- Top clapper stick with angled stripes -->
-    <g transform="rotate(-7 116 195)">
-      <rect x="112" y="148" width="288" height="50" rx="12" fill="#17122c" stroke="#3b315f" stroke-width="3" />
-      <!-- Slanted stripes (cinema clapper pattern) -->
-      <g clip-path="url(#clapperClip)">
-        <polygon points="145,148 175,148 150,198 120,198" fill="url(#primaryGrad)" />
-        <polygon points="205,148 235,148 210,198 180,198" fill="url(#primaryGrad)" />
-        <polygon points="265,148 295,148 270,198 240,198" fill="url(#primaryGrad)" />
-        <polygon points="325,148 355,148 330,198 300,198" fill="url(#primaryGrad)" />
-        <polygon points="385,148 405,148 390,198 360,198" fill="url(#primaryGrad)" />
-      </g>
-    </g>
-
-    <!-- Film strip perforations & camera lens icon in center -->
-    <circle cx="256" cy="305" r="54" fill="url(#primaryGrad)" filter="url(#cinemaGlow)" />
-    
-    <!-- Inner play triangle -->
-    <polygon points="244,282 280,305 244,328" fill="#ffffff" />
-
-    <!-- Decorative film sprocket holes on left & right of card -->
-    <rect x="134" y="235" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="134" y="272" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="134" y="309" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="134" y="346" width="16" height="22" rx="4" fill="#302652" />
-
-    <rect x="362" y="235" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="362" y="272" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="362" y="309" width="16" height="22" rx="4" fill="#302652" />
-    <rect x="362" y="346" width="16" height="22" rx="4" fill="#302652" />
-    
-    <!-- Top-left sparkle/star -->
-    <path d="M 120,115 Q 120,135 100,135 Q 120,135 120,155 Q 120,135 140,135 Q 120,135 120,115 Z" fill="url(#goldGrad)" opacity="0.9" />
-    <!-- Small star top right -->
-    <path d="M 405,170 Q 405,182 393,182 Q 405,182 405,194 Q 405,182 417,182 Q 405,182 405,170 Z" fill="#38bdf8" opacity="0.85" />
-  </g>
-
-  <!-- Crisp SMDB text badge across bottom -->
-  <text x="256" y="445" 
-        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
-        font-weight="900" 
-        font-size="44" 
-        letter-spacing="9" 
-        text-anchor="middle" 
-        fill="#ffffff">SMDB</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F5C518" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+  <line x1="7" y1="2" x2="7" y2="22"></line>
+  <line x1="17" y1="2" x2="17" y2="22"></line>
+  <line x1="2" y1="12" x2="22" y2="12"></line>
+  <line x1="2" y1="7" x2="7" y2="7"></line>
+  <line x1="2" y1="17" x2="7" y2="17"></line>
+  <line x1="17" y1="17" x2="22" y2="17"></line>
+  <line x1="17" y1="7" x2="22" y2="7"></line>
 </svg>
