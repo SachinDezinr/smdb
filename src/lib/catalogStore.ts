@@ -8,7 +8,6 @@ export interface CatalogState {
   yearData: Record<number, ContentItem[]>;
   yearPages: Record<number, number>;
   watchedIds: number[];
-  scrollY: number;
 }
 
 const currentYear = new Date().getFullYear();
@@ -21,7 +20,6 @@ let catalogState: CatalogState = {
   yearData: {},
   yearPages: {},
   watchedIds: [],
-  scrollY: 0,
 };
 
 export const getCatalogState = (): CatalogState => catalogState;
