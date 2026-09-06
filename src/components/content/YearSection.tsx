@@ -69,7 +69,7 @@ export const YearSection = ({
             style={
               !isHighlighted && !isExpanded
                 ? {
-                    backgroundImage: "linear-gradient(to bottom, #FFFFFF 60%, #F5C518 100%)",
+                    backgroundImage: "linear-gradient(to bottom, #FFFFFF 40%, #F5C518 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
