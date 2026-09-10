@@ -222,7 +222,7 @@ const Index = () => {
         release_date: item.release_date,
         vote_average: item.vote_average,
         media_type: item.media_type,
-        season_count: item.season_count,
+        season_count: item.season_count || (isSeriesMediaType(item.media_type) ? getCachedTvSeason(item.id) : undefined),
         created_at: new Date().toISOString(),
       };
 
