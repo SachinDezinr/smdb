@@ -87,7 +87,8 @@ const Compare = () => {
           poster_path: item.poster_path,
           release_date: item.release_date,
           vote_average: item.vote_average,
-          media_type: item.media_type
+          media_type: item.media_type,
+          season_count: item.season_count
         });
 
       if (!error) {
@@ -204,7 +205,7 @@ const Compare = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[18px] md:gap-6">
               {displayedItems.map((item) => (
                 <div key={item.content_id} className="relative group">
-                  <ContentCard 
+                  <ContentCard
                     item={{
                       id: item.content_id,
                       title: item.title,
@@ -213,8 +214,9 @@ const Compare = () => {
                       vote_average: item.vote_average,
                       media_type: item.media_type,
                       genre_ids: [],
-                      overview: ""
-                    }} 
+                      overview: "",
+                      season_count: item.season_count
+                    }}
                     isWatched={myIds.has(item.content_id)}
                     onToggleWatched={() => toggleWatched(item)}
                     showCategory={true}
