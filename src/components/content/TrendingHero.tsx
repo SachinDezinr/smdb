@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
-import { ContentItem, fetchTrending, fetchTrailers } from '@/lib/tmdb';
+import { ContentItem, fetchTrending, fetchTrailers, fetchTvSeasons, getCachedTvSeason, getSeasonDisplayText, isSeriesMediaType } from '@/lib/tmdb';
 import { cn } from '@/lib/utils';
 import { showError } from '@/utils/toast';
 
@@ -76,6 +76,38 @@ export const TrendingHero = () => {
   }
 
   const current = trending[currentIndex];
+  const isSeries = current ? isSeriesMediaType(current.media_type) : false;
+  const [currentSeasons, setCurrentSeasons] = useState<number | undefined>(() => {
+    if (!current || !isSeries) return undefined;
+    return current.season_count || getCachedTvSeason(current.id);
+  });
+
+  useEffect(() => {
+    if (!current || !isSeries) {
+      setCurrentSeasons(undefined);
+      return;
+    }
+    if (current.season_count) {
+      setCurrentSeasons(current.season_count);
+      return;
+    }
+    const cached = getCachedTvSeason(current.id);
+    if (cached) {
+      setCurrentSeasons(cached);
+      return;
+    }
+    let isMounted = true;
+    fetchTvSeasons(current.id).then((count) => {
+      if (isMounted && count) {
+        setCurrentSeasons(count);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [current?.id, current?.season_count, isSeries]);
+
+  const seasonText = isSeries ? getSeasonDisplayText(currentSeasons) : '';
 
   const variants = {
     enter: (dir: number) => ({
@@ -169,6 +201,11 @@ export const TrendingHero = () => {
 
           <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
+            {seasonText && (
+              <span className="text-white/60 font-medium text-xs md:text-xl lg:text-2xl ml-2 inline-block whitespace-nowrap">
+                {seasonText}
+              </span>
+            )}
           </h2>
 
           <p className="hidden sm:line-clamp-2 text-white/80 text-xs md:text-sm max-w-lg drop-shadow-md leading-relaxed">
