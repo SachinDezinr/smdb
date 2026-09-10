@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, Film, User, Users, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ContentItem, fetchCredits } from '@/lib/tmdb';
+import { ContentItem, fetchCredits, fetchTvSeasons, getCachedTvSeason, getSeasonDisplayText, isSeriesMediaType } from '@/lib/tmdb';
 
 interface ContentCardProps {
   item: ContentItem;
