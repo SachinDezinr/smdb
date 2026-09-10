@@ -9,6 +9,7 @@ import { CatalogSearchResults } from '@/components/content/CatalogSearchResults'
 import { YearSection } from '@/components/content/YearSection';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { fetchContent, ContentItem, MediaType, Region, getStartYear } from '@/lib/tmdb';
+import { ContentItem, fetchContentByYear, fetchTopPickMovies, fetchTopPickShows, MediaType, isSeriesMediaType, getCachedTvSeason } from "@/lib/tmdb";
 import { Search, Compass, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
