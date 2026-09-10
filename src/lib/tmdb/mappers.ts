@@ -62,7 +62,8 @@ export const mapResults = (results: any[], defaultType: MediaType): ContentItem[
         overview: item.overview || "",
         popularity: item.popularity || 0,
         adult: item.adult,
-        videos: item.videos
+        videos: item.videos,
+        season_count: item.number_of_seasons || (Array.isArray(item.seasons) ? item.seasons.filter((s: any) => s && s.season_number > 0).length : undefined)
       };
     });
 };

@@ -6,3 +6,4 @@ export * from './tmdb/regions';
 export * from './tmdb/client';
 export * from './tmdb/mappers';
 export * from './tmdb/queries';
+export { getSeasonDisplayText, isSeriesMediaType } from './seasonFormat';

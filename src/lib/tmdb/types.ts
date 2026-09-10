@@ -23,4 +23,5 @@ export interface ContentItem {
   popularity?: number;
   adult?: boolean;
   videos?: { results: any[] };
+  season_count?: number;
 }
