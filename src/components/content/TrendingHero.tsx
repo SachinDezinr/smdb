@@ -50,7 +50,7 @@ export const TrendingHero = () => {
     if (trending.length === 0) return;
     timerRef.current = setInterval(() => {
       paginate(1);
-    }, 8000);
+    }, 5000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
