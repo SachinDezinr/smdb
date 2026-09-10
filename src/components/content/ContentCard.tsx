@@ -19,6 +19,39 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
   const [showOverlay, setShowOverlay] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
+  const [seasons, setSeasons] = useState<number | undefined>(() => {
+    if (!isSeriesMediaType(item.media_type)) return undefined;
+    return item.season_count || getCachedTvSeason(item.id);
+  });
+
+  const isSeries = isSeriesMediaType(item.media_type);
+
+  // Lazy-load season count for series if not present
+  useEffect(() => {
+    if (!isSeries) return;
+    if (item.season_count) {
+      setSeasons(item.season_count);
+      return;
+    }
+    const cached = getCachedTvSeason(item.id);
+    if (cached) {
+      setSeasons(cached);
+      return;
+    }
+
+    let isMounted = true;
+    fetchTvSeasons(item.id).then((count) => {
+      if (isMounted && count) {
+        setSeasons(count);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [item.id, item.season_count, isSeries]);
+
+  const seasonText = isSeries ? getSeasonDisplayText(seasons) : '';
 
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr === "TBA") return "TBA";
@@ -128,7 +161,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           )}>
             <Film className="text-primary/30 mb-3" size={40} strokeWidth={1.5} />
             <span className="text-xs font-semibold text-white/90 line-clamp-3 leading-snug tracking-tight">
-              {item.title}
+              {item.title} {seasonText && <span className="text-white/60 font-medium text-[11px] ml-1">{seasonText}</span>}
             </span>
           </div>
         )}
@@ -227,6 +260,11 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div className="flex flex-col gap-1 px-0.5">
         <h3 className="font-semibold text-sm md:text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors tracking-tight text-white/95">
           {item.title}
+          {seasonText && (
+            <span className="text-white/60 font-medium text-xs md:text-sm ml-1.5 inline-block whitespace-nowrap">
+              {seasonText}
+            </span>
+          )}
         </h3>
         
         <div className="flex items-center justify-between text-xs text-muted-foreground">
