@@ -261,7 +261,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
         <h3 className="font-semibold text-sm md:text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors tracking-tight text-white/95">
           {item.title}
           {seasonText && (
-            <span className="text-white/70 font-medium text-xs md:text-sm ml-1.5 inline-block whitespace-nowrap">
+            <span className="text-white/70 font-medium text-xs md:text-sm ml-1 inline-block whitespace-nowrap">
               {seasonText}
             </span>
           )}
