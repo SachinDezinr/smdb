@@ -41,7 +41,7 @@ export const TrendingHero = () => {
     load();
   }, []);
 
-  // Auto-advance every 8s. Re-arms whenever trending or currentIndex changes,
+  // Auto-advance every 5s. Re-arms whenever trending or currentIndex changes,
   // so the timer always calls a fresh "paginate" instead of one stuck on the
   // empty array from the first render, and it restarts the clock after any
   // manual navigation (button, dot, or swipe).
