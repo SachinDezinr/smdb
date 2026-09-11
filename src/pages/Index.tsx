@@ -33,35 +33,63 @@ const Index = () => {
 
   const prevFilters = useRef({ category: activeCategory, region: activeRegion });
   const isInitialMount = useRef(true);
+  // Bumped every time category/region changes so a fetch started under the
+  // old filters can tell, when it resolves, that it's stale and drop itself
+  // instead of merging old-filter results into the currently displayed data.
+  const requestGeneration = useRef(0);
 
   const currentYear = new Date().getFullYear();
 
-  // Dynamically calculate available years based on category and region filter
   const years = useMemo(() => {
     const startYear = getStartYear(activeCategory, activeRegion);
     const count = Math.max(1, currentYear - startYear + 1);
     return Array.from({ length: count }, (_, i) => currentYear - i);
   }, [activeCategory, activeRegion, currentYear]);
 
-  const fetchWatchedIds = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setWatchedIds([]);
-      setCatalogState({ watchedIds: [] });
-      return;
-    }
+  // Watched IDs depend only on who is logged in, not on category/region/search,
+  // so this runs once on mount and again whenever auth state changes -
+  // not on every filter toggle like before.
+  useEffect(() => {
+    const fetchWatchedIds = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setWatchedIds([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('watched_content')
+        .select('content_id')
+        .eq('user_id', user.id);
+      if (data) {
+        setWatchedIds(data.map((item) => item.content_id));
+      }
+    };
 
-    const { data } = await supabase
-      .from('watched_content')
-      .select('content_id')
-      .eq('user_id', user.id);
+    fetchWatchedIds();
 
-    if (data) {
-      const ids = data.map((item) => item.content_id);
-      setWatchedIds(ids);
-      setCatalogState({ watchedIds: ids });
-    }
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchWatchedIds();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Mirror watchedIds into the persistent store whenever it actually changes.
+  useEffect(() => {
+    setCatalogState({ watchedIds });
+  }, [watchedIds]);
+
+  // Mirror expandedYears into the persistent store whenever it changes.
+  useEffect(() => {
+    setCatalogState({ expandedYears });
+  }, [expandedYears]);
+
+  // Mirror yearData/yearPages into the persistent store whenever they change.
+  useEffect(() => {
+    setCatalogState({ yearData, yearPages });
+  }, [yearData, yearPages]);
 
   const performSearch = useCallback(
     async (query: string) => {
@@ -99,62 +127,54 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, performSearch]);
 
-  const loadYearContent = async (year: number, page: number = 1) => {
+  const loadYearContent = useCallback(async (year: number, page: number = 1) => {
+    const generation = requestGeneration.current;
     setLoadingYears((prev) => ({ ...prev, [year]: true }));
     try {
       const results = await fetchContent(activeCategory, year, page, "", activeRegion);
+
+      // Filters changed while this request was in flight - discard it.
+      if (generation !== requestGeneration.current) return;
 
       setYearData((prev) => {
         const existing = prev[year] || [];
         const existingIds = new Set(existing.map((item) => item.id));
         const uniqueNew = results.filter((item) => !existingIds.has(item.id));
-        const updated = {
+        return {
           ...prev,
           [year]: page === 1 ? results : [...existing, ...uniqueNew],
         };
-        setCatalogState({ yearData: updated });
-        return updated;
       });
 
-      setYearPages((prev) => {
-        const updated = { ...prev, [year]: page };
-        setCatalogState({ yearPages: updated });
-        return updated;
-      });
+      setYearPages((prev) => ({ ...prev, [year]: page }));
     } catch (error) {
       console.error(`Failed to fetch content for ${year}:`, error);
     } finally {
       setLoadingYears((prev) => ({ ...prev, [year]: false }));
     }
-  };
+  }, [activeCategory, activeRegion]);
 
-  const toggleYear = (year: number) => {
-    setExpandedYears((prev) => {
-      const isCurrentlyExpanded = prev.includes(year);
-      let updated: number[];
-      if (isCurrentlyExpanded) {
-        // Closing via header click: highlight this year with no time limit
-        updated = prev.filter((y) => y !== year);
-        setHighlightedYear(year);
-      } else {
-        // Opening a year: remove previous closed highlight
-        updated = [...prev, year];
-        setHighlightedYear(null);
-        if (!yearData[year]) {
-          loadYearContent(year, 1);
-        }
+  const toggleYear = useCallback((year: number) => {
+    const isCurrentlyExpanded = expandedYears.includes(year);
+
+    setExpandedYears((prev) =>
+      prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]
+    );
+
+    if (isCurrentlyExpanded) {
+      // Closing via header click: highlight this year with no time limit
+      setHighlightedYear(year);
+    } else {
+      // Opening a year: remove previous closed highlight
+      setHighlightedYear(null);
+      if (!yearData[year]) {
+        loadYearContent(year, 1);
       }
-      setCatalogState({ expandedYears: updated });
-      return updated;
-    });
-  };
+    }
+  }, [expandedYears, yearData, loadYearContent]);
 
-  const handleCloseYear = (year: number) => {
-    setExpandedYears((prev) => {
-      const updated = prev.filter((y) => y !== year);
-      setCatalogState({ expandedYears: updated });
-      return updated;
-    });
+  const handleCloseYear = useCallback((year: number) => {
+    setExpandedYears((prev) => prev.filter((y) => y !== year));
 
     // Highlight closed year with no time limit until another year is opened
     setHighlightedYear(year);
@@ -172,11 +192,11 @@ const Index = () => {
         });
       }
     }, 50);
-  };
+  }, []);
 
-  const toggleWatched = async (item: ContentItem) => {
+  const toggleWatched = useCallback(async (item: ContentItem) => {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     // SOFT GATE: If logged out, redirect to /login with soft-gate parameters
     if (!user) {
       const currentPath = location.pathname + location.search;
@@ -205,11 +225,7 @@ const Index = () => {
         .eq('content_id', item.id);
 
       if (!error) {
-        setWatchedIds((prev) => {
-          const updated = prev.filter((id) => id !== item.id);
-          setCatalogState({ watchedIds: updated });
-          return updated;
-        });
+        setWatchedIds((prev) => prev.filter((id) => id !== item.id));
         removeCollectionItem(item.id);
         showSuccess("Removed from collection");
       }
@@ -222,23 +238,19 @@ const Index = () => {
         release_date: item.release_date,
         vote_average: item.vote_average,
         media_type: item.media_type,
-        season_count: item.season_count || (isSeriesMediaType(item.media_type) ? getCachedTvSeason(item.id) : undefined),
+        season_count: item.season_count,
         created_at: new Date().toISOString(),
       };
 
       const { error } = await supabase.from('watched_content').insert(newItem);
 
       if (!error) {
-        setWatchedIds((prev) => {
-          const updated = [...prev, item.id];
-          setCatalogState({ watchedIds: updated });
-          return updated;
-        });
+        setWatchedIds((prev) => [...prev, item.id]);
         addCollectionItem(newItem);
         showSuccess("Added to your collection!");
       }
     }
-  };
+  }, [location, navigate, watchedIds]);
 
   useEffect(() => {
     setCatalogState({ activeCategory, activeRegion });
@@ -247,12 +259,15 @@ const Index = () => {
       prevFilters.current.category !== activeCategory ||
       prevFilters.current.region !== activeRegion;
 
+    if (filterChanged) {
+      requestGeneration.current += 1;
+    }
+
     if (filterChanged || Object.keys(yearData).length === 0) {
       prevFilters.current = { category: activeCategory, region: activeRegion };
       if (!isSearching) {
         setYearData({});
         setYearPages({});
-        setCatalogState({ yearData: {}, yearPages: {} });
 
         expandedYears.forEach((year) => {
           loadYearContent(year, 1);
@@ -267,7 +282,6 @@ const Index = () => {
     }
 
     isInitialMount.current = false;
-    fetchWatchedIds();
   }, [activeCategory, activeRegion, isSearching]);
 
   return (

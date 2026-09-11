@@ -200,7 +200,7 @@ const Collection = () => {
                   <button
                     onClick={() => removeWatched(item.content_id)}
                     className="absolute top-2.5 left-2.5 p-2 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md z-30"
-                    title="Remove from Watched"
+                    title="Remove from watched"
                   >
                     <Trash2 size={14} />
                   </button>
