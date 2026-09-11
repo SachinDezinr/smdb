@@ -211,7 +211,7 @@ export const TrendingHero = () => {
           <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
             {seasonText && (
-              <span className="text-white/60 font-medium text-xs md:text-xl lg:text-2xl ml-2 inline-block whitespace-nowrap">
+              <span className="text-white/70 font-medium text-xs md:text-xl lg:text-2xl ml-1.5 inline-block whitespace-nowrap">
                 {seasonText}
               </span>
             )}

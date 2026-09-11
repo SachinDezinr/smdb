@@ -161,7 +161,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           )}>
             <Film className="text-primary/30 mb-3" size={40} strokeWidth={1.5} />
             <span className="text-xs font-semibold text-white/90 line-clamp-3 leading-snug tracking-tight">
-              {item.title} {seasonText && <span className="text-white/60 font-medium text-[11px] ml-1">{seasonText}</span>}
+              {item.title} {seasonText && <span className="text-white/70 font-medium text-[11px] ml-1">{seasonText}</span>}
             </span>
           </div>
         )}
