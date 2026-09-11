@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
 import { ContentItem, fetchTrending, fetchTrailers, fetchTvSeasons, getCachedTvSeason, getSeasonDisplayText, isSeriesMediaType } from '@/lib/tmdb';
@@ -14,24 +14,15 @@ export const TrendingHero = () => {
   const [loading, setLoading] = useState(true);
   const [loadingTrailer, setLoadingTrailer] = useState(false);
   const [direction, setDirection] = useState(0);
-  const [currentSeasons, setCurrentSeasons] = useState<number | undefined>(undefined);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const current = trending[currentIndex];
-  const isSeries = current ? isSeriesMediaType(current.media_type) : false;
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      paginate(1);
+    }, 8000);
+  };
 
-  const paginate = useCallback((newDirection: number) => {
-    setDirection(newDirection);
-    setCurrentIndex((prevIndex) => {
-      if (trending.length === 0) return prevIndex;
-      let nextIndex = prevIndex + newDirection;
-      if (nextIndex < 0) nextIndex = trending.length - 1;
-      if (nextIndex >= trending.length) nextIndex = 0;
-      return nextIndex;
-    });
-  }, [trending]);
-
-  // Load trending data once on mount
   useEffect(() => {
     const load = async () => {
       const data = await fetchTrending();
@@ -39,53 +30,22 @@ export const TrendingHero = () => {
       setLoading(false);
     };
     load();
-  }, []);
-
-  // Auto-advance every 5s. Re-arms whenever trending or currentIndex changes,
-  // so the timer always calls a fresh "paginate" instead of one stuck on the
-  // empty array from the first render, and it restarts the clock after any
-  // manual navigation (button, dot, or swipe).
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (trending.length === 0) return;
-    timerRef.current = setInterval(() => {
-      paginate(1);
-    }, 5000);
+    resetTimer();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [trending, currentIndex, paginate]);
+  }, []);
 
-  // Season count lookup. Kept above the loading early-return below so hook
-  // order stays identical on every render.
-  useEffect(() => {
-    if (!current || !isSeries) {
-      setCurrentSeasons(undefined);
-      return;
-    }
-    if (current.season_count) {
-      setCurrentSeasons(current.season_count);
-      return;
-    }
-    const cached = getCachedTvSeason(current.id);
-    if (cached) {
-      setCurrentSeasons(cached);
-      return;
-    }
-    let isMounted = true;
-    fetchTvSeasons(current.id)
-      .then((count) => {
-        if (isMounted && count) {
-          setCurrentSeasons(count);
-        }
-      })
-      .catch(() => {
-        // Season count is decorative; ignore failures.
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, [current?.id, current?.season_count, isSeries]);
+  const paginate = (newDirection: number) => {
+    setDirection(newDirection);
+    setCurrentIndex((prevIndex) => {
+      let nextIndex = prevIndex + newDirection;
+      if (nextIndex < 0) nextIndex = trending.length - 1;
+      if (nextIndex >= trending.length) nextIndex = 0;
+      return nextIndex;
+    });
+    resetTimer();
+  };
 
   const handleWatchTrailer = async (item: ContentItem) => {
     setLoadingTrailer(true);
@@ -109,12 +69,43 @@ export const TrendingHero = () => {
     return Math.abs(offset) * velocity;
   };
 
-  // Early return happens AFTER every hook above has run, on every render.
   if (loading || trending.length === 0) {
     return (
       <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/15 mb-5" />
     );
   }
+
+  const current = trending[currentIndex];
+  const isSeries = current ? isSeriesMediaType(current.media_type) : false;
+  const [currentSeasons, setCurrentSeasons] = useState<number | undefined>(() => {
+    if (!current || !isSeries) return undefined;
+    return current.season_count || getCachedTvSeason(current.id);
+  });
+
+  useEffect(() => {
+    if (!current || !isSeries) {
+      setCurrentSeasons(undefined);
+      return;
+    }
+    if (current.season_count) {
+      setCurrentSeasons(current.season_count);
+      return;
+    }
+    const cached = getCachedTvSeason(current.id);
+    if (cached) {
+      setCurrentSeasons(cached);
+      return;
+    }
+    let isMounted = true;
+    fetchTvSeasons(current.id).then((count) => {
+      if (isMounted && count) {
+        setCurrentSeasons(count);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [current?.id, current?.season_count, isSeries]);
 
   const seasonText = isSeries ? getSeasonDisplayText(currentSeasons) : '';
 
@@ -241,6 +232,7 @@ export const TrendingHero = () => {
             onClick={() => {
               setDirection(i > currentIndex ? 1 : -1);
               setCurrentIndex(i);
+              resetTimer();
             }}
             className={cn(
               "h-1.5 rounded-full transition-all duration-500",
@@ -269,7 +261,6 @@ export const TrendingHero = () => {
               <iframe
                 src={`${trailerUrl}${trailerUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0`}
                 className="w-full h-full"
-                title={`${current.title} trailer`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
