@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 const Compare = () => {
   const { friendId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [friendProfile, setFriendProfile] = useState<any>(null);
   const [myCollection, setMyCollection] = useState<any[]>([]);
@@ -21,38 +22,67 @@ const Compare = () => {
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !friendId) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', friendId)
-        .single();
-      setFriendProfile(profile);
-
-      const [myRes, friendRes] = await Promise.all([
-        supabase.from('watched_content').select('*').eq('user_id', user.id),
-        supabase.from('watched_content').select('*').eq('user_id', friendId)
-      ]);
-
-      setMyCollection(myRes.data || []);
-      setFriendCollection(friendRes.data || []);
-    } catch (err) {
-      console.error("Comparison fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch this friend's comparison data. Resets loading on every friendId
+  // change (previously it stayed false after the first load, so switching
+  // friends showed stale data with no loading state), and uses a cancelled
+  // flag so a slow request for a friend you've since navigated away from
+  // can't overwrite the data for the friend you're now viewing.
   useEffect(() => {
+    let isCancelled = false;
+
+    const fetchData = async () => {
+      setLoading(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      if (!friendId) {
+        if (!isCancelled) setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', friendId)
+          .single();
+
+        const [myRes, friendRes] = await Promise.all([
+          supabase.from('watched_content').select('*').eq('user_id', user.id),
+          supabase.from('watched_content').select('*').eq('user_id', friendId)
+        ]);
+
+        if (isCancelled) return;
+
+        setFriendProfile(profile);
+        setMyCollection(myRes.data || []);
+        setFriendCollection(friendRes.data || []);
+      } catch (err) {
+        console.error("Comparison fetch error:", err);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+
     fetchData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [friendId, navigate]);
+
+  // Scroll listener doesn't depend on friendId, so it gets its own effect
+  // instead of being torn down/re-added every time you switch friends.
+  useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [friendId]);
+  }, []);
 
   const toggleWatched = async (item: any, isUndo = false) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -107,17 +137,34 @@ const Compare = () => {
     }
   };
 
+  // Kept above the loading early-return below so hook order stays the same
+  // on every render (moving these below it would cause the same "Rendered
+  // fewer hooks than expected" crash fixed elsewhere in this codebase).
+  const myIds = useMemo(
+    () => new Set(myCollection.map((i) => i.content_id)),
+    [myCollection]
+  );
+  const commonItems = useMemo(
+    () => friendCollection.filter((i) => myIds.has(i.content_id)),
+    [friendCollection, myIds]
+  );
+  const uniqueToFriend = useMemo(
+    () => friendCollection.filter((i) => !myIds.has(i.content_id)),
+    [friendCollection, myIds]
+  );
+  const filteredItems = useMemo(() => {
+    if (filter === 'common') return commonItems;
+    if (filter === 'unique') return uniqueToFriend;
+    return friendCollection;
+  }, [filter, commonItems, uniqueToFriend, friendCollection]);
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Loader2 className="animate-spin text-primary" size={48} />
     </div>
   );
 
-  const myIds = new Set(myCollection.map(i => i.content_id));
-  const commonItems = friendCollection.filter(i => myIds.has(i.content_id));
-  const uniqueToFriend = friendCollection.filter(i => !myIds.has(i.content_id));
-
-  const displayedItems = (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).slice(0, visibleCount);
+  const displayedItems = filteredItems.slice(0, visibleCount);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -225,7 +272,7 @@ const Compare = () => {
               ))}
             </div>
 
-            {visibleCount < (filter === 'common' ? commonItems : filter === 'unique' ? uniqueToFriend : friendCollection).length && (
+            {visibleCount < filteredItems.length && (
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => setVisibleCount(prev => prev + 12)}
