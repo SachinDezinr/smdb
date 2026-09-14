@@ -65,51 +65,45 @@ const mobileNavItems = [
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  const cachedProfile = getCachedProfile();
-  const cachedAuth = getCachedAuthState();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    cachedAuth !== null ? cachedAuth : !!cachedProfile?.user
+
+  // Lazy initializers: these cache reads now run once (on mount) instead of
+  // on every render. Navigation re-renders on every route change, so the
+  // previous version was reading from cache on every single nav click for
+  // values that only ever mattered on first render anyway.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const cachedAuth = getCachedAuthState();
+    if (cachedAuth !== null) return cachedAuth;
+    return !!getCachedProfile()?.user;
+  });
+  const [pendingCount, setPendingCount] = useState<number>(
+    () => getCachedProfile()?.pendingCount || 0
   );
-  const [pendingCount, setPendingCount] = useState<number>(cachedProfile?.pendingCount || 0);
 
   useEffect(() => {
     let isMounted = true;
 
-    const checkAuthAndProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      
+    // supabase-js v2 fires this callback immediately with the current
+    // session as soon as you subscribe (event: 'INITIAL_SESSION'), so a
+    // separate getSession() call on mount just duplicates that first fetch.
+    // Relying on this single listener removes the redundant profile fetch
+    // that ran on every page load.
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
-      const isAuth = !!user;
-      setIsAuthenticated(isAuth);
-      setCachedAuthState(isAuth);
 
-      if (user) {
-        const data = await fetchProfileData(false);
-        if (isMounted && data) {
-          setPendingCount(data.pendingCount);
-        }
-      } else {
-        if (isMounted) setPendingCount(0);
-      }
-    };
-
-    checkAuthAndProfile();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted) return;
       const isAuth = !!session?.user;
       setIsAuthenticated(isAuth);
       setCachedAuthState(isAuth);
 
       if (session?.user) {
-        const updated = await fetchProfileData(true);
-        if (isMounted && updated) {
-          setPendingCount(updated.pendingCount);
+        // Cache-first on the initial load, force a fresh read on any real
+        // sign-in/sign-out/token-refresh event after that.
+        const forceRefresh = event !== 'INITIAL_SESSION';
+        const data = await fetchProfileData(forceRefresh);
+        if (isMounted && data) {
+          setPendingCount(data.pendingCount);
         }
-      } else {
-        if (isMounted) setPendingCount(0);
+      } else if (isMounted) {
+        setPendingCount(0);
       }
     });
 
@@ -125,8 +119,16 @@ export const Navigation = () => {
     clearCachedSocialCircle();
     setCachedAuthState(false);
     setIsAuthenticated(false);
-    await supabase.auth.signOut();
-    navigate('/login');
+
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    } finally {
+      // Always navigate away, even if the network call failed - local state
+      // is already cleared, so leaving the user stranded here is worse.
+      navigate('/login');
+    }
   };
 
   return (

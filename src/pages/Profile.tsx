@@ -5,7 +5,7 @@ import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getCachedProfile, fetchProfileData, clearCachedProfile } from '@/lib/profileStore';
+import { getCachedProfile, fetchProfileData, clearCachedProfile, setCachedAuthState } from '@/lib/profileStore';
 import { clearCachedStats, clearCachedSocialCircle } from '@/lib/pageDataStore';
 import { getUserBadge } from '@/lib/badges';
 import { ProfileHero } from '@/components/profile/ProfileHero';
@@ -16,20 +16,27 @@ import { DangerZoneSection } from '@/components/profile/DangerZoneSection';
 import { BadgeTiersModal } from '@/components/profile/BadgeTiersModal';
 
 const Profile = () => {
-  const cached = getCachedProfile();
-  const [user, setUser] = useState<any>(cached?.user || null);
-  const [username, setUsername] = useState(cached?.username || '');
-  const [joinedDate, setJoinedDate] = useState<string>(cached?.joinedDate || '');
-  const [pendingCount, setPendingCount] = useState(cached?.pendingCount || 0);
-  const [friendsCount, setFriendsCount] = useState(cached?.friendsCount || 0);
-  const [watchedCount, setWatchedCount] = useState(cached?.watchedCount || 0);
-  const [pageLoading, setPageLoading] = useState(!cached);
+  // Lazy initializers: getCachedProfile() now runs once at mount instead of
+  // on every re-render (this component re-renders on every field edit,
+  // badge modal toggle, etc - the original read the cache each time for
+  // values only the first render actually used).
+  const [user, setUser] = useState<any>(() => getCachedProfile()?.user || null);
+  const [username, setUsername] = useState(() => getCachedProfile()?.username || '');
+  const [joinedDate, setJoinedDate] = useState<string>(() => getCachedProfile()?.joinedDate || '');
+  const [pendingCount, setPendingCount] = useState(() => getCachedProfile()?.pendingCount || 0);
+  const [friendsCount, setFriendsCount] = useState(() => getCachedProfile()?.friendsCount || 0);
+  const [watchedCount, setWatchedCount] = useState(() => getCachedProfile()?.watchedCount || 0);
+  const [pageLoading, setPageLoading] = useState(() => !getCachedProfile());
   const [showTiersModal, setShowTiersModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadProfile = async () => {
       const data = await fetchProfileData(false);
+      if (!isMounted) return;
+
       if (data) {
         setUser(data.user);
         setUsername(data.username);
@@ -37,19 +44,37 @@ const Profile = () => {
         setPendingCount(data.pendingCount);
         setFriendsCount(data.friendsCount);
         setWatchedCount(data.watchedCount);
+        setPageLoading(false);
+      } else {
+        // No session (or the fetch failed) - this page requires auth, so
+        // don't leave the user on a blank page. Note: if fetchProfileData
+        // returns the same falsy value for "no session" and "network error",
+        // this will also redirect a logged-in user on a transient failure -
+        // worth confirming that distinction on your end.
+        navigate(`/login?return_to=${encodeURIComponent('/profile')}`);
       }
-      setPageLoading(false);
     };
 
     loadProfile();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   const handleLogout = async () => {
     clearCachedProfile();
     clearCachedStats();
     clearCachedSocialCircle();
-    await supabase.auth.signOut();
-    navigate('/auth');
+    setCachedAuthState(false);
+
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    } finally {
+      navigate('/login');
+    }
   };
 
   const currentBadge = user ? getUserBadge(watchedCount).current : null;

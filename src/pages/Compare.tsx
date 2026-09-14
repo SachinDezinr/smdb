@@ -141,7 +141,7 @@ const Compare = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="flex bg-white/[0.04] p-1 rounded-2xl border border-white/10 w-full sm:w-auto justify-center">
+              <div className="flex bg-white/[0.05] p-1 rounded-2xl border border-white/10 w-full sm:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'common', label: 'Common' },
@@ -229,7 +229,7 @@ const Compare = () => {
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="flex items-center gap-2 px-8 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
+                  className="flex items-center gap-2 px-8 py-3.5 bg-white/[0.05] hover:bg-white/[0.08] rounded-2xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                 >
                   <Plus size={16} />
                   Load More Titles

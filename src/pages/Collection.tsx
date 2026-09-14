@@ -153,8 +153,8 @@ const Collection = () => {
                 className={cn(
                   "glass-card p-4 rounded-2xl border flex flex-col items-center text-center group transition-all relative overflow-hidden",
                   activeTab === stat.id 
-                    ? "border-primary/60 bg-primary/10 cinematic-glow scale-[1.02]" 
-                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                    ? "border-primary/60 bg-primary/10 cinematic-glow scale-[1.03]" 
+                    : "border-white/10 hover:border-white/20 bg-white/[0.03]"
                 )}
               >
                 {activeTab === stat.id && (
