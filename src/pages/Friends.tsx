@@ -5,17 +5,21 @@ import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, Users, Loader2, Clock, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getCachedSocialCircle, setCachedSocialCircle, SocialCircleData } from '@/lib/pageDataStore';
 
 const Friends = () => {
-  const cached = getCachedSocialCircle();
+  const navigate = useNavigate();
+
+  // Lazy initializers so getCachedSocialCircle() only runs once at mount
+  // instead of on every re-render (it was a plain call at the top of the
+  // component body, so it ran again every time e.g. searchQuery changed).
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [friends, setFriends] = useState<any[]>(cached?.friends || []);
-  const [incomingRequests, setIncomingRequests] = useState<any[]>(cached?.incomingRequests || []);
-  const [sentRequests, setSentRequests] = useState<any[]>(cached?.sentRequests || []);
-  const [loading, setLoading] = useState(cached === null);
+  const [friends, setFriends] = useState<any[]>(() => getCachedSocialCircle()?.friends || []);
+  const [incomingRequests, setIncomingRequests] = useState<any[]>(() => getCachedSocialCircle()?.incomingRequests || []);
+  const [sentRequests, setSentRequests] = useState<any[]>(() => getCachedSocialCircle()?.sentRequests || []);
+  const [loading, setLoading] = useState(() => getCachedSocialCircle() === null);
   const [searching, setSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -80,16 +84,23 @@ const Friends = () => {
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
-      if (user) {
-        // If we have cached data, fetch in background without full-screen loading spinner
-        await fetchData(user.id, !!cached);
-      } else {
-        setLoading(false);
+
+      if (!user) {
+        // This page needs auth - every action below assumes currentUser is
+        // set, and without this redirect a logged-out visitor reaches a
+        // fully rendered page where e.g. the Refresh button crashes on
+        // currentUser.id being null.
+        navigate('/login');
+        return;
       }
+
+      setCurrentUser(user);
+      // If we have cached data, fetch in background without full-screen loading spinner
+      const hasCached = getCachedSocialCircle() !== null;
+      await fetchData(user.id, hasCached);
     };
     init();
-  }, [fetchData]);
+  }, [fetchData, navigate]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -126,27 +137,42 @@ const Friends = () => {
 
   const respondRequest = async (requestId: string, accept: boolean) => {
     if (accept) {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('friends')
         .update({ status: 'accepted' })
         .eq('id', requestId);
-      
-      if (error) {
-        showError("Failed to accept");
+
+      if (updateError) {
+        showError("Failed to accept request");
         return;
       }
 
       const request = incomingRequests.find(r => r.id === requestId);
       if (request) {
-        await supabase.from('friends').insert({ 
-          user_id: currentUser.id, 
-          friend_id: request.user_id, 
-          status: 'accepted' 
+        const { error: mirrorError } = await supabase.from('friends').insert({
+          user_id: currentUser.id,
+          friend_id: request.user_id,
+          status: 'accepted'
         });
+
+        if (mirrorError) {
+          // The requester's row is now accepted, but your own mirror row
+          // failed - likely a leftover pending row from a mutual request,
+          // or an RLS policy blocking it. Either way the friendship is now
+          // asymmetric, so don't claim success.
+          console.error("Failed to create mirrored friendship row:", mirrorError);
+          showError("Accepted, but something went wrong - try refreshing");
+          fetchData(currentUser.id, true);
+          return;
+        }
       }
       showSuccess("Friend request accepted!");
     } else {
-      await supabase.from('friends').delete().eq('id', requestId);
+      const { error: declineError } = await supabase.from('friends').delete().eq('id', requestId);
+      if (declineError) {
+        showError("Failed to decline request");
+        return;
+      }
       showSuccess("Request declined");
     }
     fetchData(currentUser.id, true);
@@ -154,8 +180,24 @@ const Friends = () => {
 
   const removeFriend = async (friendshipId: string, friendId: string) => {
     if (!confirm("Remove this friend?")) return;
-    await supabase.from('friends').delete().eq('id', friendshipId);
-    await supabase.from('friends').delete().eq('user_id', friendId).eq('friend_id', currentUser.id);
+
+    const { error: firstError } = await supabase.from('friends').delete().eq('id', friendshipId);
+    const { error: secondError } = await supabase
+      .from('friends')
+      .delete()
+      .eq('user_id', friendId)
+      .eq('friend_id', currentUser.id);
+
+    if (firstError || secondError) {
+      // If the second delete failed (e.g. RLS only allows deleting rows
+      // you own, and this row's user_id is the other person), the other
+      // user still sees you as a friend even though you just removed them.
+      console.error("Failed to fully remove friend:", firstError || secondError);
+      showError("Couldn't fully remove this friend - try refreshing");
+      fetchData(currentUser.id, true);
+      return;
+    }
+
     showSuccess("Friend removed");
     fetchData(currentUser.id, true);
   };
