@@ -29,19 +29,16 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
   // Lazy-load season count for series if not present
   useEffect(() => {
     if (!isSeries) return;
-    if (item.season_count) {
-      setSeasons(item.season_count);
-      return;
-    }
+    
+    // Check cache first
     const cached = getCachedTvSeason(item.id);
     if (cached) {
       setSeasons(cached);
-      return;
     }
 
     let isMounted = true;
     fetchTvSeasons(item.id).then((count) => {
-      if (isMounted && count) {
+      if (isMounted && typeof count === 'number') {
         setSeasons(count);
       }
     });
@@ -49,7 +46,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
     return () => {
       isMounted = false;
     };
-  }, [item.id, item.season_count, isSeries]);
+  }, [item.id, isSeries]);
 
   const seasonText = isSeries ? getSeasonDisplayText(seasons) : '';
 

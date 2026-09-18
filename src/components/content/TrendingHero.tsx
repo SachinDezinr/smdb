@@ -63,19 +63,14 @@ export const TrendingHero = () => {
       setCurrentSeasons(undefined);
       return;
     }
-    if (current.season_count) {
-      setCurrentSeasons(current.season_count);
-      return;
-    }
     const cached = getCachedTvSeason(current.id);
     if (cached) {
       setCurrentSeasons(cached);
-      return;
     }
     let isMounted = true;
     fetchTvSeasons(current.id)
       .then((count) => {
-        if (isMounted && count) {
+        if (isMounted && typeof count === 'number') {
           setCurrentSeasons(count);
         }
       })
@@ -85,7 +80,7 @@ export const TrendingHero = () => {
     return () => {
       isMounted = false;
     };
-  }, [current?.id, current?.season_count, isSeries]);
+  }, [current?.id, isSeries]);
 
   const handleWatchTrailer = async (item: ContentItem) => {
     setLoadingTrailer(true);

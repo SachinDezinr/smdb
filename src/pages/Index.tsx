@@ -8,7 +8,7 @@ import { CatalogFilters } from '@/components/content/CatalogFilters';
 import { CatalogSearchResults } from '@/components/content/CatalogSearchResults';
 import { YearSection } from '@/components/content/YearSection';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { fetchContent, ContentItem, MediaType, Region, getStartYear } from '@/lib/tmdb';
+import { fetchContent, ContentItem, MediaType, Region, getStartYear, getCachedTvSeason } from '@/lib/tmdb';
 import { Search, Compass, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
@@ -238,7 +238,8 @@ const Index = () => {
         release_date: item.release_date,
         vote_average: item.vote_average,
         media_type: item.media_type,
-        season_count: item.season_count,
+        // Store the verified released season count if available
+        season_count: (item.season_count || getCachedTvSeason(item.id)) ?? null,
         created_at: new Date().toISOString(),
       };
 
