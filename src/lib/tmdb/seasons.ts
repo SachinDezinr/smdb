@@ -1,15 +1,16 @@
 import { fetchFromProxy } from './client';
-import { ContentItem } from './types';
-import { isSeriesMediaType } from '../seasonFormat';
+import { countReleasedSeasons } from '../seasonFormat';
 
 // In-memory cache for season counts by content ID
 const seasonCache = new Map<number, number>();
 
 /**
- * Fetches the total number of regular seasons for a TV series, anime, or k-drama.
- * TMDB's /tv/{id} returns number_of_seasons and seasons array.
- * We count seasons with season_number > 0 (excluding Season 0 "Specials") if available,
- * or fallback to number_of_seasons.
+ * Fetches the total number of regular seasons that have ALREADY BEEN RELEASED
+ * for a TV series, anime, or k-drama.
+ * TMDB's /tv/{id} returns a `seasons` array with air_date and season_number.
+ * We only count regular seasons (season_number > 0) whose air_date is on or before today.
+ * Any announced or upcoming seasons without a past/current air_date are excluded.
+ * When a new season is released and reached its air date, this automatically includes it.
  */
 export const fetchTvSeasons = async (id: number): Promise<number | undefined> => {
   if (!id) return undefined;
@@ -20,13 +21,13 @@ export const fetchTvSeasons = async (id: number): Promise<number | undefined> =>
   try {
     const data = await fetchFromProxy(`/tv/${id}`);
     if (data) {
-      let count = data.number_of_seasons;
+      let count: number | undefined;
       if (Array.isArray(data.seasons)) {
-        const regularSeasons = data.seasons.filter((s: any) => s && s.season_number > 0);
-        if (regularSeasons.length > 0) {
-          count = regularSeasons.length;
-        }
+        count = countReleasedSeasons(data.seasons);
+      } else if (typeof data.number_of_seasons === 'number') {
+        count = data.number_of_seasons;
       }
+
       if (typeof count === 'number' && count > 0) {
         seasonCache.set(id, count);
         return count;

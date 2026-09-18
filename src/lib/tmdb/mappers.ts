@@ -1,3 +1,4 @@
+import { countReleasedSeasons } from '../seasonFormat';
 import { ContentItem, MediaType } from './types';
 
 const ADULT_KEYWORDS = [
@@ -63,7 +64,9 @@ export const mapResults = (results: any[], defaultType: MediaType): ContentItem[
         popularity: item.popularity || 0,
         adult: item.adult,
         videos: item.videos,
-        season_count: item.number_of_seasons || (Array.isArray(item.seasons) ? item.seasons.filter((s: any) => s && s.season_number > 0).length : undefined)
+        season_count: Array.isArray(item.seasons)
+          ? countReleasedSeasons(item.seasons)
+          : (typeof item.number_of_seasons === 'number' ? item.number_of_seasons : undefined)
       };
     });
 };
