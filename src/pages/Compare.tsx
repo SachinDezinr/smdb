@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -146,19 +147,30 @@ const Compare = () => {
     () => new Set(myCollection.map((i) => i.content_id)),
     [myCollection]
   );
+  // Sorted once here so every derived view (common/unique/all/search) below
+  // inherits latest-to-oldest order automatically, since .filter() preserves
+  // relative order. Items with no release_date sort to the bottom rather
+  // than the top.
+  const sortedFriendCollection = useMemo(() => {
+    return [...friendCollection].sort((a, b) => {
+      const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
+      const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [friendCollection]);
   const commonItems = useMemo(
-    () => friendCollection.filter((i) => myIds.has(i.content_id)),
-    [friendCollection, myIds]
+    () => sortedFriendCollection.filter((i) => myIds.has(i.content_id)),
+    [sortedFriendCollection, myIds]
   );
   const uniqueToFriend = useMemo(
-    () => friendCollection.filter((i) => !myIds.has(i.content_id)),
-    [friendCollection, myIds]
+    () => sortedFriendCollection.filter((i) => !myIds.has(i.content_id)),
+    [sortedFriendCollection, myIds]
   );
   const filteredItems = useMemo(() => {
     if (filter === 'common') return commonItems;
     if (filter === 'unique') return uniqueToFriend;
-    return friendCollection;
-  }, [filter, commonItems, uniqueToFriend, friendCollection]);
+    return sortedFriendCollection;
+  }, [filter, commonItems, uniqueToFriend, sortedFriendCollection]);
   // Search applies on top of the All/Common/Unique tab, not instead of it.
   // Pure client-side filter over data already loaded - no debounce needed,
   // there's no network call to protect against.
@@ -209,7 +221,7 @@ const Compare = () => {
             <ArrowLeft size={15} /> Back to Friends
           </Link>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <Sparkles size={14} /> Shared Taste Analysis
@@ -221,6 +233,26 @@ const Compare = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative group w-full sm:w-64">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search titles..."
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setVisibleCount(12); }}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
               <div className="flex bg-white/[0.05] p-1 rounded-2xl border border-white/10 w-full sm:w-auto justify-center">
                 {[
                   { id: 'all', label: 'All' },
@@ -240,26 +272,6 @@ const Compare = () => {
                 ))}
               </div>
             </div>
-          </div>
-
-          <div className="relative group mt-4 w-full sm:max-w-sm">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-            <input
-              type="text"
-              placeholder="Search titles..."
-              className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => { setSearchQuery(''); setVisibleCount(12); }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            )}
           </div>
         </header>
 
