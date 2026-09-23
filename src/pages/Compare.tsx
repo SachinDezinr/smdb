@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Film } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Film, Search, X } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -19,6 +19,7 @@ const Compare = () => {
   const [myCollection, setMyCollection] = useState<any[]>([]);
   const [friendCollection, setFriendCollection] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'common' | 'unique'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
