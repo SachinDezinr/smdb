@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Film, Search, X } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Search, X } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -24,10 +24,9 @@ const Compare = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Fetch this friend's comparison data. Resets loading on every friendId
-  // change (previously it stayed false after the first load, so switching
-  // friends showed stale data with no loading state), and uses a cancelled
-  // flag so a slow request for a friend you've since navigated away from
-  // can't overwrite the data for the friend you're now viewing.
+  // change, and uses a cancelled flag so a slow request for a friend you've
+  // since navigated away from can't overwrite the data for the friend
+  // you're now viewing.
   useEffect(() => {
     let isCancelled = false;
 
@@ -85,7 +84,9 @@ const Compare = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleWatched = async (item: any, isUndo = false) => {
+  // Stable across renders that don't change myCollection, instead of a new
+  // function every render - matters because it's handed to every card below.
+  const toggleWatched = useCallback(async (item: any, isUndo = false) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -124,7 +125,7 @@ const Compare = () => {
 
       if (!error) {
         setMyCollection(prev => [...prev, item]);
-        
+
         toast.success(`Added ${item.title}`, {
           description: "Moved to common interests",
           action: {
@@ -136,7 +137,7 @@ const Compare = () => {
         showError("Failed to add to collection");
       }
     }
-  };
+  }, [myCollection]);
 
   // Kept above the loading early-return below so hook order stays the same
   // on every render (moving these below it would cause the same "Rendered
@@ -158,14 +159,45 @@ const Compare = () => {
     if (filter === 'unique') return uniqueToFriend;
     return friendCollection;
   }, [filter, commonItems, uniqueToFriend, friendCollection]);
+  // Search applies on top of the All/Common/Unique tab, not instead of it.
+  // Pure client-side filter over data already loaded - no debounce needed,
+  // there's no network call to protect against.
+  const searchedItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredItems;
+    return filteredItems.filter((item) => (item.title || '').toLowerCase().includes(q));
+  }, [filteredItems, searchQuery]);
+  const displayedItems = useMemo(
+    () => searchedItems.slice(0, visibleCount),
+    [searchedItems, visibleCount]
+  );
+  // Reshapes raw watched_content rows into ContentCard's item shape once per
+  // data change, instead of building a brand-new object per card on every
+  // render (scroll toggles, filter clicks, etc. no longer touch these).
+  const displayedCards = useMemo(
+    () =>
+      displayedItems.map((item) => ({
+        raw: item,
+        contentItem: {
+          id: item.content_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type,
+          genre_ids: [],
+          overview: '',
+          season_count: item.season_count,
+        },
+      })),
+    [displayedItems]
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Loader2 className="animate-spin text-primary" size={48} />
     </div>
   );
-
-  const displayedItems = filteredItems.slice(0, visibleCount);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -209,6 +241,26 @@ const Compare = () => {
               </div>
             </div>
           </div>
+
+          <div className="relative group mt-4 w-full sm:max-w-sm">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+            <input
+              type="text"
+              placeholder="Search titles..."
+              className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(''); setVisibleCount(12); }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Comparison Overview Metrics (Including Friend's Total Watched) */}
@@ -242,38 +294,32 @@ const Compare = () => {
           </div>
         </div>
 
-        {displayedItems.length === 0 ? (
+        {displayedCards.length === 0 ? (
           <div className="text-center py-24 opacity-50 space-y-2">
             <Users size={56} className="mx-auto mb-2 text-primary/30" />
-            <h2 className="text-xl font-bold text-white">No titles found for this filter</h2>
-            <p className="text-xs text-muted-foreground">Try switching to the 'All' tab to see their full list.</p>
+            <h2 className="text-xl font-bold text-white">
+              {searchQuery ? `No titles matching "${searchQuery}"` : 'No titles found for this filter'}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {searchQuery ? 'Try a different search term.' : "Try switching to the 'All' tab to see their full list."}
+            </p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[18px] md:gap-6">
-              {displayedItems.map((item) => (
-                <div key={item.content_id} className="relative group">
+              {displayedCards.map(({ raw, contentItem }) => (
+                <div key={raw.content_id} className="relative group">
                   <ContentCard
-                    item={{
-                      id: item.content_id,
-                      title: item.title,
-                      poster_path: item.poster_path,
-                      release_date: item.release_date,
-                      vote_average: item.vote_average,
-                      media_type: item.media_type,
-                      genre_ids: [],
-                      overview: "",
-                      season_count: item.season_count
-                    }}
-                    isWatched={myIds.has(item.content_id)}
-                    onToggleWatched={() => toggleWatched(item)}
+                    item={contentItem}
+                    isWatched={myIds.has(raw.content_id)}
+                    onToggleWatched={() => toggleWatched(raw)}
                     showCategory={true}
                   />
                 </div>
               ))}
             </div>
 
-            {visibleCount < filteredItems.length && (
+            {visibleCount < searchedItems.length && (
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => setVisibleCount(prev => prev + 12)}
