@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
@@ -43,10 +43,24 @@ const Upcoming = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
 
-  const load = async (pageNum: number = 1) => {
+  // "Upcoming lineup" year, computed instead of hardcoded - previously this
+  // was the literal number 2027 in five separate places (two toggle
+  // handlers, a showCategory check, and two button labels), which would go
+  // stale and need a manual edit every single year.
+  const nextYear = new Date().getFullYear() + 1;
+
+  // Bumped on every load() call so an older, slower request can tell it's
+  // been superseded and drop its own result instead of committing it -
+  // without this, rapidly switching category/region/year (or clicking
+  // "Load More" mid-fetch) could let a stale response land after a newer
+  // one and silently overwrite it.
+  const requestGeneration = useRef(0);
+
+  const load = useCallback(async (pageNum: number = 1) => {
+    const generation = ++requestGeneration.current;
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
-    
+
     try {
       let data: ContentItem[];
       const today = new Date().toISOString().split('T')[0];
@@ -69,17 +83,24 @@ const Upcoming = () => {
           return item.release_date > today;
         });
       }
-      
+
+      if (generation !== requestGeneration.current) return;
+
       setItems(prev => pageNum === 1 ? data : [...prev, ...data]);
       setPage(pageNum);
     } catch (error) {
       console.error(error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (generation === requestGeneration.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  };
+  }, [activeCategory, activeRegion, activeYear]);
 
+  // Was hardcoded to 'movie' / 'all' regardless of what category you were
+  // browsing, so searching while on e.g. the Anime tab silently returned
+  // movie results instead. Now searches within the active category/region.
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setIsSearching(false);
@@ -90,7 +111,7 @@ const Upcoming = () => {
     setIsSearching(true);
     setLoading(true);
     try {
-      const results = await fetchContent('movie', undefined, 1, query, 'all');
+      const results = await fetchContent(activeCategory, undefined, 1, query, activeRegion);
       const today = new Date().toISOString().split('T')[0];
       setSearchResults(results.filter(item => item.release_date > today));
     } catch (error) {
@@ -98,7 +119,7 @@ const Upcoming = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeCategory, activeRegion]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -114,7 +135,7 @@ const Upcoming = () => {
 
   useEffect(() => {
     if (!isSearching) load(1);
-  }, [activeCategory, activeRegion, activeYear, isSearching]);
+  }, [activeCategory, activeRegion, activeYear, isSearching, load]);
 
   const showRegionFilters = !isSearching && (activeCategory === 'movie' || activeCategory === 'tv');
 
@@ -182,16 +203,16 @@ const Upcoming = () => {
                   ))}
                   <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
                   <button 
-                    onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
+                    onClick={() => { setActiveYear(activeYear === nextYear ? null : nextYear); }}
                     className={cn(
                       "flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border",
-                      activeYear === 2027 
+                      activeYear === nextYear 
                         ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/5 scale-[1.02]" 
                         : "bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.07]"
                     )}
                   >
-                    <Sparkles size={13} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
-                    2027 Lineup
+                    <Sparkles size={13} className={activeYear === nextYear ? "text-primary" : "text-muted-foreground"} />
+                    {nextYear} Lineup
                   </button>
                 </div>
                 {showRegionFilters && (
@@ -253,16 +274,16 @@ const Upcoming = () => {
                 )}
 
                 <button 
-                  onClick={() => { setActiveYear(activeYear === 2027 ? null : 2027); }}
+                  onClick={() => { setActiveYear(activeYear === nextYear ? null : nextYear); }}
                   className={cn(
                     "flex items-center gap-1 px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border",
-                    activeYear === 2027 
+                    activeYear === nextYear 
                       ? "bg-primary/20 border-primary text-primary shadow-sm" 
                       : "bg-white/[0.04] border-white/10 text-white/80"
                   )}
                 >
-                  <Sparkles size={12} className={activeYear === 2027 ? "text-primary" : "text-muted-foreground"} />
-                  2027
+                  <Sparkles size={12} className={activeYear === nextYear ? "text-primary" : "text-muted-foreground"} />
+                  {nextYear}
                 </button>
               </div>
             </div>
@@ -281,7 +302,7 @@ const Upcoming = () => {
                   key={item.id} 
                   item={item} 
                   showReleaseDate 
-                  showCategory={isSearching || activeYear === 2027}
+                  showCategory={isSearching || activeYear === nextYear}
                 />
               ))}
             </div>

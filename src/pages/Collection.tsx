@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { supabase } from '@/lib/supabase';
@@ -12,9 +12,11 @@ import { fetchUserCollection, getCachedCollection, removeCollectionItem } from '
 import { setCatalogState, getCatalogState } from '@/lib/catalogStore';
 
 const Collection = () => {
-  const cached = getCachedCollection();
-  const [watchedItems, setWatchedItems] = useState<any[]>(cached || []);
-  const [loading, setLoading] = useState(cached === null);
+  // Lazy initializer: getCachedCollection() now runs once at mount instead
+  // of on every re-render (search keystrokes, tab clicks, scroll threshold
+  // crossings all used to re-read it for a value only the first render uses).
+  const [watchedItems, setWatchedItems] = useState<any[]>(() => getCachedCollection() || []);
+  const [loading, setLoading] = useState(() => getCachedCollection() === null);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -23,23 +25,38 @@ const Collection = () => {
 
   const currentYear = new Date().getFullYear();
 
-  const loadData = async (force = false) => {
-    if (!cached || force) {
-      if (!cached) setLoading(true);
-      const items = await fetchUserCollection(force);
-      setWatchedItems(items);
-      setLoading(false);
-    }
+  // Cached data is only used for the instant optimistic render above - it's
+  // never a reason to skip fetching. Previously this only fetched when
+  // there was NO cached data at all, which meant: once populated, this page
+  // would never refetch again for the rest of the session - including after
+  // switching accounts, where it showed the previous user's collection
+  // until a full page reload happened to wipe the in-memory cache.
+  const loadData = async (force = true) => {
+    if (!getCachedCollection()) setLoading(true);
+    const items = await fetchUserCollection(force);
+    setWatchedItems(items);
+    setLoading(false);
   };
 
   useEffect(() => {
-    loadData();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      await loadData(true);
+    };
+    init();
+
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const removeWatched = async (id: number) => {
+  // No dependency on component state at all - stays permanently stable
+  // across every render instead of being recreated every time.
+  const removeWatched = useCallback(async (id: number) => {
     if (!confirm("Are you sure you want to remove this from your collection?")) return;
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -54,15 +71,15 @@ const Collection = () => {
     if (!error) {
       removeCollectionItem(id);
       setWatchedItems(prev => prev.filter(item => item.content_id !== id));
-      
+
       const currentWatchedIds = getCatalogState().watchedIds;
       setCatalogState({
         watchedIds: currentWatchedIds.filter(wid => wid !== id)
       });
     }
-  };
+  }, []);
 
-  const stats = {
+  const stats = useMemo(() => ({
     total: watchedItems.length,
     movies: watchedItems.filter(i => i.media_type === 'movie').length,
     tv: watchedItems.filter(i => i.media_type === 'tv').length,
@@ -72,27 +89,54 @@ const Collection = () => {
       if (!i.release_date || i.release_date === "TBA") return false;
       return new Date(i.release_date).getFullYear() === currentYear;
     }).length,
-  };
+  }), [watchedItems, currentYear]);
 
-  const filteredItems = watchedItems.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesTab = false;
-    if (activeTab === 'all') {
-      matchesTab = true;
-    } else if (['movie', 'tv', 'anime', 'k-drama'].includes(activeTab)) {
-      matchesTab = item.media_type === activeTab;
-    } else if (activeTab === currentYear.toString()) {
-      const itemYear = item.release_date && item.release_date !== "TBA" 
-        ? new Date(item.release_date).getFullYear().toString() 
-        : "";
-      matchesTab = itemYear === activeTab;
-    }
-    
-    return matchesSearch && matchesTab;
-  });
+  const filteredItems = useMemo(() => {
+    return watchedItems.filter(item => {
+      const matchesSearch = (item.title || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-  const displayedItems = filteredItems.slice(0, visibleCount);
+      let matchesTab = false;
+      if (activeTab === 'all') {
+        matchesTab = true;
+      } else if (['movie', 'tv', 'anime', 'k-drama'].includes(activeTab)) {
+        matchesTab = item.media_type === activeTab;
+      } else if (activeTab === currentYear.toString()) {
+        const itemYear = item.release_date && item.release_date !== "TBA"
+          ? new Date(item.release_date).getFullYear().toString()
+          : "";
+        matchesTab = itemYear === activeTab;
+      }
+
+      return matchesSearch && matchesTab;
+    });
+  }, [watchedItems, searchQuery, activeTab, currentYear]);
+
+  const displayedItems = useMemo(
+    () => filteredItems.slice(0, visibleCount),
+    [filteredItems, visibleCount]
+  );
+
+  // Reshapes raw watched_content rows into ContentCard's item shape once per
+  // data change, instead of building a brand-new object per card on every
+  // render (search typing, scroll toggles, tab clicks, etc.).
+  const displayedCards = useMemo(
+    () =>
+      displayedItems.map((item) => ({
+        raw: item,
+        contentItem: {
+          id: item.content_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          release_date: item.release_date,
+          vote_average: item.vote_average,
+          media_type: item.media_type,
+          genre_ids: [],
+          overview: '',
+          season_count: item.season_count,
+        },
+      })),
+    [displayedItems]
+  );
 
   const statCards = [
     { id: 'all', label: 'All', value: stats.total, icon: Library, color: 'text-white' },
@@ -181,24 +225,14 @@ const Collection = () => {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[18px] md:gap-6">
-              {displayedItems.map((item) => (
-                <div key={item.content_id} className="relative group">
+              {displayedCards.map(({ raw, contentItem }) => (
+                <div key={raw.content_id} className="relative group">
                   <ContentCard
-                    item={{
-                      id: item.content_id,
-                      title: item.title,
-                      poster_path: item.poster_path,
-                      release_date: item.release_date,
-                      vote_average: item.vote_average,
-                      media_type: item.media_type,
-                      genre_ids: [],
-                      overview: "",
-                      season_count: item.season_count
-                    }}
+                    item={contentItem}
                     isWatched={true}
                   />
                   <button
-                    onClick={() => removeWatched(item.content_id)}
+                    onClick={() => removeWatched(raw.content_id)}
                     className="absolute top-2.5 left-2.5 p-2 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md z-30"
                     title="Remove from watched"
                   >
