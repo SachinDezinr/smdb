@@ -226,7 +226,7 @@ const Compare = () => {
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <Sparkles size={14} /> Shared Taste Analysis
               </div>
-              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl md:text-5xl font-bold tracking-normal text-white">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
               <p className="text-muted-foreground text-sm mt-1">Discover common favorites, unique titles, and taste compatibility.</p>
