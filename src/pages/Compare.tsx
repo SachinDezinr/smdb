@@ -57,17 +57,6 @@ const Compare = () => {
           supabase.from('watched_content').select('*').eq('user_id', friendId)
         ]);
 
-        // TEMP DEBUG - open the browser console on this page and check these
-        // three lines. If "friendCollection user_ids" shows YOUR id instead
-        // of the friendId, that's the bug (bad link, self-compare, or an RLS
-        // policy silently substituting your own rows). If it correctly shows
-        // the friend's id, the data is right and the checkmark you're seeing
-        // is just your own watched-status indicator, not a data source.
-        // Remove this block once you've confirmed which one it is.
-        console.log('[Compare debug] your id:', user.id, '| friendId from URL:', friendId);
-        console.log('[Compare debug] myCollection user_ids:', [...new Set((myRes.data || []).map((r) => r.user_id))]);
-        console.log('[Compare debug] friendCollection user_ids:', [...new Set((friendRes.data || []).map((r) => r.user_id))]);
-
         if (isCancelled) return;
 
         setFriendProfile(profile);
@@ -267,7 +256,7 @@ const Compare = () => {
                 <input
                   type="text"
                   placeholder="Search titles..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
                 />
