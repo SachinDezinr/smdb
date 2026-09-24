@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,11 +16,17 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Gates the form behind the initial session check below, so an already-
+  // authenticated visitor doesn't see a flash of the login form before
+  // being redirected away.
+  const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const redirectParams = parseAuthRedirectParams(searchParams);
+  // Only recomputes when the URL's query params actually change, instead of
+  // on every render (every keystroke in the form fields included).
+  const redirectParams = useMemo(() => parseAuthRedirectParams(searchParams), [searchParams]);
   const isAddCollection = redirectParams.action === 'add_collection';
   const isProfileGate =
     redirectParams.returnTo === '/profile' || redirectParams.returnTo.startsWith('/profile');
@@ -34,13 +40,21 @@ const Auth = () => {
 
   // If user is already authenticated when arriving at /login, handle redirect immediately
   useEffect(() => {
+    let isMounted = true;
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         setCachedAuthState(true);
         const destination = await handlePostLoginRedirect(location.search, session.user.id);
         navigate(destination, { replace: true });
+        return;
       }
+      if (isMounted) setCheckingSession(false);
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, [location.search, navigate]);
 
   const validateUsername = (name: string) => {
@@ -155,6 +169,14 @@ const Auth = () => {
     }
     return "Recover and reset your password";
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden selection:bg-primary/20 selection:text-primary">

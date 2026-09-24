@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -57,6 +56,17 @@ const Compare = () => {
           supabase.from('watched_content').select('*').eq('user_id', user.id),
           supabase.from('watched_content').select('*').eq('user_id', friendId)
         ]);
+
+        // TEMP DEBUG - open the browser console on this page and check these
+        // three lines. If "friendCollection user_ids" shows YOUR id instead
+        // of the friendId, that's the bug (bad link, self-compare, or an RLS
+        // policy silently substituting your own rows). If it correctly shows
+        // the friend's id, the data is right and the checkmark you're seeing
+        // is just your own watched-status indicator, not a data source.
+        // Remove this block once you've confirmed which one it is.
+        console.log('[Compare debug] your id:', user.id, '| friendId from URL:', friendId);
+        console.log('[Compare debug] myCollection user_ids:', [...new Set((myRes.data || []).map((r) => r.user_id))]);
+        console.log('[Compare debug] friendCollection user_ids:', [...new Set((friendRes.data || []).map((r) => r.user_id))]);
 
         if (isCancelled) return;
 
@@ -221,39 +231,19 @@ const Compare = () => {
             <ArrowLeft size={15} /> Back to Friends
           </Link>
           
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
                 <Sparkles size={14} /> Shared Taste Analysis
               </div>
-              <h1 className="text-3xl md:text-5xl font-bold tracking-normal text-white">
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
                 Comparing with <span className="text-primary">{friendProfile?.username || 'Friend'}</span>
               </h1>
               <p className="text-muted-foreground text-sm mt-1">Discover common favorites, unique titles, and taste compatibility.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative group w-full sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search titles..."
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-10 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => { setSearchQuery(''); setVisibleCount(12); }}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex bg-white/[0.05] p-1 rounded-2xl border border-white/10 w-full sm:w-auto justify-center">
+            <div className="flex flex-col items-center gap-3 w-full lg:w-72">
+              <div className="flex bg-white/[0.05] p-1 rounded-2xl border border-white/10 w-full justify-center">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'common', label: 'Common' },
@@ -270,6 +260,26 @@ const Compare = () => {
                     {btn.label}
                   </button>
                 ))}
+              </div>
+
+              <div className="relative group w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search titles..."
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setVisibleCount(12); }}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
