@@ -50,7 +50,7 @@ export const TrendingHero = () => {
     if (trending.length === 0) return;
     timerRef.current = setInterval(() => {
       paginate(1);
-    }, 5000);
+    }, 8000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -63,14 +63,19 @@ export const TrendingHero = () => {
       setCurrentSeasons(undefined);
       return;
     }
+    if (current.season_count) {
+      setCurrentSeasons(current.season_count);
+      return;
+    }
     const cached = getCachedTvSeason(current.id);
     if (cached) {
       setCurrentSeasons(cached);
+      return;
     }
     let isMounted = true;
     fetchTvSeasons(current.id)
       .then((count) => {
-        if (isMounted && typeof count === 'number') {
+        if (isMounted && count) {
           setCurrentSeasons(count);
         }
       })
@@ -80,7 +85,7 @@ export const TrendingHero = () => {
     return () => {
       isMounted = false;
     };
-  }, [current?.id, isSeries]);
+  }, [current?.id, current?.season_count, isSeries]);
 
   const handleWatchTrailer = async (item: ContentItem) => {
     setLoadingTrailer(true);
@@ -107,7 +112,7 @@ export const TrendingHero = () => {
   // Early return happens AFTER every hook above has run, on every render.
   if (loading || trending.length === 0) {
     return (
-      <div className="w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/15 mb-5" />
+      <div className="w-full aspect-[16/8] md:aspect-[21/9] md:max-h-[360px] lg:aspect-[32/10] lg:max-h-none bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/15 mb-5" />
     );
   }
 
@@ -131,7 +136,7 @@ export const TrendingHero = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[16/8] md:aspect-[21/9] lg:aspect-[32/10] rounded-2xl md:rounded-3xl overflow-hidden mb-5 group touch-pan-y border border-white/20 hover:border-primary/30 transition-colors duration-300 shadow-2xl">
+    <div className="relative w-full aspect-[16/8] md:aspect-[21/9] md:max-h-[360px] lg:aspect-[32/10] lg:max-h-none rounded-2xl md:rounded-3xl overflow-hidden mb-5 group touch-pan-y border border-white/20 hover:border-primary/30 transition-colors duration-300 shadow-2xl">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={current.id}
@@ -206,7 +211,7 @@ export const TrendingHero = () => {
           <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
             {seasonText && (
-              <span className="text-white/70 font-medium text-xs md:text-xl lg:text-2xl ml-1.5 inline-block whitespace-nowrap">
+              <span className="text-white/60 font-medium text-xs md:text-xl lg:text-2xl ml-2 inline-block whitespace-nowrap">
                 {seasonText}
               </span>
             )}
