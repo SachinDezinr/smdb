@@ -62,6 +62,14 @@ const mobileNavItems = [
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
+const tabletNavItems = [
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+  { icon: Library, label: 'Collection', path: '/collection' },
+  { icon: Users, label: 'Friends', path: '/friends' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -258,8 +266,8 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile Floating Pill Navigation */}
-      <div className="lg:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+      {/* Mobile Floating Pill Navigation (below 768px) */}
+      <div className="md:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
         <nav className="pointer-events-auto w-full max-w-[383px] h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
           {mobileNavItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -293,6 +301,59 @@ export const Navigation = () => {
                       )}
                     />
                     {item.path === '/profile' && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
+                      isActive ? "text-primary font-bold" : "text-muted-foreground/80"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Tablet Floating Pill Navigation (768px - 1023px) */}
+      <div className="hidden md:flex lg:hidden fixed bottom-3 inset-x-0 z-50 justify-center px-6 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+        <nav className="pointer-events-auto w-full max-w-md h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
+          {tabletNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "relative flex flex-col items-center justify-center flex-1 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
+                  isActive ? "text-primary" : "text-muted-foreground active:text-white"
+                )}
+              >
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
+                    isActive 
+                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100" 
+                      : "opacity-0 scale-90 pointer-events-none"
+                  )}
+                />
+
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
+                  <div className="relative">
+                    <Icon
+                      size={18}
+                      className={cn(
+                        "transition-transform duration-200 transform-gpu",
+                        isActive ? "scale-110 text-primary" : "text-muted-foreground"
+                      )}
+                    />
+                    {item.path === '/friends' && pendingCount > 0 && (
                       <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
                     )}
                   </div>
