@@ -111,11 +111,22 @@ const Auth = () => {
           setMode('login');
         }
       } else if (mode === 'forgot') {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .eq('username', username)
+          .single();
+        
+        if (profileError || !profile) {
+          throw new Error("Account details do not match our records.");
+        }
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/profile`,
         });
         if (error) throw error;
-        showSuccess("If an account exists with this email, a password reset link has been sent.");
+        showSuccess("Details verified! A reset link has been sent to your email.");
         setMode('login');
       }
     } catch (error: any) {
