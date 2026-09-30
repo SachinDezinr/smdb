@@ -3,7 +3,43 @@
 import React from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
-import { Mail, Instagram, Linkedin, Code, Sparkles } from 'lucide-react';
+import { Mail, Code, Sparkles } from 'lucide-react';
+
+const LinkedinIcon = ({ size = 22, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect width="4" height="12" x="2" y="9" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
+
+const InstagramIcon = ({ size = 22, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 const Contact = () => {
   return (
@@ -50,7 +86,7 @@ const Contact = () => {
               className="glass-card p-6 rounded-2xl flex flex-col items-center gap-3 border-white/10 hover:border-primary/50 transition-all group"
             >
               <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
-                <Linkedin size={22} />
+                <LinkedinIcon size={22} />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-0.5">LinkedIn</h3>
@@ -66,7 +102,7 @@ const Contact = () => {
               className="glass-card p-6 rounded-2xl flex flex-col items-center gap-3 border-white/10 hover:border-primary/50 transition-all group"
             >
               <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors">
-                <Instagram size={22} />
+                <InstagramIcon size={22} />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-0.5">Instagram</h3>
