@@ -85,7 +85,6 @@ allowBuilds:
   "@sap/hana-theme-vscode": true
   "@scarf/scarf": true
   "@sematext/gc-stats": true
-  "@sentry/capacitor": true
   "@sentry/profiling-node": true
   "@serialport/bindings": true
   "@serialport/bindings-cpp": true
