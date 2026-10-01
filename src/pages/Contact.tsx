@@ -87,7 +87,7 @@ const Contact = () => {
 
           {/* Footer Section */}
           <footer className="mt-14 text-muted-foreground text-xs space-y-1">
-            <p>© {Year} SMDB. All Rights Reserved.</p>
+            <p>© 2026 SMDB. All Rights Reserved.</p>
             <p className="text-primary/90 font-semibold">Crafted for cinephiles and film enthusiasts</p>
           </footer>
         </motion.div>
