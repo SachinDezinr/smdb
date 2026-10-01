@@ -3,33 +3,33 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Film, Star, TrendingUp, X, PlayCircle, Tv, Sparkles, Heart, Clock, Loader2, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCachedStats, setCachedStats, StatsData } from '@/lib/pageDataStore';
 
 const Stats = () => {
-  // Lazy initializer: getCachedStats() now runs once at mount instead of on
-  // every re-render (e.g. every time the Wrapped modal opens or closes).
-  const [stats, setStats] = useState<StatsData | null>(() => getCachedStats());
-  const [loading, setLoading] = useState(() => getCachedStats() === null);
+  const cached = getCachedStats();
+  const [stats, setStats] = useState<StatsData | null>(cached);
+  const [loading, setLoading] = useState(cached === null);
   const [showWrapped, setShowWrapped] = useState(false);
   const currentYear = new Date().getFullYear();
-  const navigate = useNavigate();
 
-  // Takes userId as a parameter instead of calling supabase.auth.getUser()
-  // internally - that call now happens once, up front, in the effect below,
-  // instead of on every single invocation (including every realtime tick).
-  const fetchStats = async (userId: string, isBackground = false) => {
-    if (!isBackground && !getCachedStats()) {
+  const fetchStats = async (isBackground = false) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (!isBackground && !cached) {
       setLoading(true);
     }
 
     const { data: watched } = await supabase
       .from('watched_content')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (watched) {
       const yearWatched = watched.filter(i => {
@@ -67,47 +67,20 @@ const Stats = () => {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        navigate('/login');
-        return;
-      }
-      if (!isMounted) return;
-
-      // If cached, refresh quietly in background without showing fullscreen loader
-      await fetchStats(user.id, !!getCachedStats());
-      if (!isMounted) return;
-
-      // Filtered to this user's own rows - previously this subscribed to
-      // every row change on the whole table, refetching your stats every
-      // time ANY user of the app watched something, not just you.
-      channel = supabase
-        .channel(`stats_updates_${user.id}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'watched_content',
-          filter: `user_id=eq.${user.id}`,
-        }, () => {
-          fetchStats(user.id, true);
-        })
-        .subscribe();
-    };
-
-    init();
+    // If cached, refresh quietly in background without showing fullscreen loader
+    fetchStats(!!cached);
+    
+    const channel = supabase
+      .channel('stats_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched_content' }, () => {
+        fetchStats(true);
+      })
+      .subscribe();
 
     return () => {
-      isMounted = false;
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [currentYear, navigate]);
+  }, [currentYear]);
 
   if (loading) return (
     <div className="flex min-h-screen bg-background items-center justify-center">
@@ -143,7 +116,7 @@ const Stats = () => {
           {[
             { label: `Released in ${currentYear}`, value: stats?.yearTotal, icon: Calendar, color: 'text-white' },
             { label: 'Top Category', value: stats?.topGenre, icon: Film, color: 'text-primary' },
-            { label: 'Avg Rating', value: stats?.avgRating, icon: Star, color: 'text-white' },
+            { label: 'Avg IMDb Rating', value: stats?.avgRating, icon: Star, color: 'text-white' },
             { label: 'Total Lifetime', value: stats?.total, icon: Clock, color: 'text-white' },
           ].map((item, i) => (
             <motion.div
