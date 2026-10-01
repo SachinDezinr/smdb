@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
 import { Mail, Instagram, Linkedin, Code, Sparkles, type LucideIcon } from 'lucide-react';
