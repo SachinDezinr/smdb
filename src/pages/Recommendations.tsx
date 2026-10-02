@@ -3,9 +3,28 @@ import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
+import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Sparkles, Award, Film, Tv, Layers, Calendar, ChevronDown, Loader2, ArrowUp, Flame, Star } from 'lucide-react';
+import {
+  Sparkles,
+  Award,
+  Film,
+  Tv,
+  Layers,
+  Calendar,
+  ChevronDown,
+  Loader2,
+  Globe,
+  SlidersHorizontal,
+  Flame,
+  Star,
+  Clapperboard,
+  RotateCcw
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+export type RecommendationCategory = 'all' | 'movie' | 'tv' | 'kdrama' | 'anime';
+export type RecommendationRegion = 'all' | 'hollywood' | 'bollywood' | 'pollywood' | 'tollywood';
 
 // Strictly from 2026 down to 1950 (new to old)
 const ALL_YEARS: number[] = [];
@@ -15,46 +34,82 @@ for (let y = 2026; y >= 1950; y--) {
 
 const BATCH_SIZE = 12;
 
+const REGION_OPTIONS: { id: RecommendationRegion; label: string; flag: string }[] = [
+  { id: 'all', label: 'All Industries', flag: '🌐' },
+  { id: 'hollywood', label: 'Hollywood (English)', flag: '🇺🇸' },
+  { id: 'bollywood', label: 'Bollywood (Hindi)', flag: '🇮🇳' },
+  { id: 'tollywood', label: 'Tollywood (Telugu)', flag: '🇮🇳' },
+  { id: 'pollywood', label: 'Pollywood (Punjabi)', flag: '🇮🇳' },
+];
+
 export default function Recommendations() {
-  const [filterType, setFilterType] = useState<'all' | 'movie' | 'tv'>('all');
+  const [category, setCategory] = useState<RecommendationCategory>('all');
+  const [selectedGenre, setSelectedGenre] = useState<number | string>('all');
+  const [region, setRegion] = useState<RecommendationRegion>('all');
+
   const [visibleCount, setVisibleCount] = useState<number>(BATCH_SIZE);
   const [yearData, setYearData] = useState<Record<number, ContentItem | null>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
+
+  // Determine available genres based on active category
+  const availableGenres = useMemo<GenreOption[]>(() => {
+    if (category === 'movie') return MOVIE_GENRES;
+    if (category === 'tv' || category === 'kdrama') return TV_GENRES;
+    return COMMON_GENRES;
+  }, [category]);
+
+  // If active genre doesn't exist in current category, reset to 'all'
+  useEffect(() => {
+    if (selectedGenre !== 'all' && !availableGenres.some((g) => String(g.id) === String(selectedGenre))) {
+      setSelectedGenre('all');
+    }
+  }, [category, availableGenres, selectedGenre]);
+
+  // Can show region filters only for movie, series, and all (not applicable to kdrama/anime which are inherently Korean / Japanese)
+  const showRegionFilter = category === 'movie' || category === 'tv' || category === 'all';
 
   // Visible slice of years
   const visibleYears = useMemo(() => {
     return ALL_YEARS.slice(0, visibleCount);
   }, [visibleCount]);
 
-  // Fetch best item for a given year if not yet fetched
-  const loadYear = useCallback(async (year: number, type: 'all' | 'movie' | 'tv') => {
-    setLoadingYears((prev) => ({ ...prev, [year]: true }));
-    try {
-      const item = await fetchBestOfYear(year, type);
-      setYearData((prev) => ({ ...prev, [year]: item }));
-    } catch (err) {
-      console.error(`Error loading best item for ${year}:`, err);
-      setYearData((prev) => ({ ...prev, [year]: null }));
-    } finally {
-      setLoadingYears((prev) => ({ ...prev, [year]: false }));
-    }
-  }, []);
+  // Fetch best item for a given year
+  const loadYear = useCallback(
+    async (
+      year: number,
+      cat: RecommendationCategory,
+      genre: number | string,
+      reg: RecommendationRegion
+    ) => {
+      setLoadingYears((prev) => ({ ...prev, [year]: true }));
+      try {
+        const item = await fetchBestOfYear(year, cat, genre, reg);
+        setYearData((prev) => ({ ...prev, [year]: item }));
+      } catch (err) {
+        console.error(`Error loading recommendation for ${year}:`, err);
+        setYearData((prev) => ({ ...prev, [year]: null }));
+      } finally {
+        setLoadingYears((prev) => ({ ...prev, [year]: false }));
+      }
+    },
+    []
+  );
 
-  // When filter changes, reset loaded data & visible count
+  // When filters change, reset loaded state
   useEffect(() => {
     setYearData({});
     setLoadingYears({});
     setVisibleCount(BATCH_SIZE);
-  }, [filterType]);
+  }, [category, selectedGenre, region]);
 
   // Load items for currently visible years in batches
   useEffect(() => {
     visibleYears.forEach((year) => {
       if (yearData[year] === undefined && !loadingYears[year]) {
-        loadYear(year, filterType);
+        loadYear(year, category, selectedGenre, region);
       }
     });
-  }, [visibleYears, filterType, yearData, loadingYears, loadYear]);
+  }, [visibleYears, category, selectedGenre, region, yearData, loadingYears, loadYear]);
 
   const handleLoadMore = () => {
     setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, ALL_YEARS.length));
@@ -65,7 +120,6 @@ export default function Recommendations() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      // If not yet visible, expand visible count so it encompasses targetYear
       const index = ALL_YEARS.indexOf(targetYear);
       if (index !== -1) {
         setVisibleCount(Math.max(visibleCount, index + 6));
@@ -75,6 +129,12 @@ export default function Recommendations() {
         }, 150);
       }
     }
+  };
+
+  const handleResetFilters = () => {
+    setCategory('all');
+    setSelectedGenre('all');
+    setRegion('all');
   };
 
   // Quick decades for jump navigation
@@ -92,59 +152,141 @@ export default function Recommendations() {
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-4 tracking-wide uppercase">
               <Award className="w-3.5 h-3.5" />
-              <span>Year-by-Year Hall of Fame</span>
+              <span>Smart Recommendation Engine</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white mb-3">
-              Recommendations: <span className="text-primary">2026 – 1950</span>
+              Yearly Best: <span className="text-primary">2026 – 1950</span>
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              The single highest-rated and defining masterpiece of every single year, spanning 77 years of cinematic history from 2026 down to 1950 in reverse chronological order.
+              Discover the absolute highest rated, critically acclaimed masterworks year by year. Tailor your discovery across Movies, Series, K-Dramas, Anime, specific genres, and industry regions.
             </p>
           </div>
 
-          {/* Controls: Filter & Quick Jump */}
-          <div className="mt-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-6 border-t border-border/40">
-            {/* Category tabs */}
-            <div className="inline-flex p-1 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md">
-              <button
-                onClick={() => setFilterType('all')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  filterType === 'all'
-                    ? 'bg-primary text-black font-bold shadow-lg shadow-primary/20'
-                    : 'text-muted-foreground hover:text-white'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                All (Movies & Series)
-              </button>
-              <button
-                onClick={() => setFilterType('movie')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  filterType === 'movie'
-                    ? 'bg-primary text-black font-bold shadow-lg shadow-primary/20'
-                    : 'text-muted-foreground hover:text-white'
-                }`}
-              >
-                <Film className="w-3.5 h-3.5" />
-                Movies Only
-              </button>
-              <button
-                onClick={() => setFilterType('tv')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  filterType === 'tv'
-                    ? 'bg-primary text-black font-bold shadow-lg shadow-primary/20'
-                    : 'text-muted-foreground hover:text-white'
-                }`}
-              >
-                <Tv className="w-3.5 h-3.5" />
-                TV Shows Only
-              </button>
+          {/* Filter Controls */}
+          <div className="mt-8 space-y-5 pt-6 border-t border-border/40">
+            {/* Category selection */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[70px] flex items-center gap-1.5">
+                <Clapperboard className="w-3.5 h-3.5 text-primary" /> Format:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setCategory('all')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    category === 'all'
+                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
+                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  All Formats
+                </button>
+                <button
+                  onClick={() => setCategory('movie')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    category === 'movie'
+                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
+                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  Movies
+                </button>
+                <button
+                  onClick={() => setCategory('tv')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    category === 'tv'
+                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
+                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Tv className="w-3.5 h-3.5" />
+                  Series / TV
+                </button>
+                <button
+                  onClick={() => setCategory('kdrama')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    category === 'kdrama'
+                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
+                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <span>🇰🇷</span> K-Drama
+                </button>
+                <button
+                  onClick={() => setCategory('anime')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    category === 'anime'
+                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
+                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <span>⚡</span> Anime
+                </button>
+              </div>
+            </div>
+
+            {/* Region selection (only for movie, series, all) */}
+            {showRegionFilter && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[70px] flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" /> Region:
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {REGION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setRegion(opt.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        region === opt.id
+                          ? 'bg-amber-400 text-black font-bold shadow-md shadow-amber-400/20'
+                          : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
+                      }`}
+                    >
+                      <span>{opt.flag}</span>
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Genre selection chips */}
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Genre Filter:
+                </span>
+                {(category !== 'all' || selectedGenre !== 'all' || region !== 'all') && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset all
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1 max-h-24 scrollbar-thin">
+                {availableGenres.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGenre(g.id)}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      String(selectedGenre) === String(g.id)
+                        ? 'bg-white text-black font-bold shadow'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white border border-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Decade Quick Jump */}
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-border/30">
               <span className="text-xs text-muted-foreground font-medium mr-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-primary" /> Jump to:
+                <Calendar className="w-3 h-3 text-primary" /> Jump to Year:
               </span>
               {decades.map((dec) => (
                 <button
@@ -185,7 +327,7 @@ export default function Recommendations() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 font-semibold">
-                        <Award className="w-3 h-3" /> Crown of {year}
+                        <Award className="w-3 h-3" /> Top Recommended of {year}
                       </span>
                     )}
                   </div>
@@ -199,7 +341,7 @@ export default function Recommendations() {
                 {isLoading ? (
                   <div className="h-44 sm:h-56 flex flex-col items-center justify-center gap-3 text-muted-foreground animate-pulse">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <span className="text-xs font-medium">Selecting the pinnacle title for {year}...</span>
+                    <span className="text-xs font-medium">Evaluating highest-rated masterpiece for {year}...</span>
                   </div>
                 ) : item ? (
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
@@ -253,8 +395,9 @@ export default function Recommendations() {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-28 flex flex-col items-center justify-center text-muted-foreground">
-                    <p className="text-sm">No standout title cataloged for {year}.</p>
+                  <div className="h-28 flex flex-col items-center justify-center text-muted-foreground text-center px-4">
+                    <p className="text-sm">No title matched this filter criteria for {year}.</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Try switching to &quot;All Formats&quot; or selecting &quot;All Genres&quot;.</p>
                   </div>
                 )}
               </div>

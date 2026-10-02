@@ -300,15 +300,42 @@ export const smartWarmCache = async () => {
  * Fetch the best/highest rated, critically acclaimed, and popular movie or show for a given year.
  * For past years (<= current year), sort by vote_average with a solid vote_count threshold so it picks true cinema classics.
  * For future/current upcoming years, sort by popularity.
+ * Supports categories (movie, tv, kdrama, anime), genre, and region (all, hollywood, bollywood, pollywood, tollywood).
  */
 export const fetchBestOfYear = async (
   year: number,
-  category: 'movie' | 'tv' | 'all' = 'all'
+  category: 'movie' | 'tv' | 'all' | 'kdrama' | 'anime' = 'all',
+  genreId?: number | string,
+  region: 'all' | 'hollywood' | 'bollywood' | 'pollywood' | 'tollywood' = 'all'
 ): Promise<ContentItem | null> => {
   const currentYear = new Date().getFullYear();
   const isFuture = year > currentYear;
 
-  const minVotes = year < 1980 ? 100 : year < 2000 ? 300 : year < 2020 ? 500 : year <= currentYear ? 300 : 0;
+  // Regional filters for movie & series
+  const regionParams: Record<string, string> = {};
+  if (category === 'movie' || category === 'tv' || category === 'all') {
+    if (region === 'hollywood') {
+      regionParams['with_original_language'] = 'en';
+    } else if (region === 'bollywood') {
+      regionParams['with_original_language'] = 'hi';
+    } else if (region === 'pollywood') {
+      regionParams['with_original_language'] = 'pa';
+    } else if (region === 'tollywood') {
+      regionParams['with_original_language'] = 'te';
+    }
+  }
+
+  // Vote thresholds adjusted for regional / niche content
+  let minVotes = year < 1980 ? 80 : year < 2000 ? 200 : year < 2020 ? 350 : year <= currentYear ? 150 : 0;
+  if (region !== 'all' && region !== 'hollywood') {
+    minVotes = Math.max(5, Math.floor(minVotes / 8));
+  } else if (category === 'kdrama' || category === 'anime') {
+    minVotes = Math.max(10, Math.floor(minVotes / 5));
+  }
+  if (genreId && genreId !== 'all') {
+    minVotes = Math.max(10, Math.floor(minVotes / 3));
+  }
+
   const sortBy = isFuture ? 'popularity.desc' : 'vote_average.desc';
 
   try {
@@ -318,7 +345,11 @@ export const fetchBestOfYear = async (
         include_adult: false,
         sort_by: sortBy,
         page: 1,
+        ...regionParams,
       };
+      if (genreId && genreId !== 'all') {
+        params['with_genres'] = genreId;
+      }
       if (!isFuture && minVotes > 0) {
         params['vote_count.gte'] = minVotes;
       }
@@ -327,13 +358,18 @@ export const fetchBestOfYear = async (
       return results[0] || null;
     };
 
-    const fetchTv = async () => {
+    const fetchTv = async (extraParams: Record<string, any> = {}) => {
       const params: any = {
         first_air_date_year: year,
         include_adult: false,
         sort_by: sortBy,
         page: 1,
+        ...regionParams,
+        ...extraParams,
       };
+      if (genreId && genreId !== 'all') {
+        params['with_genres'] = genreId;
+      }
       if (!isFuture && minVotes > 0) {
         params['vote_count.gte'] = Math.floor(minVotes / 2);
       }
@@ -342,7 +378,46 @@ export const fetchBestOfYear = async (
       return results[0] || null;
     };
 
-    if (category === 'movie') {
+    if (category === 'kdrama') {
+      // Korean Drama: TV show with original language ko
+      return await fetchTv({ with_original_language: 'ko' });
+    } else if (category === 'anime') {
+      // Anime: Japanese animation (either movie or series)
+      const animeParams: Record<string, any> = {
+        with_original_language: 'ja',
+        with_genres: genreId && genreId !== 'all' ? `16,${genreId}` : '16',
+      };
+      const [m, t] = await Promise.all([
+        (async () => {
+          const params: any = {
+            primary_release_year: year,
+            include_adult: false,
+            sort_by: sortBy,
+            page: 1,
+            ...animeParams,
+          };
+          if (!isFuture && minVotes > 0) params['vote_count.gte'] = minVotes;
+          const data = await fetchFromProxy('/discover/movie', params);
+          return mapResults(data.results || [], 'movie')[0] || null;
+        })(),
+        (async () => {
+          const params: any = {
+            first_air_date_year: year,
+            include_adult: false,
+            sort_by: sortBy,
+            page: 1,
+            ...animeParams,
+          };
+          if (!isFuture && minVotes > 0) params['vote_count.gte'] = Math.floor(minVotes / 2);
+          const data = await fetchFromProxy('/discover/tv', params);
+          return mapResults(data.results || [], 'tv')[0] || null;
+        })()
+      ]);
+      if (!m && !t) return null;
+      if (!m) return t;
+      if (!t) return m;
+      return (m.rating || 0) >= (t.rating || 0) ? m : t;
+    } else if (category === 'movie') {
       return await fetchMovie();
     } else if (category === 'tv') {
       return await fetchTv();
@@ -351,11 +426,10 @@ export const fetchBestOfYear = async (
       if (!m && !t) return null;
       if (!m) return t;
       if (!t) return m;
-      // Compare by rating or popularity
+      // Compare by score
       if (isFuture) {
         return (m.vote_count || 0) >= (t.vote_count || 0) ? m : t;
       }
-      // Pick the higher rated, tie-breaker with vote_count
       const mScore = (m.rating || 0) * 1000 + Math.min(m.vote_count || 0, 5000);
       const tScore = (t.rating || 0) * 1000 + Math.min(t.vote_count || 0, 5000);
       return mScore >= tScore ? m : t;
