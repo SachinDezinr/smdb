@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
-import { ContentCard } from '@/components/content/ContentCard';
+import { RecommendationCard } from '@/components/content/RecommendationCard';
 import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
@@ -10,12 +10,9 @@ import {
   ChevronDown,
   Loader2,
   SlidersHorizontal,
-  Flame,
-  Star,
   Clapperboard,
   Globe,
   RotateCcw,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -284,99 +281,35 @@ export default function Recommendations() {
           </div>
         </div>
 
-        {/* Year-by-Year Feed (Empty years are automatically hidden) */}
-        <div className="space-y-6">
+        {/* Year-by-Year Feed (Horizontal Modern Cards on Mobile, Tablet & PC) */}
+        <div className="space-y-4 sm:space-y-5">
           {validYearEntries.map(({ year, item, isLoading }, index) => {
-            const isFuture = year > new Date().getFullYear();
+            if (isLoading) {
+              return (
+                <div
+                  key={year}
+                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 flex flex-row items-center gap-4 animate-pulse"
+                >
+                  <div className="w-24 sm:w-28 md:w-36 aspect-[2/3] rounded-xl bg-white/5 flex-shrink-0" />
+                  <div className="flex-1 space-y-2.5">
+                    <div className="h-4 bg-white/10 rounded w-1/4" />
+                    <div className="h-6 bg-white/10 rounded w-3/4" />
+                    <div className="h-3 bg-white/5 rounded w-1/2" />
+                    <div className="h-10 bg-white/5 rounded w-full hidden sm:block" />
+                  </div>
+                </div>
+              );
+            }
+
+            if (!item) return null;
 
             return (
-              <div
+              <RecommendationCard
                 key={year}
-                id={`year-card-${year}`}
-                className="relative rounded-3xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] backdrop-blur-sm p-4 sm:p-6 transition-all hover:border-white/20 shadow-sm"
-              >
-                {/* Year Header Banner */}
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-1.5 font-['Poppins']">
-                      <span className="text-primary font-mono">#</span>
-                      {year}
-                    </span>
-                    {isFuture ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
-                        <Flame className="w-3 h-3" /> Anticipated
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 font-semibold">
-                        <Award className="w-3 h-3" /> Best of {year}
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="text-xs text-muted-foreground font-mono">
-                    Year #{index + 1}
-                  </span>
-                </div>
-
-                {/* Content body */}
-                {isLoading ? (
-                  <div className="h-44 sm:h-52 flex flex-col items-center justify-center gap-3 text-muted-foreground animate-pulse">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <span className="text-xs font-medium">Finding best recommendation for {year}...</span>
-                  </div>
-                ) : item ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
-                    {/* Visual Card preview */}
-                    <div className="sm:col-span-4 md:col-span-3 flex justify-center sm:justify-start">
-                      <div className="w-full max-w-[210px]">
-                        <ContentCard item={item} />
-                      </div>
-                    </div>
-
-                    {/* Detailed Showcase */}
-                    <div className="sm:col-span-8 md:col-span-9 flex flex-col justify-between min-h-[200px] space-y-4">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap mb-2">
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-white/[0.08] text-white capitalize">
-                            {item.media_type === 'movie' ? '🎬 Feature Film' : '📺 Series / Show'}
-                          </span>
-                          {item.rating > 0 && (
-                            <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-primary text-primary" />
-                              {item.rating.toFixed(1)} / 10
-                            </span>
-                          )}
-                          {item.vote_count ? (
-                            <span className="text-xs text-muted-foreground">
-                              ({item.vote_count.toLocaleString()} TMDB votes)
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <h2 className="text-xl sm:text-2xl font-black text-white mb-2 leading-snug">
-                          {item.title}
-                        </h2>
-
-                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
-                          {item.overview || 'No detailed synopsis available for this title.'}
-                        </p>
-                      </div>
-
-                      {/* Release date & badge info */}
-                      <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-muted-foreground">
-                        <div>
-                          <span className="font-semibold text-neutral-300">Release Date: </span>
-                          {item.release_date || `${year}`}
-                        </div>
-                        <div className="text-primary font-semibold flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" />
-                          Rank #1 for {year}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+                item={item}
+                year={year}
+                rankIndex={index + 1}
+              />
             );
           })}
         </div>

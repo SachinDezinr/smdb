@@ -67,7 +67,7 @@ const mobileNavItems = [
 
 const tabletNavItems = [
   { icon: Home, label: 'Home', path: '/' },
-  { icon: Sparkles, label: 'Recommendations', path: '/recommendations' },
+  { icon: Sparkles, label: 'Picks', path: '/recommendations' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: Users, label: 'Friends', path: '/friends' },
