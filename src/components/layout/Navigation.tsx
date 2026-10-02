@@ -78,10 +78,6 @@ export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Lazy initializers: these cache reads now run once (on mount) instead of
-  // on every render. Navigation re-renders on every route change, so the
-  // previous version was reading from cache on every single nav click for
-  // values that only ever mattered on first render anyway.
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
     if (cachedAuth !== null) return cachedAuth;
@@ -94,11 +90,6 @@ export const Navigation = () => {
   useEffect(() => {
     let isMounted = true;
 
-    // supabase-js v2 fires this callback immediately with the current
-    // session as soon as you subscribe (event: 'INITIAL_SESSION'), so a
-    // separate getSession() call on mount just duplicates that first fetch.
-    // Relying on this single listener removes the redundant profile fetch
-    // that ran on every page load.
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
@@ -107,8 +98,6 @@ export const Navigation = () => {
       setCachedAuthState(isAuth);
 
       if (session?.user) {
-        // Cache-first on the initial load, force a fresh read on any real
-        // sign-in/sign-out/token-refresh event after that.
         const forceRefresh = event !== 'INITIAL_SESSION';
         const data = await fetchProfileData(forceRefresh);
         if (isMounted && data) {
@@ -137,8 +126,6 @@ export const Navigation = () => {
     } catch (error) {
       console.error('Sign out failed:', error);
     } finally {
-      // Always navigate away, even if the network call failed - local state
-      // is already cleared, so leaving the user stranded here is worse.
       navigate('/login');
     }
   };
@@ -272,7 +259,8 @@ export const Navigation = () => {
 
       {/* Mobile Floating Pill Navigation (below 768px) */}
       <div className="md:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
-        <nav className="pointer-events-auto w-full max-w-sm h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
+        {/* Added gap-1 and changed px-1.5 to px-2 for better spacing */}
+        <nav className="pointer-events-auto w-full max-w-sm h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1 ring-1 ring-white/10 transform-gpu">
           {mobileNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -325,7 +313,8 @@ export const Navigation = () => {
 
       {/* Tablet Floating Pill Navigation (768px - 1023px) */}
       <div className="hidden md:flex lg:hidden fixed bottom-3 inset-x-0 z-50 justify-center px-6 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
-        <nav className="pointer-events-auto w-full max-w-md h-[58px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between ring-1 ring-white/10 transform-gpu">
+        {/* Added gap-1 and changed px-1.5 to px-2 for better spacing */}
+        <nav className="pointer-events-auto w-full max-w-md h-[58px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1 ring-1 ring-white/10 transform-gpu">
           {tabletNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;

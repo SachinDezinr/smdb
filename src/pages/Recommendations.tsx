@@ -167,7 +167,7 @@ export default function Recommendations() {
                 <span>Hall of Fame</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                Recommendations <span className="text-primary font-mono text-lg sm:text-xl font-bold">2026 – 1950</span>
+                Recommendations <span className="text-primary font-mono text-lg sm:text-xl font-bold">2026-1950</span>
               </h1>
             </div>
             <p className="text-xs text-muted-foreground md:text-right max-w-sm">
@@ -317,7 +317,7 @@ export default function Recommendations() {
                 ) : item ? (
                   <div className="flex flex-row items-start gap-3 sm:gap-5">
                     {/* Left Column: Poster + Rating directly underneath */}
-                    <div className="flex-shrink-0 w-24 sm:w-32 md:w-36 flex flex-col items-center gap-1.5">
+                    <div className="flex-shrink-0 w-25 sm:w-33 md:w-37 flex flex-col items-center gap-1.5">
                       <div className="w-full">
                         <ContentCard item={item} />
                       </div>
@@ -350,7 +350,7 @@ export default function Recommendations() {
                         </h2>
 
                         {/* Synopsis */}
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-3 sm:line-clamp-4">
+                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-4 sm:line-clamp-4">
                           {item.overview || 'No synopsis available for this title.'}
                         </p>
                       </div>
