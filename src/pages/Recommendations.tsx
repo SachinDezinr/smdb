@@ -6,36 +6,41 @@ import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import {
-  Sparkles,
   Award,
-  Film,
-  Tv,
-  Layers,
-  Calendar,
   ChevronDown,
   Loader2,
-  Globe,
   SlidersHorizontal,
   Flame,
   Star,
   Clapperboard,
-  RotateCcw
+  Globe,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-export type RecommendationCategory = 'all' | 'movie' | 'tv' | 'kdrama' | 'anime';
+export type RecommendationCategory = 'movie' | 'tv' | 'kdrama' | 'anime';
 export type RecommendationRegion = 'all' | 'hollywood' | 'bollywood' | 'pollywood' | 'tollywood';
 
-// Strictly from 2026 down to 1950 (new to old)
+// Full year range from 2026 down to 1950 (new to old)
 const ALL_YEARS: number[] = [];
 for (let y = 2026; y >= 1950; y--) {
   ALL_YEARS.push(y);
 }
 
-const BATCH_SIZE = 12;
+// Initial batch size of years evaluated
+const INITIAL_YEARS_COUNT = 15;
+const STEP_YEARS_COUNT = 12;
 
 const REGION_OPTIONS: { id: RecommendationRegion; label: string; flag: string }[] = [
-  { id: 'all', label: 'All Industries', flag: '🌐' },
+  { id: 'all', label: 'All Industries / Regions', flag: '🌐' },
   { id: 'hollywood', label: 'Hollywood (English)', flag: '🇺🇸' },
   { id: 'bollywood', label: 'Bollywood (Hindi)', flag: '🇮🇳' },
   { id: 'tollywood', label: 'Tollywood (Telugu)', flag: '🇮🇳' },
@@ -43,11 +48,12 @@ const REGION_OPTIONS: { id: RecommendationRegion; label: string; flag: string }[
 ];
 
 export default function Recommendations() {
-  const [category, setCategory] = useState<RecommendationCategory>('all');
-  const [selectedGenre, setSelectedGenre] = useState<number | string>('all');
+  // Format is strictly Movie, Series/Shows, K-Drama, or Anime (no "All format")
+  const [category, setCategory] = useState<RecommendationCategory>('movie');
   const [region, setRegion] = useState<RecommendationRegion>('all');
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
 
-  const [visibleCount, setVisibleCount] = useState<number>(BATCH_SIZE);
+  const [scanLimit, setScanLimit] = useState<number>(INITIAL_YEARS_COUNT);
   const [yearData, setYearData] = useState<Record<number, ContentItem | null>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
 
@@ -58,27 +64,27 @@ export default function Recommendations() {
     return COMMON_GENRES;
   }, [category]);
 
-  // If active genre doesn't exist in current category, reset to 'all'
+  // Reset genre if not valid in current format
   useEffect(() => {
     if (selectedGenre !== 'all' && !availableGenres.some((g) => String(g.id) === String(selectedGenre))) {
       setSelectedGenre('all');
     }
   }, [category, availableGenres, selectedGenre]);
 
-  // Can show region filters only for movie, series, and all (not applicable to kdrama/anime which are inherently Korean / Japanese)
-  const showRegionFilter = category === 'movie' || category === 'tv' || category === 'all';
+  // Region filter applies only to Movies and Series/Shows (K-Drama & Anime are naturally region-specific)
+  const showRegionFilter = category === 'movie' || category === 'tv';
 
-  // Visible slice of years
-  const visibleYears = useMemo(() => {
-    return ALL_YEARS.slice(0, visibleCount);
-  }, [visibleCount]);
+  // Sliced years currently being scanned
+  const scannedYears = useMemo(() => {
+    return ALL_YEARS.slice(0, scanLimit);
+  }, [scanLimit]);
 
   // Fetch best item for a given year
   const loadYear = useCallback(
     async (
       year: number,
       cat: RecommendationCategory,
-      genre: number | string,
+      genre: string,
       reg: RecommendationRegion
     ) => {
       setLoadingYears((prev) => ({ ...prev, [year]: true }));
@@ -95,50 +101,50 @@ export default function Recommendations() {
     []
   );
 
-  // When filters change, reset loaded state
+  // Automatically reset results when filters change (auto update)
   useEffect(() => {
     setYearData({});
     setLoadingYears({});
-    setVisibleCount(BATCH_SIZE);
+    setScanLimit(INITIAL_YEARS_COUNT);
   }, [category, selectedGenre, region]);
 
-  // Load items for currently visible years in batches
+  // Automatically query items for scanned years
   useEffect(() => {
-    visibleYears.forEach((year) => {
+    scannedYears.forEach((year) => {
       if (yearData[year] === undefined && !loadingYears[year]) {
         loadYear(year, category, selectedGenre, region);
       }
     });
-  }, [visibleYears, category, selectedGenre, region, yearData, loadingYears, loadYear]);
+  }, [scannedYears, category, selectedGenre, region, yearData, loadingYears, loadYear]);
 
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, ALL_YEARS.length));
-  };
+  // Filter out any year that has finished loading and has NO content (completely hide them like Netflix / Prime)
+  const validYearEntries = useMemo(() => {
+    return scannedYears
+      .map((year) => ({
+        year,
+        item: yearData[year],
+        isLoading: loadingYears[year] || yearData[year] === undefined,
+      }))
+      .filter((entry) => {
+        // Keep if still loading (to show skeleton/loader) or has an actual item
+        return entry.isLoading || entry.item !== null;
+      });
+  }, [scannedYears, yearData, loadingYears]);
 
-  const handleScrollToYear = (targetYear: number) => {
-    const el = document.getElementById(`year-card-${targetYear}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      const index = ALL_YEARS.indexOf(targetYear);
-      if (index !== -1) {
-        setVisibleCount(Math.max(visibleCount, index + 6));
-        setTimeout(() => {
-          const targetEl = document.getElementById(`year-card-${targetYear}`);
-          targetEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 150);
-      }
-    }
+  // Are there any active requests currently fetching?
+  const isAnyLoading = useMemo(() => {
+    return scannedYears.some((year) => loadingYears[year] || yearData[year] === undefined);
+  }, [scannedYears, loadingYears, yearData]);
+
+  const handleLoadMoreYears = () => {
+    setScanLimit((prev) => Math.min(prev + STEP_YEARS_COUNT, ALL_YEARS.length));
   };
 
   const handleResetFilters = () => {
-    setCategory('all');
-    setSelectedGenre('all');
+    setCategory('movie');
     setRegion('all');
+    setSelectedGenre('all');
   };
-
-  // Quick decades for jump navigation
-  const decades = [2026, 2020, 2010, 2000, 1990, 1980, 1970, 1960, 1950];
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -150,162 +156,120 @@ export default function Recommendations() {
         <div className="relative rounded-3xl overflow-hidden border border-border/60 bg-gradient-to-br from-primary/10 via-background to-amber-500/5 p-6 sm:p-10 mb-8 backdrop-blur-xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
           <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-4 tracking-wide uppercase">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-3 tracking-wide uppercase">
               <Award className="w-3.5 h-3.5" />
-              <span>Smart Recommendation Engine</span>
+              <span>Year-by-Year Hall of Fame</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white mb-3">
-              Yearly Best: <span className="text-primary">2026 – 1950</span>
+              Recommendations <span className="text-primary">2026 – 1950</span>
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              Discover the absolute highest rated, critically acclaimed masterworks year by year. Tailor your discovery across Movies, Series, K-Dramas, Anime, specific genres, and industry regions.
+              Curated top-tier recommendations arranged chronologically from newest to oldest. Select your format, region, and genre below to automatically uncover the best content for each era.
             </p>
           </div>
 
-          {/* Filter Controls */}
-          <div className="mt-8 space-y-5 pt-6 border-t border-border/40">
-            {/* Category selection */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[70px] flex items-center gap-1.5">
-                <Clapperboard className="w-3.5 h-3.5 text-primary" /> Format:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setCategory('all')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    category === 'all'
-                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
-                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  All Formats
-                </button>
-                <button
-                  onClick={() => setCategory('movie')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    category === 'movie'
-                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
-                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <Film className="w-3.5 h-3.5" />
-                  Movies
-                </button>
-                <button
-                  onClick={() => setCategory('tv')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    category === 'tv'
-                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
-                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <Tv className="w-3.5 h-3.5" />
-                  Series / TV
-                </button>
-                <button
-                  onClick={() => setCategory('kdrama')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    category === 'kdrama'
-                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
-                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <span>🇰🇷</span> K-Drama
-                </button>
-                <button
-                  onClick={() => setCategory('anime')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    category === 'anime'
-                      ? 'bg-primary text-black font-bold shadow-md shadow-primary/20'
-                      : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <span>⚡</span> Anime
-                </button>
-              </div>
+          {/* Controls: Dropdown Filter Bar */}
+          <div className="mt-8 pt-6 border-t border-border/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Format Dropdown (Movie, Series/Shows, K-Drama, Anime) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Clapperboard className="w-3.5 h-3.5 text-primary" /> Format
+              </label>
+              <Select
+                value={category}
+                onValueChange={(val) => setCategory(val as RecommendationCategory)}
+              >
+                <SelectTrigger className="w-full h-11 bg-white/[0.04] border-white/10 hover:border-white/20 text-white rounded-xl font-medium focus:ring-primary/40">
+                  <SelectValue placeholder="Select Format" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-white/10 text-white rounded-xl shadow-2xl">
+                  <SelectItem value="movie" className="hover:bg-white/10 cursor-pointer">
+                    🎬 Movie
+                  </SelectItem>
+                  <SelectItem value="tv" className="hover:bg-white/10 cursor-pointer">
+                    📺 Series / Shows
+                  </SelectItem>
+                  <SelectItem value="kdrama" className="hover:bg-white/10 cursor-pointer">
+                    🇰🇷 K-Drama
+                  </SelectItem>
+                  <SelectItem value="anime" className="hover:bg-white/10 cursor-pointer">
+                    ⚡ Anime
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Region selection (only for movie, series, all) */}
-            {showRegionFilter && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[70px] flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-primary" /> Region:
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {REGION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => setRegion(opt.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                        region === opt.id
-                          ? 'bg-amber-400 text-black font-bold shadow-md shadow-amber-400/20'
-                          : 'bg-white/[0.04] text-neutral-300 hover:text-white border border-white/10'
-                      }`}
-                    >
-                      <span>{opt.flag}</span>
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
+            {/* Region Dropdown (Only for Movie & Series/Shows) */}
+            {showRegionFilter ? (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" /> Region / Industry
+                </label>
+                <Select
+                  value={region}
+                  onValueChange={(val) => setRegion(val as RecommendationRegion)}
+                >
+                  <SelectTrigger className="w-full h-11 bg-white/[0.04] border-white/10 hover:border-white/20 text-white rounded-xl font-medium focus:ring-primary/40">
+                    <SelectValue placeholder="Select Region" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-white/10 text-white rounded-xl shadow-2xl">
+                    {REGION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id} className="hover:bg-white/10 cursor-pointer">
+                        <span className="mr-2">{opt.flag}</span>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5 opacity-60">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" /> Region / Industry
+                </label>
+                <div className="w-full h-11 bg-white/[0.02] border border-white/5 rounded-xl px-3.5 py-2 text-xs flex items-center text-muted-foreground">
+                  {category === 'kdrama' ? '🇰🇷 Native South Korea' : '🇯🇵 Native Japan'}
                 </div>
               </div>
             )}
 
-            {/* Genre selection chips */}
-            <div className="flex flex-col gap-2 pt-1">
+            {/* Genre Dropdown */}
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Genre Filter:
-                </span>
-                {(category !== 'all' || selectedGenre !== 'all' || region !== 'all') && (
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Genre
+                </label>
+                {(selectedGenre !== 'all' || region !== 'all' || category !== 'movie') && (
                   <button
                     onClick={handleResetFilters}
-                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                    className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
                   >
-                    <RotateCcw className="w-3 h-3" /> Reset all
+                    <RotateCcw className="w-2.5 h-2.5" /> Reset
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1 max-h-24 scrollbar-thin">
-                {availableGenres.map((g) => (
-                  <button
-                    key={g.id}
-                    onClick={() => setSelectedGenre(g.id)}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
-                      String(selectedGenre) === String(g.id)
-                        ? 'bg-white text-black font-bold shadow'
-                        : 'bg-white/[0.03] text-neutral-400 hover:text-white border border-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    {g.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Decade Quick Jump */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-border/30">
-              <span className="text-xs text-muted-foreground font-medium mr-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-primary" /> Jump to Year:
-              </span>
-              {decades.map((dec) => (
-                <button
-                  key={dec}
-                  onClick={() => handleScrollToYear(dec)}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white/[0.04] border border-white/10 text-neutral-300 hover:text-black hover:bg-primary hover:border-primary transition-all active:scale-95"
-                >
-                  {dec}s
-                </button>
-              ))}
+              <Select
+                value={String(selectedGenre)}
+                onValueChange={(val) => setSelectedGenre(val)}
+              >
+                <SelectTrigger className="w-full h-11 bg-white/[0.04] border-white/10 hover:border-white/20 text-white rounded-xl font-medium focus:ring-primary/40">
+                  <SelectValue placeholder="All Genres" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-white/10 text-white rounded-xl shadow-2xl max-h-72">
+                  {availableGenres.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)} className="hover:bg-white/10 cursor-pointer">
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
-        {/* Year-by-Year Feed */}
+        {/* Year-by-Year Feed (Empty years are automatically hidden) */}
         <div className="space-y-6">
-          {visibleYears.map((year, index) => {
-            const item = yearData[year];
-            const isLoading = loadingYears[year] || item === undefined;
+          {validYearEntries.map(({ year, item, isLoading }, index) => {
             const isFuture = year > new Date().getFullYear();
 
             return (
@@ -323,11 +287,11 @@ export default function Recommendations() {
                     </span>
                     {isFuture ? (
                       <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
-                        <Flame className="w-3 h-3" /> Most Anticipated Pick
+                        <Flame className="w-3 h-3" /> Anticipated
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 font-semibold">
-                        <Award className="w-3 h-3" /> Top Recommended of {year}
+                        <Award className="w-3 h-3" /> Best of {year}
                       </span>
                     )}
                   </div>
@@ -339,9 +303,9 @@ export default function Recommendations() {
 
                 {/* Content body */}
                 {isLoading ? (
-                  <div className="h-44 sm:h-56 flex flex-col items-center justify-center gap-3 text-muted-foreground animate-pulse">
+                  <div className="h-44 sm:h-52 flex flex-col items-center justify-center gap-3 text-muted-foreground animate-pulse">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <span className="text-xs font-medium">Evaluating highest-rated masterpiece for {year}...</span>
+                    <span className="text-xs font-medium">Finding best recommendation for {year}...</span>
                   </div>
                 ) : item ? (
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
@@ -353,11 +317,11 @@ export default function Recommendations() {
                     </div>
 
                     {/* Detailed Showcase */}
-                    <div className="sm:col-span-8 md:col-span-9 flex flex-col justify-between min-h-[220px] space-y-4">
+                    <div className="sm:col-span-8 md:col-span-9 flex flex-col justify-between min-h-[200px] space-y-4">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap mb-2">
                           <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-white/[0.08] text-white capitalize">
-                            {item.media_type === 'movie' ? '🎬 Feature Film' : '📺 Television Series'}
+                            {item.media_type === 'movie' ? '🎬 Feature Film' : '📺 Series / Show'}
                           </span>
                           {item.rating > 0 && (
                             <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
@@ -377,7 +341,7 @@ export default function Recommendations() {
                         </h2>
 
                         <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
-                          {item.overview || "No detailed synopsis available for this title."}
+                          {item.overview || 'No detailed synopsis available for this title.'}
                         </p>
                       </div>
 
@@ -394,31 +358,53 @@ export default function Recommendations() {
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="h-28 flex flex-col items-center justify-center text-muted-foreground text-center px-4">
-                    <p className="text-sm">No title matched this filter criteria for {year}.</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">Try switching to &quot;All Formats&quot; or selecting &quot;All Genres&quot;.</p>
-                  </div>
-                )}
+                ) : null}
               </div>
             );
           })}
         </div>
 
-        {/* Load More Button */}
-        {visibleCount < ALL_YEARS.length && (
+        {/* Empty State when no results found at all in scanned window */}
+        {!isAnyLoading && validYearEntries.length === 0 && (
+          <div className="py-20 text-center rounded-3xl border border-white/10 bg-white/[0.02] p-8 max-w-lg mx-auto">
+            <SlidersHorizontal className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-60" />
+            <h3 className="text-lg font-bold text-white mb-1">No Matching Titles Found</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              No content matched your combination of format, region, and genre in recent years. Try choosing &quot;All Genres&quot; or resetting filters.
+            </p>
+            <Button
+              onClick={handleResetFilters}
+              className="bg-primary hover:bg-primary/90 text-black font-bold rounded-xl"
+            >
+              Reset Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Load More Years Button */}
+        {scanLimit < ALL_YEARS.length && (
           <div className="mt-12 text-center">
             <Button
               size="lg"
-              onClick={handleLoadMore}
+              disabled={isAnyLoading}
+              onClick={handleLoadMoreYears}
               className="bg-primary hover:bg-primary/90 text-black font-bold px-8 shadow-lg shadow-primary/20 rounded-2xl"
             >
-              Load Next {Math.min(BATCH_SIZE, ALL_YEARS.length - visibleCount)} Years (Next down to{' '}
-              {ALL_YEARS[Math.min(visibleCount + BATCH_SIZE - 1, ALL_YEARS.length - 1)]})
-              <ChevronDown className="ml-2 w-4 h-4" />
+              {isAnyLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Loading Years...
+                </>
+              ) : (
+                <>
+                  Load Older Years (Next down to{' '}
+                  {ALL_YEARS[Math.min(scanLimit + STEP_YEARS_COUNT - 1, ALL_YEARS.length - 1)]})
+                  <ChevronDown className="ml-2 w-4 h-4" />
+                </>
+              )}
             </Button>
             <p className="text-xs text-muted-foreground mt-2">
-              Viewing {visibleCount} of {ALL_YEARS.length} years (2026 to 1950)
+              Showing years with recommended content (Scanned {scanLimit} of {ALL_YEARS.length} years)
             </p>
           </div>
         )}
