@@ -72,20 +72,16 @@ const navSections: NavSection[] = [
 
 const mobileNavItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Library, label: "Collection", path: "/collection" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
 const tabletNavItems = [
   { icon: Home, label: "Home", path: "/" },
-  {
-    icon: Sparkles,
-    label: "Recommendations",
-    path: "/recommendations",
-  },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  {icon: Sparkles, label: "Picks", path: "/recommendations"},
   { icon: Library, label: "Collection", path: "/collection" },
   { icon: Users, label: "Friends", path: "/friends" },
   { icon: User, label: "Profile", path: "/profile" },

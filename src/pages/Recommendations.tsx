@@ -166,7 +166,7 @@ export default function Recommendations() {
                 <Award className="w-3 h-3" />
                 <span>Hall of Fame</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
                 Recommendations <span className="text-primary font-mono text-lg sm:text-xl font-bold">2026-1950</span>
               </h1>
             </div>
@@ -356,7 +356,7 @@ export default function Recommendations() {
                       </div>
 
                       {/* Footer Info */}
-                      <div className="pt-2 mt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="pt-2 mt-2 border-t border-white/[0.06] flex items-center justify-end text-[11px] text-muted-foreground">
                         <span className="text-primary font-semibold flex items-center gap-1">
                           <Sparkles className="w-3 h-3" />
                           Rank #1 of {year}
