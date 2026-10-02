@@ -317,7 +317,7 @@ export default function Recommendations() {
                 ) : item ? (
                   <div className="flex flex-row items-start gap-3 sm:gap-5">
                     {/* Left Column: Poster + Rating directly underneath */}
-                    <div className="flex-shrink-0 w-25 sm:w-33 md:w-37 flex flex-col items-center gap-1.5">
+                    <div className="flex-shrink-0 w-24 sm:w-32 md:w-36 flex flex-col items-center gap-1.5">
                       <div className="w-full">
                         <ContentCard item={item} />
                       </div>
