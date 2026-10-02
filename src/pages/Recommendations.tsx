@@ -171,7 +171,7 @@ export default function Recommendations() {
               </h1>
             </div>
             <p className="text-xs text-muted-foreground md:text-right max-w-sm">
-              Chronologically top-voted picks. Dropdowns update the feed automatically.
+              Chronologically top-voted picks.
             </p>
           </div>
 
@@ -321,12 +321,6 @@ export default function Recommendations() {
                       <div className="w-full">
                         <ContentCard item={item} />
                       </div>
-                      {/* Under-poster Rating */}
-                      <div className="flex items-center justify-center gap-1 text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md w-full text-center">
-                        <Star className="w-3 h-3 fill-primary text-primary" />
-                        <span>{item.rating > 0 ? item.rating.toFixed(1) : 'N/A'}</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">/10</span>
-                      </div>
                     </div>
 
                     {/* Right Column: Title, Format tag, Synopsis, and Metadata */}
@@ -366,9 +360,6 @@ export default function Recommendations() {
                         <span className="text-primary font-semibold flex items-center gap-1">
                           <Sparkles className="w-3 h-3" />
                           Rank #1 of {year}
-                        </span>
-                        <span className="text-[10px] text-neutral-400">
-                          Tap card to view trailer & details
                         </span>
                       </div>
                     </div>
