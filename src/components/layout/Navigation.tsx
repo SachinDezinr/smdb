@@ -2,16 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  Calendar, 
-  Library, 
-  User, 
-  Film, 
-  BarChart3, 
-  Users, 
+import {
+  Home,
+  Calendar,
+  Library,
+  User,
+  Film,
+  BarChart3,
+  Users,
   ChevronRight,
   Compass,
+  Sparkles,
   LogOut,
   LogIn
 } from 'lucide-react';
@@ -37,6 +38,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: Compass, label: 'Explore Catalog', path: '/' },
       { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
+      { icon: Sparkles, label: 'Recommendations', path: '/recommendations' },
     ]
   },
   {
@@ -57,6 +59,7 @@ const navSections: NavSection[] = [
 
 const mobileNavItems = [
   { icon: Home, label: 'Home', path: '/' },
+  { icon: Sparkles, label: 'Picks', path: '/recommendations' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: User, label: 'Profile', path: '/profile' },
@@ -64,6 +67,7 @@ const mobileNavItems = [
 
 const tabletNavItems = [
   { icon: Home, label: 'Home', path: '/' },
+  { icon: Sparkles, label: 'Recommendations', path: '/recommendations' },
   { icon: Calendar, label: 'Upcoming', path: '/upcoming' },
   { icon: Library, label: 'Collection', path: '/collection' },
   { icon: Users, label: 'Friends', path: '/friends' },

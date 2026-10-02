@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RouteScrollToTop } from "@/components/layout/RouteScrollToTop";
 import Index from "./pages/Index";
 import Upcoming from "./pages/Upcoming";
+import Recommendations from "./pages/Recommendations";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
@@ -82,6 +83,7 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/upcoming" element={<Upcoming />} />
+            <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             

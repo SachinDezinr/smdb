@@ -295,3 +295,73 @@ export const smartWarmCache = async () => {
     console.warn("[tmdb] Smart warming failed", err);
   }
 };
+
+/**
+ * Fetch the best/highest rated, critically acclaimed, and popular movie or show for a given year.
+ * For past years (<= current year), sort by vote_average with a solid vote_count threshold so it picks true cinema classics.
+ * For future/current upcoming years, sort by popularity.
+ */
+export const fetchBestOfYear = async (
+  year: number,
+  category: 'movie' | 'tv' | 'all' = 'all'
+): Promise<ContentItem | null> => {
+  const currentYear = new Date().getFullYear();
+  const isFuture = year > currentYear;
+
+  const minVotes = year < 1980 ? 100 : year < 2000 ? 300 : year < 2020 ? 500 : year <= currentYear ? 300 : 0;
+  const sortBy = isFuture ? 'popularity.desc' : 'vote_average.desc';
+
+  try {
+    const fetchMovie = async () => {
+      const params: any = {
+        primary_release_year: year,
+        include_adult: false,
+        sort_by: sortBy,
+        page: 1,
+      };
+      if (!isFuture && minVotes > 0) {
+        params['vote_count.gte'] = minVotes;
+      }
+      const data = await fetchFromProxy('/discover/movie', params);
+      const results = mapResults(data.results || [], 'movie');
+      return results[0] || null;
+    };
+
+    const fetchTv = async () => {
+      const params: any = {
+        first_air_date_year: year,
+        include_adult: false,
+        sort_by: sortBy,
+        page: 1,
+      };
+      if (!isFuture && minVotes > 0) {
+        params['vote_count.gte'] = Math.floor(minVotes / 2);
+      }
+      const data = await fetchFromProxy('/discover/tv', params);
+      const results = mapResults(data.results || [], 'tv');
+      return results[0] || null;
+    };
+
+    if (category === 'movie') {
+      return await fetchMovie();
+    } else if (category === 'tv') {
+      return await fetchTv();
+    } else {
+      const [m, t] = await Promise.all([fetchMovie(), fetchTv()]);
+      if (!m && !t) return null;
+      if (!m) return t;
+      if (!t) return m;
+      // Compare by rating or popularity
+      if (isFuture) {
+        return (m.vote_count || 0) >= (t.vote_count || 0) ? m : t;
+      }
+      // Pick the higher rated, tie-breaker with vote_count
+      const mScore = (m.rating || 0) * 1000 + Math.min(m.vote_count || 0, 5000);
+      const tScore = (t.rating || 0) * 1000 + Math.min(t.vote_count || 0, 5000);
+      return mScore >= tScore ? m : t;
+    }
+  } catch (error) {
+    console.error(`Failed to fetch best of year ${year}:`, error);
+    return null;
+  }
+};
