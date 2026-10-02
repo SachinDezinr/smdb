@@ -57,12 +57,27 @@ export default function Recommendations() {
   const [yearData, setYearData] = useState<Record<number, ContentItem | null>>({});
   const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
 
-  // Determine available genres based on active category
+  // Determine available genres based on active category and region
+  // Filters out Western and News for Indian regions (bollywood, pollywood, tollywood), kdrama, and anime
   const availableGenres = useMemo<GenreOption[]>(() => {
-    if (category === 'movie') return MOVIE_GENRES;
-    if (category === 'tv' || category === 'kdrama') return TV_GENRES;
-    return COMMON_GENRES;
-  }, [category]);
+    let baseList: GenreOption[] = [];
+    if (category === 'movie') baseList = MOVIE_GENRES;
+    else if (category === 'tv' || category === 'kdrama') baseList = TV_GENRES;
+    else baseList = COMMON_GENRES;
+
+    const isIndianRegion = region === 'bollywood' || region === 'pollywood' || region === 'tollywood';
+    const isExcludedContext = isIndianRegion || category === 'kdrama' || category === 'anime';
+
+    if (isExcludedContext) {
+      return baseList.filter((g) => {
+        const name = g.name.toLowerCase();
+        // Remove Western (id 37) and News (id 10763)
+        return g.id !== 37 && g.id !== 10763 && !name.includes('western') && !name.includes('news');
+      });
+    }
+
+    return baseList;
+  }, [category, region]);
 
   // Reset genre if not valid in current format
   useEffect(() => {
@@ -152,24 +167,26 @@ export default function Recommendations() {
       <ScrollToTop />
 
       <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-12 pb-28 lg:pb-16 max-w-7xl mx-auto w-full">
-        {/* Hero Header */}
-        <div className="relative rounded-3xl overflow-hidden border border-border/60 bg-gradient-to-br from-primary/10 via-background to-amber-500/5 p-6 sm:p-10 mb-8 backdrop-blur-xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-          <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-3 tracking-wide uppercase">
-              <Award className="w-3.5 h-3.5" />
-              <span>Year-by-Year Hall of Fame</span>
+        {/* Compact Hero Header */}
+        <div className="relative rounded-2xl overflow-hidden border border-border/50 bg-gradient-to-br from-primary/10 via-background to-amber-500/5 p-4 sm:p-6 mb-6 backdrop-blur-xl">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-[11px] font-semibold mb-2 tracking-wide uppercase">
+                <Award className="w-3 h-3" />
+                <span>Hall of Fame</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Recommendations <span className="text-primary font-mono">2026 – 1950</span>
+              </h1>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white mb-3">
-              Recommendations <span className="text-primary">2026 – 1950</span>
-            </h1>
-            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              Curated top-tier recommendations arranged chronologically from newest to oldest. Select your format, region, and genre below to automatically uncover the best content for each era.
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md">
+              Top-rated masterworks chronologically ordered from newest to oldest. Select filters to update automatically.
             </p>
           </div>
 
           {/* Controls: Dropdown Filter Bar */}
-          <div className="mt-8 pt-6 border-t border-border/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mt-5 pt-4 border-t border-border/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Format Dropdown (Movie, Series/Shows, K-Drama, Anime) */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
