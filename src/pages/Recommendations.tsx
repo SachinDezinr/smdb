@@ -5,7 +5,7 @@ import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Award, Check, ChevronDown, Clapperboard, Film, Tv, Sparkles,  Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -25,10 +25,10 @@ const INITIAL_YEARS_COUNT = 15;
 const STEP_YEARS_COUNT = 12;
 
 const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; emoji: string }[] = [
-  { id: 'movie', label: 'Movies', emoji: '🎬' },
-  { id: 'tv', label: 'Series', emoji: '📺' },
-  { id: 'kdrama', label: 'K-Drama', emoji: '🇰🇷' },
-  { id: 'anime', label: 'Anime', emoji: '⚡' },
+  { id: 'movie', label: 'Movies',  icon: Film },
+  { id: 'tv', label: 'Series', icon: Tv },
+  { id: 'kdrama', label: 'K-Drama', icon: Heart },
+  { id: 'anime', label: 'Anime', icon: Sparkles },
 ];
 
 const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
@@ -295,7 +295,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
               {/* Release date: bottom right of the card, gold like the year */}
               {item.release_date && item.release_date !== 'TBA' && (
                 <p className="mt-3 text-right text-[11px] sm:text-xs font-semibold text-primary">
-                  Released {item.release_date}
+                  Released :{item.release_date}
                 </p>
               )}
             </>
