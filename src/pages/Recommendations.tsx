@@ -295,7 +295,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
               {/* Release date: bottom right of the card, gold like the year */}
               {item.release_date && item.release_date !== 'TBA' && (
                 <p className="mt-3 text-right text-[11px] sm:text-xs font-semibold text-primary">
-                  Released :{item.release_date}
+                  Released: {item.release_date}
                 </p>
               )}
             </>
