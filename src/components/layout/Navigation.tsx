@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { memo, useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import {
   fetchProfileData,
   clearCachedProfile,
@@ -31,14 +31,19 @@ import {
   clearCachedSocialCircle,
 } from "@/lib/pageDataStore";
 
+/* ------------------------------ data ------------------------------ */
+
+type IconType = React.ComponentType<{ size?: number; className?: string }>;
+
+interface NavItem {
+  icon: IconType;
+  label: string;
+  path: string;
+}
+
 interface NavSection {
   title: string;
-  items: {
-    icon: React.ComponentType<{ size?: number; className?: string }>;
-    label: string;
-    path: string;
-    badge?: string;
-  }[];
+  items: NavItem[];
 }
 
 const navSections: NavSection[] = [
@@ -47,11 +52,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: Compass, label: "Explore Catalog", path: "/" },
       { icon: Calendar, label: "Upcoming", path: "/upcoming" },
-      {
-        icon: Sparkles,
-        label: "Recommendations",
-        path: "/recommendations",
-      },
+      { icon: Sparkles, label: "Recommendations", path: "/recommendations" },
     ],
   },
   {
@@ -70,7 +71,7 @@ const navSections: NavSection[] = [
   },
 ];
 
-const mobileNavItems = [
+const mobileNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
@@ -78,24 +79,210 @@ const mobileNavItems = [
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
-const tabletNavItems = [
+const tabletNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
-  {icon: Sparkles, label: "Picks", path: "/recommendations"},
+  { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Library, label: "Collection", path: "/collection" },
   { icon: Users, label: "Friends", path: "/friends" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
+/** "/" only matches itself; other routes also match their children (/collection/123). */
+const isPathActive = (pathname: string, path: string) =>
+  path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
+
+/* ------------------------------ sidebar (desktop) ------------------------------ */
+
+const SidebarLink = memo(function SidebarLink({
+  item,
+  isActive,
+  badge,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  badge?: number;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      to={item.path}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200",
+        focusRing,
+        isActive
+          ? "font-bold text-black"
+          : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
+      )}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="desktop-active-pill"
+          className="absolute inset-0 -z-10 rounded-xl bg-primary shadow-lg shadow-primary/25"
+          transition={{ type: "spring", stiffness: 400, damping: 32 }}
+        />
+      )}
+
+      <div className="flex items-center gap-3">
+        <Icon
+          size={18}
+          className={cn(
+            "transition-transform duration-200 group-hover:scale-110",
+            isActive ? "text-black" : "group-hover:text-primary"
+          )}
+        />
+        <span>{item.label}</span>
+      </div>
+
+      {badge ? (
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide",
+            isActive
+              ? "border border-black/30 bg-black text-primary"
+              : "bg-red-500 text-white motion-safe:animate-pulse"
+          )}
+        >
+          {badge > 99 ? "99+" : badge} new
+        </span>
+      ) : null}
+
+      {!isActive && (
+        <ChevronRight
+          size={14}
+          aria-hidden="true"
+          className="-translate-x-2 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60"
+        />
+      )}
+    </Link>
+  );
+});
+
+/* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
+
+const BottomNavLink = memo(function BottomNavLink({
+  item,
+  isActive,
+  showBadge,
+  pillId,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  showBadge: boolean;
+  pillId: string;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      to={item.path}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full transition-colors duration-200 active:scale-95",
+        focusRing,
+        isActive ? "text-primary" : "text-muted-foreground active:text-white"
+      )}
+    >
+      {isActive && (
+        <motion.div
+          layoutId={pillId}
+          className="absolute inset-0 -z-10 rounded-full border border-primary/30 bg-primary/15"
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+        />
+      )}
+
+      <div className="relative flex flex-col items-center gap-0.5">
+        <div className="relative">
+          <Icon
+            size={18}
+            className={cn(
+              "transition-transform duration-200",
+              isActive && "scale-110"
+            )}
+          />
+          {showBadge && (
+            <>
+              <span
+                aria-hidden="true"
+                className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full border-2 border-neutral-950 bg-red-500"
+              />
+              <span className="sr-only">New requests</span>
+            </>
+          )}
+        </div>
+
+        <span
+          className={cn(
+            "text-[10px] font-semibold tracking-tight transition-colors duration-200",
+            isActive ? "font-bold text-primary" : "text-muted-foreground/80"
+          )}
+        >
+          {item.label}
+        </span>
+      </div>
+    </Link>
+  );
+});
+
+const BottomNav = memo(function BottomNav({
+  items,
+  pathname,
+  pillId,
+  badgePath,
+  pendingCount,
+  wrapperClassName,
+  navClassName,
+}: {
+  items: NavItem[];
+  pathname: string;
+  pillId: string;
+  badgePath: string;
+  pendingCount: number;
+  wrapperClassName: string;
+  navClassName: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none fixed inset-x-0 z-50 justify-center pb-[env(safe-area-inset-bottom)]",
+        wrapperClassName
+      )}
+    >
+      <nav
+        aria-label="Primary"
+        className={cn(
+          "pointer-events-auto flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 backdrop-blur-xl",
+          navClassName
+        )}
+      >
+        {items.map((item) => (
+          <BottomNavLink
+            key={item.path}
+            item={item}
+            pillId={pillId}
+            isActive={isPathActive(pathname, item.path)}
+            showBadge={item.path === badgePath && pendingCount > 0}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+});
+
+/* ------------------------------ component ------------------------------ */
+
 export const Navigation = () => {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
-
     if (cachedAuth !== null) return cachedAuth;
-
     return !!getCachedProfile()?.user;
   });
 
@@ -107,24 +294,30 @@ export const Navigation = () => {
     let isMounted = true;
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!isMounted) return;
 
         const isAuth = !!session?.user;
-
         setIsAuthenticated(isAuth);
         setCachedAuthState(isAuth);
 
-        if (session?.user) {
-          const forceRefresh = event !== "INITIAL_SESSION";
-          const data = await fetchProfileData(forceRefresh);
-
-          if (isMounted && data) {
-            setPendingCount(data.pendingCount);
-          }
-        } else if (isMounted) {
+        if (!session?.user) {
           setPendingCount(0);
+          return;
         }
+
+        // A silent token refresh doesn't change the profile; skip the refetch.
+        if (event === "TOKEN_REFRESHED") return;
+
+        // Defer: awaiting Supabase calls inside this callback can deadlock the auth client.
+        setTimeout(async () => {
+          try {
+            const data = await fetchProfileData(event !== "INITIAL_SESSION");
+            if (isMounted && data) setPendingCount(data.pendingCount);
+          } catch (error) {
+            console.error("Profile refresh failed:", error);
+          }
+        }, 0);
       }
     );
 
@@ -134,7 +327,7 @@ export const Navigation = () => {
     };
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     clearCachedProfile();
     clearCachedStats();
     clearCachedSocialCircle();
@@ -148,299 +341,122 @@ export const Navigation = () => {
     } finally {
       navigate("/login");
     }
-  };
+  }, [navigate]);
 
   return (
-    <>
-      {/* Desktop Modern Sidebar */}
-      <aside className="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r border-white/10 bg-neutral-950/70 backdrop-blur-2xl px-5 py-6 z-40 select-none justify-between">
-        <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-primary/[0.07] to-transparent pointer-events-none" />
+    <MotionConfig reducedMotion="user">
+      {/* Desktop sidebar */}
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 backdrop-blur-2xl lg:flex">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
+        />
 
-        {/* Top Branding & Nav */}
         <div>
           <Link
             to="/"
-            className="flex items-center gap-3.5 px-2 py-1.5 mb-8 group"
+            className={cn("group mb-8 flex items-center gap-3.5 rounded-xl px-2 py-1.5", focusRing)}
           >
             <div className="relative">
-              <div className="absolute -inset-1 bg-primary/30 rounded-2xl blur-xs group-hover:bg-primary/50 transition-all" />
-
-              <div className="relative w-11 h-11 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 border border-white/20 group-hover:scale-105 transition-transform">
-                <Film
-                  className="text-black/90"
-                  size={22}
-                  strokeWidth={2.2}
-                />
+              <div className="absolute -inset-1 rounded-2xl bg-primary/30 blur-sm transition-colors group-hover:bg-primary/50" />
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
+                <Film className="text-black/90" size={22} strokeWidth={2.2} />
               </div>
             </div>
 
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-white font-['Poppins']">
+              <span className="font-['Poppins'] text-xl font-black tracking-tight text-white">
                 SMDB
               </span>
-
-              <span className="text-[10px] text-muted-foreground tracking-wider font-semibold uppercase">
-                Cinema Log & Vault
+              <span className="text-[11px] font-medium text-muted-foreground">
+                Cinema log and vault
               </span>
             </div>
           </Link>
 
-          {/* Grouped Navigation */}
-          <nav className="space-y-6">
+          <nav aria-label="Primary" className="space-y-6">
             {navSections.map((section) => (
               <div key={section.title} className="space-y-1.5">
-                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
                   {section.title}
                 </p>
-
                 <div className="space-y-1">
-                  {section.items.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    const Icon = item.icon;
-                    const showBadge =
-                      item.path === "/friends" && pendingCount > 0;
-
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={cn(
-                          "relative flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-sm font-semibold",
-                          isActive
-                            ? "text-black font-bold shadow-md shadow-primary/10"
-                            : "text-muted-foreground hover:text-white hover:bg-white/[0.04]"
-                        )}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="desktop-active-pill"
-                            className="absolute inset-0 bg-primary rounded-xl shadow-lg shadow-primary/25 -z-10"
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 32,
-                            }}
-                          />
-                        )}
-
-                        <div className="flex items-center gap-3">
-                          <Icon
-                            size={18}
-                            className={cn(
-                              "transition-transform duration-200 group-hover:scale-110",
-                              isActive
-                                ? "text-black"
-                                : "text-muted-foreground group-hover:text-primary"
-                            )}
-                          />
-
-                          <span>{item.label}</span>
-                        </div>
-
-                        {showBadge && (
-                          <span
-                            className={cn(
-                              "px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide",
-                              isActive
-                                ? "bg-black text-primary border border-black/30"
-                                : "bg-red-500 text-white animate-pulse"
-                            )}
-                          >
-                            {pendingCount} new
-                          </span>
-                        )}
-
-                        {!isActive && (
-                          <ChevronRight
-                            size={14}
-                            className="opacity-0 -translate-x-2 group-hover:opacity-60 group-hover:translate-x-0 transition-all text-muted-foreground"
-                          />
-                        )}
-                      </Link>
-                    );
-                  })}
+                  {section.items.map((item) => (
+                    <SidebarLink
+                      key={item.path}
+                      item={item}
+                      isActive={isPathActive(pathname, item.path)}
+                      badge={item.path === "/friends" ? pendingCount : undefined}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
           </nav>
         </div>
 
-        {/* Bottom Section */}
-        <div className="pt-4 border-t border-white/10 space-y-3">
+        <div className="space-y-3 border-t border-white/10 pt-4">
           {isAuthenticated ? (
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-sm font-semibold transition-all group"
+              className={cn(
+                "group flex w-full items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300",
+                focusRing
+              )}
             >
               <LogOut
                 size={18}
-                className="group-hover:-translate-x-0.5 transition-transform"
+                className="transition-transform group-hover:-translate-x-0.5"
               />
-
-              <span>Sign Out</span>
+              <span>Sign out</span>
             </button>
           ) : (
             <Link
               to="/login"
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-primary text-black font-bold text-sm transition-all hover:bg-primary/90 shadow-md shadow-primary/20"
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-bold text-black shadow-md shadow-primary/20 transition-colors hover:bg-primary/90",
+                focusRing
+              )}
             >
               <LogIn size={18} />
-              <span>Sign In / Register</span>
+              <span>Sign in or register</span>
             </Link>
           )}
 
           <div className="flex items-center justify-between px-1.5 text-[11px] text-muted-foreground/70">
-            <Link
-              to="/about"
-              className="hover:text-white transition-colors"
-            >
+            <Link to="/about" className="transition-colors hover:text-white">
               About
             </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/contact"
-              className="hover:text-white transition-colors"
-            >
+            <Link to="/contact" className="transition-colors hover:text-white">
               Support
             </Link>
-
-            <span>•</span>
-
             <span className="text-[10px]">v1.1</span>
           </div>
         </div>
       </aside>
 
-      {/* ========================================================= */}
-      {/* MOBILE FLOATING PILL NAVIGATION */}
-      {/* ========================================================= */}
+      {/* Mobile bottom bar */}
+      <BottomNav
+        items={mobileNavItems}
+        pathname={pathname}
+        pillId="mobile-active-pill"
+        badgePath="/profile"
+        pendingCount={pendingCount}
+        wrapperClassName="bottom-2.5 flex px-4 sm:bottom-3 md:hidden"
+        navClassName="max-w-sm"
+      />
 
-      <div className="md:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
-        <nav className="pointer-events-auto w-full max-w-sm h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 ring-1 ring-white/10 transform-gpu">
-          {mobileNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "relative flex flex-col items-center justify-center flex-1 min-w-0 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground active:text-white"
-                )}
-              >
-                <div
-                  className={cn(
-                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
-                    isActive
-                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100"
-                      : "opacity-0 scale-90 pointer-events-none"
-                  )}
-                />
-
-                <div className="relative z-10 flex flex-col items-center gap-0.5">
-                  <div className="relative">
-                    <Icon
-                      size={18}
-                      className={cn(
-                        "transition-transform duration-200 transform-gpu",
-                        isActive
-                          ? "scale-110 text-primary"
-                          : "text-muted-foreground"
-                      )}
-                    />
-
-                    {item.path === "/profile" && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
-                    )}
-                  </div>
-
-                  <span
-                    className={cn(
-                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
-                      isActive
-                        ? "text-primary font-bold"
-                        : "text-muted-foreground/80"
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* ========================================================= */}
-      {/* TABLET FLOATING PILL NAVIGATION */}
-      {/* ========================================================= */}
-
-      <div className="hidden md:flex lg:hidden fixed bottom-3 inset-x-0 z-50 justify-center px-6 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
-        <nav className="pointer-events-auto w-full max-w-md h-[58px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 ring-1 ring-white/10 transform-gpu">
-          {tabletNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "relative flex flex-col items-center justify-center flex-1 min-w-0 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground active:text-white"
-                )}
-              >
-                <div
-                  className={cn(
-                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
-                    isActive
-                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100"
-                      : "opacity-0 scale-90 pointer-events-none"
-                  )}
-                />
-
-                <div className="relative z-10 flex flex-col items-center gap-0.5">
-                  <div className="relative">
-                    <Icon
-                      size={18}
-                      className={cn(
-                        "transition-transform duration-200 transform-gpu",
-                        isActive
-                          ? "scale-110 text-primary"
-                          : "text-muted-foreground"
-                      )}
-                    />
-
-                    {item.path === "/friends" && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
-                    )}
-                  </div>
-
-                  <span
-                    className={cn(
-                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
-                      isActive
-                        ? "text-primary font-bold"
-                        : "text-muted-foreground/80"
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-    </>
+      {/* Tablet bottom bar */}
+      <BottomNav
+        items={tabletNavItems}
+        pathname={pathname}
+        pillId="tablet-active-pill"
+        badgePath="/friends"
+        pendingCount={pendingCount}
+        wrapperClassName="bottom-3 hidden px-6 md:flex lg:hidden"
+        navClassName="max-w-md"
+      />
+    </MotionConfig>
   );
 };
