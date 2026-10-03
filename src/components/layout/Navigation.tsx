@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -22,9 +16,9 @@ import {
   LogOut,
   LogIn,
 } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
 import {
   fetchProfileData,
   clearCachedProfile,
@@ -37,32 +31,17 @@ import {
   clearCachedSocialCircle,
 } from "@/lib/pageDataStore";
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
-
-type NavigationIcon = React.ComponentType<{
-  size?: number;
-  className?: string;
-}>;
-
-interface NavItem {
-  icon: NavigationIcon;
-  label: string;
-  path: string;
-  badge?: string;
-}
-
 interface NavSection {
   title: string;
-  items: NavItem[];
+  items: {
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    label: string;
+    path: string;
+    badge?: string;
+  }[];
 }
 
-/* -------------------------------------------------------------------------- */
-/* Navigation Data                                                            */
-/* -------------------------------------------------------------------------- */
-
-const NAV_SECTIONS: readonly NavSection[] = [
+const navSections: NavSection[] = [
   {
     title: "Discover",
     items: [
@@ -91,686 +70,377 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
 ];
 
-const MOBILE_NAV_ITEMS: readonly NavItem[] = [
+const mobileNavItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Library, label: "Collection", path: "/collection" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
-const TABLET_NAV_ITEMS: readonly NavItem[] = [
+const tabletNavItems = [
   { icon: Home, label: "Home", path: "/" },
-  {
-    icon: Sparkles,
-    label: "Recommendations",
-    path: "/recommendations",
-  },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  {icon: Sparkles, label: "Picks", path: "/recommendations"},
   { icon: Library, label: "Collection", path: "/collection" },
   { icon: Users, label: "Friends", path: "/friends" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
-/* -------------------------------------------------------------------------- */
-/* Shared Styles                                                              */
-/* -------------------------------------------------------------------------- */
-
-const BOTTOM_NAV_CLASSES = {
-  wrapper:
-    "fixed inset-x-0 bottom-2.5 sm:bottom-3 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu",
-  nav: "pointer-events-auto w-full max-w-sm h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 flex items-center justify-between gap-1 transform-gpu",
-  item:
-    "relative flex flex-1 items-center justify-center h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
-  activeBackground:
-    "absolute inset-0 rounded-full bg-primary/15 border border-primary/30 transition-all duration-200 ease-out",
-  inactiveBackground:
-    "absolute inset-0 rounded-full opacity-0 scale-90 pointer-events-none",
-  content:
-    "relative z-10 flex flex-col items-center gap-0.5",
-  icon:
-    "transition-transform duration-200 transform-gpu",
-  label:
-    "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
-};
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                    */
-/* -------------------------------------------------------------------------- */
-
-const isPathActive = (pathname: string, path: string): boolean => {
-  if (path === "/") {
-    return pathname === "/";
-  }
-
-  return pathname === path || pathname.startsWith(`${path}/`);
-};
-
-/* -------------------------------------------------------------------------- */
-/* Desktop Sidebar                                                            */
-/* -------------------------------------------------------------------------- */
-
-interface DesktopSidebarProps {
-  pathname: string;
-  isAuthenticated: boolean;
-  pendingCount: number;
-  onLogout: () => void;
-}
-
-const DesktopSidebar = memo(function DesktopSidebar({
-  pathname,
-  isAuthenticated,
-  pendingCount,
-  onLogout,
-}: DesktopSidebarProps) {
-  return (
-    <aside
-      className="
-        hidden lg:flex
-        sticky top-0
-        z-40
-        h-screen w-72
-        flex-col
-        justify-between
-        select-none
-        border-r border-white/10
-        bg-neutral-950/70
-        px-5 py-6
-        backdrop-blur-2xl
-      "
-      aria-label="Main navigation"
-    >
-      {/* Ambient glow */}
-      <div
-        className="
-          pointer-events-none
-          absolute left-0 top-0
-          h-40 w-full
-          bg-gradient-to-b
-          from-primary/[0.07]
-          to-transparent
-        "
-      />
-
-      {/* Top */}
-      <div className="relative">
-        {/* Branding */}
-        <Link
-          to="/"
-          className="
-            group mb-8 flex items-center
-            gap-3.5 px-2 py-1.5
-          "
-          aria-label="SMDB home"
-        >
-          <div className="relative shrink-0">
-            <div
-              className="
-                absolute -inset-1
-                rounded-2xl
-                bg-primary/30
-                blur-sm
-                transition-all
-                group-hover:bg-primary/50
-              "
-            />
-
-            <div
-              className="
-                relative flex h-11 w-11
-                items-center justify-center
-                rounded-xl
-                border border-white/20
-                bg-gradient-to-br
-                from-[#FFE799]
-                via-primary
-                to-[#D69E0A]
-                shadow-lg shadow-primary/20
-                transition-transform
-                group-hover:scale-105
-              "
-            >
-              <Film
-                className="text-black/90"
-                size={22}
-                strokeWidth={2.2}
-              />
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-col">
-            <span
-              className="
-                font-['Poppins']
-                text-xl font-black
-                tracking-tight text-white
-              "
-            >
-              SMDB
-            </span>
-
-            <span
-              className="
-                text-[10px]
-                font-semibold uppercase
-                tracking-wider
-                text-muted-foreground
-              "
-            >
-              Cinema Log & Vault
-            </span>
-          </div>
-        </Link>
-
-        {/* Navigation */}
-        <nav className="space-y-6">
-          {NAV_SECTIONS.map((section) => (
-            <div
-              key={section.title}
-              className="space-y-1.5"
-            >
-              <p
-                className="
-                  px-3
-                  text-[10px]
-                  font-bold uppercase
-                  tracking-widest
-                  text-muted-foreground/70
-                "
-              >
-                {section.title}
-              </p>
-
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isPathActive(
-                    pathname,
-                    item.path
-                  );
-
-                  const showBadge =
-                    item.path === "/friends" &&
-                    pendingCount > 0;
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      aria-current={
-                        active ? "page" : undefined
-                      }
-                      className={cn(
-                        `
-                          group relative flex
-                          items-center justify-between
-                          rounded-xl px-3.5 py-2.5
-                          text-sm font-semibold
-                          transition-all duration-200
-                        `,
-                        active
-                          ? "font-bold text-black"
-                          : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
-                      )}
-                    >
-                      {/* Active background */}
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          `
-                            absolute inset-0
-                            rounded-xl
-                            bg-primary
-                            shadow-lg shadow-primary/25
-                            transition-all duration-200
-                          `,
-                          active
-                            ? "scale-100 opacity-100"
-                            : "pointer-events-none scale-95 opacity-0"
-                        )}
-                      />
-
-                      <span className="relative z-10 flex items-center gap-3">
-                        <Icon
-                          size={18}
-                          className={cn(
-                            "transition-transform duration-200 group-hover:scale-110",
-                            active
-                              ? "text-black"
-                              : "text-muted-foreground group-hover:text-primary"
-                          )}
-                        />
-
-                        <span>{item.label}</span>
-                      </span>
-
-                      {/* Pending badge */}
-                      {showBadge && (
-                        <span
-                          className={cn(
-                            `
-                              relative z-10
-                              rounded-full
-                              px-2 py-0.5
-                              text-[10px]
-                              font-extrabold
-                              uppercase
-                              tracking-wide
-                            `,
-                            active
-                              ? "border border-black/30 bg-black text-primary"
-                              : "animate-pulse bg-red-500 text-white"
-                          )}
-                        >
-                          {pendingCount} new
-                        </span>
-                      )}
-
-                      {/* Arrow */}
-                      {!active && (
-                        <ChevronRight
-                          size={14}
-                          aria-hidden="true"
-                          className="
-                            text-muted-foreground
-                            opacity-0
-                            -translate-x-2
-                            transition-all duration-200
-                            group-hover:translate-x-0
-                            group-hover:opacity-60
-                          "
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
-      </div>
-
-      {/* Bottom */}
-      <div
-        className="
-          space-y-3
-          border-t border-white/10
-          pt-4
-        "
-      >
-        {isAuthenticated ? (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="
-              group flex w-full
-              items-center gap-3
-              rounded-xl
-              border border-red-500/20
-              bg-red-500/10
-              px-3.5 py-2.5
-              text-sm font-semibold
-              text-red-400
-              transition-all
-              hover:border-red-500/40
-              hover:bg-red-500/20
-              hover:text-red-300
-            "
-          >
-            <LogOut
-              size={18}
-              className="
-                transition-transform
-                group-hover:-translate-x-0.5
-              "
-            />
-
-            <span>Sign Out</span>
-          </button>
-        ) : (
-          <Link
-            to="/login"
-            className="
-              flex w-full
-              items-center gap-3
-              rounded-xl
-              bg-primary
-              px-3.5 py-2.5
-              text-sm font-bold text-black
-              shadow-md shadow-primary/20
-              transition-all
-              hover:bg-primary/90
-            "
-          >
-            <LogIn size={18} />
-            <span>Sign In / Register</span>
-          </Link>
-        )}
-
-        <div
-          className="
-            flex items-center justify-between
-            px-1.5
-            text-[11px]
-            text-muted-foreground/70
-          "
-        >
-          <Link
-            to="/about"
-            className="transition-colors hover:text-white"
-          >
-            About
-          </Link>
-
-          <span aria-hidden="true">•</span>
-
-          <Link
-            to="/contact"
-            className="transition-colors hover:text-white"
-          >
-            Support
-          </Link>
-
-          <span aria-hidden="true">•</span>
-
-          <span className="text-[10px]">v1.1</span>
-        </div>
-      </div>
-    </aside>
-  );
-});
-
-/* -------------------------------------------------------------------------- */
-/* Bottom Navigation                                                          */
-/* -------------------------------------------------------------------------- */
-
-interface BottomNavigationProps {
-  pathname: string;
-  items: readonly NavItem[];
-  pendingCount: number;
-  variant: "mobile" | "tablet";
-}
-
-const BottomNavigation = memo(function BottomNavigation({
-  pathname,
-  items,
-  pendingCount,
-  variant,
-}: BottomNavigationProps) {
-  const isTablet = variant === "tablet";
-
-  return (
-    <div
-      className={cn(
-        "fixed inset-x-0 bottom-3 z-50 justify-center px-6 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu",
-        isTablet
-          ? "hidden md:flex lg:hidden"
-          : "flex md:hidden bottom-2.5 sm:bottom-3 px-4"
-      )}
-    >
-      <nav
-        className={cn(
-          BOTTOM_NAV_CLASSES.nav,
-          isTablet && "max-w-md h-[58px]"
-        )}
-        aria-label={
-          isTablet
-            ? "Tablet navigation"
-            : "Mobile navigation"
-        }
-      >
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = isPathActive(
-            pathname,
-            item.path
-          );
-
-          const showBadge =
-            item.path === "/profile" &&
-            !isTablet &&
-            pendingCount > 0;
-
-          const showFriendsBadge =
-            item.path === "/friends" &&
-            isTablet &&
-            pendingCount > 0;
-
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              aria-current={
-                active ? "page" : undefined
-              }
-              className={cn(
-                BOTTOM_NAV_CLASSES.item,
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              )}
-            >
-              {/* Active background */}
-              <span
-                aria-hidden="true"
-                className={cn(
-                  active
-                    ? BOTTOM_NAV_CLASSES.activeBackground
-                    : BOTTOM_NAV_CLASSES.inactiveBackground
-                )}
-              />
-
-              <span className={BOTTOM_NAV_CLASSES.content}>
-                <span className="relative">
-                  <Icon
-                    size={18}
-                    className={cn(
-                      BOTTOM_NAV_CLASSES.icon,
-                      active
-                        ? "scale-110 text-primary"
-                        : "text-muted-foreground"
-                    )}
-                  />
-
-                  {(showBadge ||
-                    showFriendsBadge) && (
-                    <span
-                      className="
-                        absolute -right-1.5 -top-1
-                        h-2 w-2
-                        rounded-full
-                        border-2 border-neutral-950
-                        bg-red-500
-                      "
-                    />
-                  )}
-                </span>
-
-                <span
-                  className={cn(
-                    BOTTOM_NAV_CLASSES.label,
-                    active
-                      ? "font-bold text-primary"
-                      : "text-muted-foreground/80"
-                  )}
-                >
-                  {item.label}
-                </span>
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
-  );
-});
-
-/* -------------------------------------------------------------------------- */
-/* Navigation Component                                                       */
-/* -------------------------------------------------------------------------- */
-
-export const Navigation = memo(function Navigation() {
+export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [isAuthenticated, setIsAuthenticated] =
-    useState<boolean>(() => {
-      const cachedAuth = getCachedAuthState();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const cachedAuth = getCachedAuthState();
 
-      if (cachedAuth !== null) {
-        return cachedAuth;
-      }
+    if (cachedAuth !== null) return cachedAuth;
 
-      return !!getCachedProfile()?.user;
-    });
+    return !!getCachedProfile()?.user;
+  });
 
-  const [pendingCount, setPendingCount] =
-    useState<number>(
-      () => getCachedProfile()?.pendingCount ?? 0
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Auth Listener                                                            */
-  /* ------------------------------------------------------------------------ */
+  const [pendingCount, setPendingCount] = useState<number>(
+    () => getCachedProfile()?.pendingCount || 0
+  );
 
   useEffect(() => {
-    let mounted = true;
-    let requestId = 0;
+    let isMounted = true;
 
-    const updateAuthState = async (
-      sessionUserExists: boolean,
-      forceRefresh: boolean
-    ) => {
-      if (!mounted) return;
-
-      setIsAuthenticated(sessionUserExists);
-      setCachedAuthState(sessionUserExists);
-
-      if (!sessionUserExists) {
-        setPendingCount(0);
-        return;
-      }
-
-      const currentRequest = ++requestId;
-
-      try {
-        const data = await fetchProfileData(
-          forceRefresh
-        );
-
-        /*
-         * Ignore stale requests. This prevents an older
-         * profile response from overwriting newer auth state.
-         */
-        if (
-          mounted &&
-          currentRequest === requestId &&
-          data
-        ) {
-          setPendingCount(data.pendingCount ?? 0);
-        }
-      } catch (error) {
-        if (mounted) {
-          console.error(
-            "Failed to fetch profile data:",
-            error
-          );
-        }
-      }
-    };
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        await updateAuthState(
-          !!session?.user,
-          event !== "INITIAL_SESSION"
-        );
+        if (!isMounted) return;
+
+        const isAuth = !!session?.user;
+
+        setIsAuthenticated(isAuth);
+        setCachedAuthState(isAuth);
+
+        if (session?.user) {
+          const forceRefresh = event !== "INITIAL_SESSION";
+          const data = await fetchProfileData(forceRefresh);
+
+          if (isMounted && data) {
+            setPendingCount(data.pendingCount);
+          }
+        } else if (isMounted) {
+          setPendingCount(0);
+        }
       }
     );
 
     return () => {
-      mounted = false;
-      requestId++;
-      subscription.unsubscribe();
+      isMounted = false;
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* Logout                                                                   */
-  /* ------------------------------------------------------------------------ */
-
-  const handleLogout = useCallback(async () => {
-    /*
-     * Clear UI/cache immediately so the interface responds
-     * without waiting for Supabase.
-     */
+  const handleLogout = async () => {
     clearCachedProfile();
     clearCachedStats();
     clearCachedSocialCircle();
-
     setCachedAuthState(false);
     setIsAuthenticated(false);
-    setPendingCount(0);
 
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Sign out failed:", error);
     } finally {
-      navigate("/login", { replace: true });
+      navigate("/login");
     }
-  }, [navigate]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Current Navigation                                                       */
-  /* ------------------------------------------------------------------------ */
-
-  const pathname = location.pathname;
-
-  /*
-   * These references stay stable and avoid recreating navigation
-   * arrays on every render.
-   */
-  const mobileItems = useMemo(
-    () => MOBILE_NAV_ITEMS,
-    []
-  );
-
-  const tabletItems = useMemo(
-    () => TABLET_NAV_ITEMS,
-    []
-  );
-
-  /* ------------------------------------------------------------------------ */
-  /* Render                                                                   */
-  /* ------------------------------------------------------------------------ */
+  };
 
   return (
     <>
-      <DesktopSidebar
-        pathname={pathname}
-        isAuthenticated={isAuthenticated}
-        pendingCount={pendingCount}
-        onLogout={handleLogout}
-      />
+      {/* Desktop Modern Sidebar */}
+      <aside className="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r border-white/10 bg-neutral-950/70 backdrop-blur-2xl px-5 py-6 z-40 select-none justify-between">
+        <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-primary/[0.07] to-transparent pointer-events-none" />
 
-      <BottomNavigation
-        pathname={pathname}
-        items={mobileItems}
-        pendingCount={pendingCount}
-        variant="mobile"
-      />
+        {/* Top Branding & Nav */}
+        <div>
+          <Link
+            to="/"
+            className="flex items-center gap-3.5 px-2 py-1.5 mb-8 group"
+          >
+            <div className="relative">
+              <div className="absolute -inset-1 bg-primary/30 rounded-2xl blur-xs group-hover:bg-primary/50 transition-all" />
 
-      <BottomNavigation
-        pathname={pathname}
-        items={tabletItems}
-        pendingCount={pendingCount}
-        variant="tablet"
-      />
+              <div className="relative w-11 h-11 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 border border-white/20 group-hover:scale-105 transition-transform">
+                <Film
+                  className="text-black/90"
+                  size={22}
+                  strokeWidth={2.2}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-xl font-black tracking-tight text-white font-['Poppins']">
+                SMDB
+              </span>
+
+              <span className="text-[10px] text-muted-foreground tracking-wider font-semibold uppercase">
+                Cinema Log & Vault
+              </span>
+            </div>
+          </Link>
+
+          {/* Grouped Navigation */}
+          <nav className="space-y-6">
+            {navSections.map((section) => (
+              <div key={section.title} className="space-y-1.5">
+                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                  {section.title}
+                </p>
+
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    const Icon = item.icon;
+                    const showBadge =
+                      item.path === "/friends" && pendingCount > 0;
+
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn(
+                          "relative flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-sm font-semibold",
+                          isActive
+                            ? "text-black font-bold shadow-md shadow-primary/10"
+                            : "text-muted-foreground hover:text-white hover:bg-white/[0.04]"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="desktop-active-pill"
+                            className="absolute inset-0 bg-primary rounded-xl shadow-lg shadow-primary/25 -z-10"
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 32,
+                            }}
+                          />
+                        )}
+
+                        <div className="flex items-center gap-3">
+                          <Icon
+                            size={18}
+                            className={cn(
+                              "transition-transform duration-200 group-hover:scale-110",
+                              isActive
+                                ? "text-black"
+                                : "text-muted-foreground group-hover:text-primary"
+                            )}
+                          />
+
+                          <span>{item.label}</span>
+                        </div>
+
+                        {showBadge && (
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide",
+                              isActive
+                                ? "bg-black text-primary border border-black/30"
+                                : "bg-red-500 text-white animate-pulse"
+                            )}
+                          >
+                            {pendingCount} new
+                          </span>
+                        )}
+
+                        {!isActive && (
+                          <ChevronRight
+                            size={14}
+                            className="opacity-0 -translate-x-2 group-hover:opacity-60 group-hover:translate-x-0 transition-all text-muted-foreground"
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="pt-4 border-t border-white/10 space-y-3">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-sm font-semibold transition-all group"
+            >
+              <LogOut
+                size={18}
+                className="group-hover:-translate-x-0.5 transition-transform"
+              />
+
+              <span>Sign Out</span>
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-primary text-black font-bold text-sm transition-all hover:bg-primary/90 shadow-md shadow-primary/20"
+            >
+              <LogIn size={18} />
+              <span>Sign In / Register</span>
+            </Link>
+          )}
+
+          <div className="flex items-center justify-between px-1.5 text-[11px] text-muted-foreground/70">
+            <Link
+              to="/about"
+              className="hover:text-white transition-colors"
+            >
+              About
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/contact"
+              className="hover:text-white transition-colors"
+            >
+              Support
+            </Link>
+
+            <span>•</span>
+
+            <span className="text-[10px]">v1.1</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ========================================================= */}
+      {/* MOBILE FLOATING PILL NAVIGATION */}
+      {/* ========================================================= */}
+
+      <div className="md:hidden fixed bottom-2.5 sm:bottom-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+        <nav className="pointer-events-auto w-full max-w-sm h-[57px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 ring-1 ring-white/10 transform-gpu">
+          {mobileNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "relative flex flex-col items-center justify-center flex-1 min-w-0 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground active:text-white"
+                )}
+              >
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
+                    isActive
+                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100"
+                      : "opacity-0 scale-90 pointer-events-none"
+                  )}
+                />
+
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
+                  <div className="relative">
+                    <Icon
+                      size={18}
+                      className={cn(
+                        "transition-transform duration-200 transform-gpu",
+                        isActive
+                          ? "scale-110 text-primary"
+                          : "text-muted-foreground"
+                      )}
+                    />
+
+                    {item.path === "/profile" && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
+                    )}
+                  </div>
+
+                  <span
+                    className={cn(
+                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
+                      isActive
+                        ? "text-primary font-bold"
+                        : "text-muted-foreground/80"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* ========================================================= */}
+      {/* TABLET FLOATING PILL NAVIGATION */}
+      {/* ========================================================= */}
+
+      <div className="hidden md:flex lg:hidden fixed bottom-3 inset-x-0 z-50 justify-center px-6 pointer-events-none pb-[env(safe-area-inset-bottom)] transform-gpu">
+        <nav className="pointer-events-auto w-full max-w-md h-[58px] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-full px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 ring-1 ring-white/10 transform-gpu">
+          {tabletNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "relative flex flex-col items-center justify-center flex-1 min-w-0 h-11 rounded-full select-none transform-gpu transition-colors duration-200 active:scale-95",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground active:text-white"
+                )}
+              >
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-250 ease-out -z-10",
+                    isActive
+                      ? "bg-primary/15 border border-primary/30 opacity-100 scale-100"
+                      : "opacity-0 scale-90 pointer-events-none"
+                  )}
+                />
+
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
+                  <div className="relative">
+                    <Icon
+                      size={18}
+                      className={cn(
+                        "transition-transform duration-200 transform-gpu",
+                        isActive
+                          ? "scale-110 text-primary"
+                          : "text-muted-foreground"
+                      )}
+                    />
+
+                    {item.path === "/friends" && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border-3 border-neutral-950" />
+                    )}
+                  </div>
+
+                  <span
+                    className={cn(
+                      "text-[9.5px] font-semibold tracking-tight transition-colors duration-200",
+                      isActive
+                        ? "text-primary font-bold"
+                        : "text-muted-foreground/80"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </>
   );
-});
-
-Navigation.displayName = "Navigation";
+};
