@@ -149,7 +149,7 @@ const FilterDropdown = memo(function FilterDropdown({ label, value, onChange, op
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
         onKeyUp={(e) => e.key === ' ' && e.preventDefault()}
-        className="flex h-9 w-full items-center rounded-xl border border-white/10 bg-white/[0.04] px-3 text-left text-xs font-medium text-white transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="flex h-9 w-full items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 text-left text-xs font-medium text-white transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         {icon && <span className="mr-1.5 shrink-0 text-primary" aria-hidden="true">{icon}</span>}
         <span className="min-w-0 flex-1 truncate">
