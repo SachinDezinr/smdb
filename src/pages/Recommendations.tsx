@@ -352,8 +352,8 @@ function Showcase({ item, year }: { item: ContentItem; year: number }) {
           {item.overview || 'No synopsis available for this title.'}
         </p>
 
-        <p className="mt-auto border-t border-white/10 pt-3 text-xs text-muted-foreground">
-          <span className="font-semibold justify-end text-neutral-300">Released </span>
+        <p className="mt-auto border-t border-white/10 pt-3 justify-end text-xs text-muted-foreground">
+          <span className="font-semibold text-neutral-300">Released </span>
           {formatDate(item.release_date) ?? year}
         </p>
       </div>
