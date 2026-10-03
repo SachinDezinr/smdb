@@ -39,8 +39,9 @@ export const TV_GENRES: GenreOption[] = [
   { id: 10763, name: 'News' },
   { id: 10764, name: 'Reality' },
   { id: 10765, name: 'Sci-Fi & Fantasy' },
-  { id: 10766, name: 'Soap' },
+  { id: 10766, name: 'Serials' },
   { id: 10767, name: 'Talk' },
+  { id: 53, name: 'Thriller' },
   { id: 10768, name: 'War & Politics' },
   { id: 37, name: 'Western' },
 ];
