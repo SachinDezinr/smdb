@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, Film, User, Users, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,65 +14,99 @@ interface ContentCardProps {
   showCategory?: boolean;
 }
 
-export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate, showCategory }: ContentCardProps) => {
+// Static helpers live out here so they aren't re-created for every card on
+// every render.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  movie: 'Movie',
+  tv: 'Series',
+  anime: 'Anime',
+  'k-drama': 'K-Drama',
+};
+
+// Release dates are plain calendar dates ("2026-10-03"), which JS parses as
+// UTC midnight - so read them back with the UTC getters. The local getters
+// show the previous day (and previous year, for 1 Jan releases) anywhere
+// west of UTC.
+const formatDate = (dateStr: string) => {
+  if (!dateStr || dateStr === "TBA") return "TBA";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "TBA";
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+};
+
+const getReleaseYear = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return Number.isNaN(date.getTime()) ? "" : date.getUTCFullYear();
+};
+
+// Compared against the viewer's LOCAL date. toISOString() is UTC, so for the
+// first hours of the day in e.g. India it still says "yesterday" and a title
+// releasing today would be treated as upcoming.
+const getLocalToday = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
+// memo: this renders in grids of dozens of cards, and without it every card
+// re-rendered whenever the page above it did (a keystroke in the search box,
+// the scroll-to-top button appearing, etc.).
+export const ContentCard = memo(function ContentCard({
+  item,
+  isWatched,
+  onToggleWatched,
+  showReleaseDate,
+  showCategory,
+}: ContentCardProps) {
+  const isSeries = isSeriesMediaType(item.media_type);
+
   const [showCredits, setShowCredits] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
-  const [seasons, setSeasons] = useState<number | undefined>(() => {
-    if (!isSeriesMediaType(item.media_type)) return undefined;
-    return item.season_count || getCachedTvSeason(item.id);
-  });
+  const [seasons, setSeasons] = useState<number | undefined>(() =>
+    isSeries ? item.season_count || getCachedTvSeason(item.id) : undefined
+  );
 
-  const isSeries = isSeriesMediaType(item.media_type);
-
-  // Lazy-load season count for series if not present
+  // Lazy-load the season count for series - but only when we don't already
+  // have it. This used to fetch on every series card's mount even when
+  // item.season_count (or the cache) already had the answer, i.e. one extra
+  // request per series card on every page.
   useEffect(() => {
     if (!isSeries) return;
-    
-    // Check cache first
-    const cached = getCachedTvSeason(item.id);
-    if (cached) {
-      setSeasons(cached);
+
+    const known = item.season_count || getCachedTvSeason(item.id);
+    if (known) {
+      setSeasons(known);
+      return;
     }
 
     let isMounted = true;
-    fetchTvSeasons(item.id).then((count) => {
-      if (isMounted && typeof count === 'number') {
-        setSeasons(count);
-      }
-    });
+    fetchTvSeasons(item.id)
+      .then((count) => {
+        if (isMounted && typeof count === 'number') {
+          setSeasons(count);
+        }
+      })
+      .catch(() => {
+        // Season count is decorative; the card just omits it on failure.
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [item.id, isSeries]);
+  }, [item.id, item.season_count, isSeries]);
 
   const seasonText = isSeries ? getSeasonDisplayText(seasons) : '';
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr || dateStr === "TBA") return "TBA";
-    try {
-      const date = new Date(dateStr);
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-    } catch {
-      return "TBA";
-    }
-  };
-
-  const getCategoryLabel = (type: string) => {
-    switch (type) {
-      case 'movie': return 'Movie';
-      case 'tv': return 'Series';
-      case 'anime': return 'Anime';
-      case 'k-drama': return 'K-Drama';
-      default: return type;
-    }
-  };
-
-  const today = new Date().toISOString().split('T')[0];
-  const isFuture = item.release_date && item.release_date !== "TBA" && item.release_date > today;
+  const isFuture = useMemo(() => {
+    const date = item.release_date;
+    if (!date || date === "TBA") return false;
+    return date > getLocalToday();
+  }, [item.release_date]);
 
   const handlePosterClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     // For upcoming/future items, toggle credits info
@@ -134,7 +168,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
       <div 
         onClick={handlePosterClick}
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-2xl transition-all duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
+          "relative aspect-[2/3] overflow-hidden rounded-2xl transition-[border-color,border-width,box-shadow] duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
           isWatched 
             ? "border-[2px] border-primary ring-2 ring-primary/50 cinematic-glow" 
             : "border border-white/10 group-hover:border-white/25"
@@ -145,11 +179,12 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
             src={item.poster_path}
             alt={item.title}
             className={cn(
-              "w-full h-full object-cover transition-all duration-500 pointer-events-none",
+              "w-full h-full object-cover transition-[filter,transform,opacity] duration-500 pointer-events-none",
               showCredits || showOverlay ? "blur-sm scale-105 opacity-60" : "group-hover:scale-105",
               isWatched && "brightness-[0.92]"
             )}
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className={cn(
@@ -167,7 +202,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
         {showCategory && (
           <div className="absolute top-2.5 left-2.5 z-20">
             <span className="bg-black/75 backdrop-blur-md text-primary text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-lg border border-primary/20 uppercase shadow-md">
-              {getCategoryLabel(item.media_type)}
+              {CATEGORY_LABELS[item.media_type] ?? item.media_type}
             </span>
           </div>
         )}
@@ -195,7 +230,7 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
               type="button"
               onClick={handleActionClick}
               className={cn(
-                "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-xl active:scale-95",
+                "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-xl active:scale-95",
                 isWatched 
                   ? "bg-primary text-black border border-primary hover:bg-primary/90" 
                   : "bg-black/85 text-primary border border-primary/40 hover:bg-primary hover:text-black hover:border-primary backdrop-blur-md"
@@ -277,11 +312,11 @@ export const ContentCard = ({ item, isWatched, onToggleWatched, showReleaseDate,
           )}
           {item.release_date && !showReleaseDate && !isFuture && (
             <span className="text-muted-foreground text-[11px] font-medium">
-              {new Date(item.release_date).getFullYear() || ""}
+              {getReleaseYear(item.release_date)}
             </span>
           )}
         </div>
       </div>
     </motion.div>
   );
-};
+});
