@@ -7,13 +7,6 @@ import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { Award, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export type RecommendationCategory = 'movie' | 'tv' | 'kdrama' | 'anime';
@@ -46,10 +39,55 @@ const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
   { id: 'pollywood', label: 'Pollywood' },
 ];
 
-const triggerClass =
-  'h-9 w-full rounded-xl border-white/10 bg-white/[0.04] text-xs font-medium text-white hover:border-white/20 focus:ring-primary/40';
-const contentClass = 'rounded-xl border-white/10 bg-neutral-900 text-white shadow-2xl';
-const itemClass = 'cursor-pointer text-xs hover:bg-white/10';
+/**
+ * Native <select> wrapped in the same look as before. The browser handles open/close,
+ * so one tap opens and one tap closes on every device (the Radix dropdown needed extra
+ * taps on touch screens, because tapping outside only dismisses and never passes through).
+ * Text is 16px on phones so iOS doesn't zoom the page when a select gets focus.
+ */
+interface FilterSelectProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  icon?: React.ReactNode;
+}
+
+const FilterSelect = memo(function FilterSelect({ label, value, onChange, options, icon }: FilterSelectProps) {
+  return (
+    <label className="relative block min-w-0 flex-1">
+      <span className="sr-only">{label}</span>
+      {icon && (
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary" aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'h-9 w-full cursor-pointer appearance-none truncate rounded-xl border border-white/10 bg-white/[0.04] pr-9',
+          'text-[16px] sm:text-xs font-medium text-white [color-scheme:dark] transition-colors hover:border-white/20',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          icon ? 'pl-9' : 'pl-3'
+        )}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-neutral-900 text-white">
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </label>
+  );
+});
+
+const FORMAT_SELECT_OPTIONS = FORMAT_OPTIONS.map((o) => ({ value: o.id, label: `${o.emoji}  ${o.label}` }));
+const REGION_SELECT_OPTIONS = REGION_OPTIONS.map((o) => ({ value: o.id, label: o.label }));
 
 const EMPTY_DATA: Record<number, ContentItem | null> = {};
 
@@ -187,6 +225,11 @@ export default function Recommendations() {
     [selectedGenre, availableGenres]
   );
 
+  const genreOptions = useMemo(
+    () => availableGenres.map((g) => ({ value: String(g.id), label: g.name })),
+    [availableGenres]
+  );
+
   const showRegionFilter = category === 'movie' || category === 'tv';
   // Region is irrelevant for K-Drama / Anime, so keep it out of the query key.
   const effectiveRegion: RecommendationRegion = showRegionFilter ? region : 'all';
@@ -319,36 +362,23 @@ export default function Recommendations() {
         <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {/* Format */}
-            <Select value={category} onValueChange={(v) => setCategory(v as RecommendationCategory)}>
-              <SelectTrigger aria-label="Format" className={triggerClass}>
-                <Clapperboard className="mr-1.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                <SelectValue placeholder="Format" />
-              </SelectTrigger>
-              <SelectContent className={contentClass}>
-                {FORMAT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.id} value={opt.id} className={itemClass}>
-                    <span className="mr-2" aria-hidden="true">{opt.emoji}</span>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              label="Format"
+              value={category}
+              onChange={(v) => setCategory(v as RecommendationCategory)}
+              options={FORMAT_SELECT_OPTIONS}
+              icon={<Clapperboard className="h-3.5 w-3.5" />}
+            />
 
             {/* Region (movies and series); fixed for K-Drama and Anime */}
             {showRegionFilter ? (
-              <Select value={region} onValueChange={(v) => setRegion(v as RecommendationRegion)}>
-                <SelectTrigger aria-label="Region" className={triggerClass}>
-                  <Globe className="mr-1.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                  <SelectValue placeholder="Region" />
-                </SelectTrigger>
-                <SelectContent className={contentClass}>
-                  {REGION_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id} className={itemClass}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FilterSelect
+                label="Region"
+                value={region}
+                onChange={(v) => setRegion(v as RecommendationRegion)}
+                options={REGION_SELECT_OPTIONS}
+                icon={<Globe className="h-3.5 w-3.5" />}
+              />
             ) : (
               <div
                 aria-label="Region"
@@ -361,18 +391,12 @@ export default function Recommendations() {
 
             {/* Genre + reset */}
             <div className="col-span-2 flex gap-2 sm:col-span-1">
-              <Select value={genre} onValueChange={setSelectedGenre}>
-                <SelectTrigger aria-label="Genre" className={triggerClass}>
-                  <SelectValue placeholder="All genres" />
-                </SelectTrigger>
-                <SelectContent className={cn(contentClass, 'max-h-72')}>
-                  {availableGenres.map((g) => (
-                    <SelectItem key={g.id} value={String(g.id)} className={itemClass}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FilterSelect
+                label="Genre"
+                value={genre}
+                onChange={setSelectedGenre}
+                options={genreOptions}
+              />
 
               {hasActiveFilters && (
                 <button
