@@ -5,7 +5,7 @@ import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Award, Check, ChevronDown, Clapperboard, Film, Tv, Sparkles, Heart, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +24,11 @@ const ALL_YEARS: number[] = Array.from(
 const INITIAL_YEARS_COUNT = 15;
 const STEP_YEARS_COUNT = 12;
 
-const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; icon: LucideIcon }[] = [
-  { id: 'movie', label: 'Movies',  icon: Film },
-  { id: 'tv', label: 'Series', icon: Tv },
-  { id: 'kdrama', label: 'K-Drama', icon: Heart },
-  { id: 'anime', label: 'Anime', icon: Sparkles },
+const FORMAT_OPTIONS: { id: RecommendationCategory; label: string}[] = [
+  { id: 'movie', label: 'Movies',},
+  { id: 'tv', label: 'Series',},
+  { id: 'kdrama', label: 'K-Drama',},
+  { id: 'anime', label: 'Anime',},
 ];
 
 const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
@@ -511,6 +511,7 @@ export default function Recommendations() {
                 value={genre}
                 onChange={setSelectedGenre}
                 options={genreOptions}
+                icon={<Tags className="h-3.5 w-3.5" />}
               />
 
               {hasActiveFilters && (
