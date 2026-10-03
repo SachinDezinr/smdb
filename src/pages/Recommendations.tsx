@@ -5,7 +5,7 @@ import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Award, Check, ChevronDown, Clapperboard, Film, Tv, Sparkles,  Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Award, Check, ChevronDown, Clapperboard, Film, Tv, Sparkles, Heart, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,7 @@ const ALL_YEARS: number[] = Array.from(
 const INITIAL_YEARS_COUNT = 15;
 const STEP_YEARS_COUNT = 12;
 
-const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; emoji: string }[] = [
+const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; icon: LucideIcon }[] = [
   { id: 'movie', label: 'Movies',  icon: Film },
   { id: 'tv', label: 'Series', icon: Tv },
   { id: 'kdrama', label: 'K-Drama', icon: Heart },
