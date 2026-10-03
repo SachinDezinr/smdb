@@ -5,7 +5,7 @@ import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Award, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -46,14 +46,6 @@ const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
   { id: 'pollywood', label: 'Pollywood' },
 ];
 
-const REGION_LABELS: Record<RecommendationRegion, string> = {
-  all: 'all regions',
-  hollywood: 'Hollywood (English)',
-  bollywood: 'Bollywood (Hindi)',
-  tollywood: 'Tollywood (Telugu)',
-  pollywood: 'Pollywood (Punjabi)',
-};
-
 const triggerClass =
   'h-9 w-full rounded-xl border-white/10 bg-white/[0.04] text-xs font-medium text-white hover:border-white/20 focus:ring-primary/40';
 const contentClass = 'rounded-xl border-white/10 bg-neutral-900 text-white shadow-2xl';
@@ -88,13 +80,13 @@ interface YearEntryProps {
 
 const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryProps) {
   return (
-    <li id={`year-card-${year}`} className="flex gap-6 scroll-mt-40">
+    <li id={`year-card-${year}`} className="flex gap-6 scroll-mt-6">
       {/* Timeline rail: the year is the structure of this page */}
       <div className="relative hidden sm:block w-24 shrink-0 border-r border-white/10 pr-5 text-right">
         <span
           className={cn(
-            'sticky top-36 block text-3xl font-black tabular-nums tracking-tight leading-none transition-colors',
-            isLoading ? 'text-white/25' : 'text-white'
+            'sticky top-6 block text-3xl font-black tabular-nums tracking-tight leading-none transition-colors',
+            isLoading ? 'text-primary/30' : 'text-primary'
           )}
         >
           {year}
@@ -113,7 +105,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
           <p
             className={cn(
               'mb-3 text-xl font-black tabular-nums leading-none sm:hidden',
-              isLoading ? 'text-white/25' : 'text-white'
+              isLoading ? 'text-primary/30' : 'text-primary'
             )}
           >
             {year}
@@ -129,14 +121,11 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
               </div>
 
               {/* Details */}
-              <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 flex-col">
                 <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <span className="rounded-md bg-white/[0.08] px-2 py-0.5 font-medium text-white/90">
                     {item.media_type === 'movie' ? 'Movie' : 'Series'}
                   </span>
-                  {item.release_date && item.release_date !== 'TBA' && (
-                    <span>Released {item.release_date}</span>
-                  )}
                   {item.vote_count ? (
                     <span className="hidden sm:inline">{item.vote_count.toLocaleString()} votes</span>
                   ) : null}
@@ -150,9 +139,11 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
                   {item.overview || 'No synopsis available for this title.'}
                 </p>
 
-                <p className="mt-3 text-[11px] text-neutral-500">
-                  Tap the poster to watch the trailer and see details.
-                </p>
+                {item.release_date && item.release_date !== 'TBA' && (
+                  <p className="mt-auto pt-3 text-right text-[11px] sm:text-xs text-muted-foreground">
+                    Released {item.release_date}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -300,19 +291,6 @@ export default function Recommendations() {
     setSelectedGenre('all');
   };
 
-  const summary = useMemo(() => {
-    const format = FORMAT_OPTIONS.find((f) => f.id === category)?.label.toLowerCase() ?? '';
-    const genreName = availableGenres.find((g) => String(g.id) === genre)?.name;
-    return [
-      `Top-rated ${genreName && genre !== 'all' ? `${genreName.toLowerCase()} ` : ''}${format}`,
-      showRegionFilter && effectiveRegion !== 'all' ? `from ${REGION_LABELS[effectiveRegion]}` : null,
-      `, one per year`,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .replace(' ,', ',');
-  }, [category, genre, availableGenres, showRegionFilter, effectiveRegion]);
-
   /* ---- render ---- */
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -321,21 +299,24 @@ export default function Recommendations() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-3.5 sm:px-6 md:px-8 lg:px-10 pb-28 lg:pb-16">
         {/* Header */}
-        <header className="relative pt-6 sm:pt-10 pb-5">
-          <div
-            className="pointer-events-none absolute inset-x-0 -top-10 h-56 bg-[radial-gradient(60%_80%_at_20%_0%,hsl(var(--primary)/0.14),transparent)]"
-            aria-hidden="true"
-          />
-          <h1 className="relative text-2xl sm:text-4xl font-black tracking-tight text-white">
-            Best of every year
+        <header className="pt-6 sm:pt-10 pb-5">
+          <div className="mb-2 inline-flex items-center gap-2 text-primary">
+            <Award className="h-4 w-4" aria-hidden="true" />
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-widest">Hall of Fame</span>
+          </div>
+          <h1 className="font-['Poppins'] text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white">
+            Recommendations{' '}
+            <span className="whitespace-nowrap text-primary">
+              {START_YEAR}&ndash;{END_YEAR}
+            </span>
           </h1>
-          <p className="relative mt-1.5 text-sm text-muted-foreground">
-            {START_YEAR} back to {END_YEAR}. {summary}.
+          <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
+            One top-rated pick for every year, newest first. Change a filter and the list updates.
           </p>
         </header>
 
-        {/* Sticky filter bar */}
-        <div className="sticky top-0 z-30 -mx-3.5 sm:-mx-6 md:-mx-8 lg:-mx-10 border-y border-white/10 bg-background/80 px-3.5 sm:px-6 md:px-8 lg:px-10 py-3 backdrop-blur-xl">
+        {/* Filters */}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {/* Format */}
             <Select value={category} onValueChange={(v) => setCategory(v as RecommendationCategory)}>
@@ -382,7 +363,6 @@ export default function Recommendations() {
             <div className="col-span-2 flex gap-2 sm:col-span-1">
               <Select value={genre} onValueChange={setSelectedGenre}>
                 <SelectTrigger aria-label="Genre" className={triggerClass}>
-                  <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5 shrink-0 text-primary" />
                   <SelectValue placeholder="All genres" />
                 </SelectTrigger>
                 <SelectContent className={cn(contentClass, 'max-h-72')}>
