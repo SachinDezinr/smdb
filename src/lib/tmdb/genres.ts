@@ -31,6 +31,7 @@ const GENRES = {
   music: { id: 10402, name: 'Music' },
   romance: { id: 10749, name: 'Romance' },
   sciFi: { id: 878, name: 'Sci-Fi' },
+  thriller: { id: 53, name: 'Thriller' },
   war: { id: 10752, name: 'War' },
 
   // TV only
@@ -58,8 +59,7 @@ export const MOVIE_GENRES: GenreOption[] = buildList(
 
 export const TV_GENRES: GenreOption[] = buildList(
   'actionAdventure', 'animation', 'comedy', 'crime', 'documentary', 'drama',
-  'family', 'kids', 'mystery', 'news', 'reality', 'sciFiFantasy', 'talk',
-  'thriller', 'warPolitics', 'western'
+  'family', 'kids', 'mystery', 'news', 'reality', 'sciFiFantasy', 'talk', 'warPolitics', 'western'
 );
 
 // Unified genre list for "All" or combined category (K-Drama / Anime)
