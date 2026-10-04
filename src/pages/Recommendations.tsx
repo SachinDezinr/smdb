@@ -24,11 +24,11 @@ const ALL_YEARS: number[] = Array.from(
 const INITIAL_YEARS_COUNT = 15;
 const STEP_YEARS_COUNT = 12;
 
-const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; emoji: string }[] = [
-  { id: 'movie', label: 'Movies', emoji: '🎬' },
-  { id: 'tv', label: 'Series', emoji: '📺' },
-  { id: 'kdrama', label: 'K-Drama', emoji: '🇰🇷' },
-  { id: 'anime', label: 'Anime', emoji: '⚡' },
+const FORMAT_OPTIONS: { id: RecommendationCategory; label: string;}[] = [
+  { id: 'movie', label: 'Movies'},
+  { id: 'tv', label: 'Series'},
+  { id: 'kdrama', label: 'K-Drama'},
+  { id: 'anime', label: 'Anime'},
 ];
 
 const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
@@ -197,7 +197,6 @@ const FilterDropdown = memo(function FilterDropdown({ label, value, onChange, op
 const FORMAT_DROPDOWN_OPTIONS: DropdownOption[] = FORMAT_OPTIONS.map((o) => ({
   value: o.id,
   label: o.label,
-  prefix: o.emoji,
 }));
 const REGION_DROPDOWN_OPTIONS: DropdownOption[] = REGION_OPTIONS.map((o) => ({ value: o.id, label: o.label }));
 
