@@ -1,58 +1,58 @@
-import { memo, useCallback, useEffect, useState } from "react";
+"use client";
+
+import React, { memo, useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  BarChart3,
+  Home,
   Calendar,
+  Library,
+  User,
+  Film,
+  BarChart3,
+  Users,
   ChevronRight,
   Compass,
-  Film,
-  Home,
-  Library,
-  LogIn,
-  LogOut,
   Sparkles,
-  User,
-  Users,
-  type LucideIcon,
+  LogOut,
+  LogIn,
 } from "lucide-react";
-import { MotionConfig, motion } from "framer-motion";
-
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { motion, MotionConfig } from "framer-motion";
 import {
-  clearCachedProfile,
   fetchProfileData,
+  clearCachedProfile,
   getCachedAuthState,
-  getCachedProfile,
   setCachedAuthState,
+  getCachedProfile,
 } from "@/lib/profileStore";
 import {
-  clearCachedSocialCircle,
   clearCachedStats,
+  clearCachedSocialCircle,
 } from "@/lib/pageDataStore";
 
+/* ------------------------------ data ------------------------------ */
+
+type IconType = React.ComponentType<{ size?: number; className?: string }>;
+
 interface NavItem {
-  icon: LucideIcon;
+  icon: IconType;
   label: string;
   path: string;
 }
 
 interface NavSection {
   title: string;
-  items: readonly NavItem[];
+  items: NavItem[];
 }
 
-const navSections: readonly NavSection[] = [
+const navSections: NavSection[] = [
   {
     title: "Discover",
     items: [
       { icon: Compass, label: "Explore Catalog", path: "/" },
       { icon: Calendar, label: "Upcoming", path: "/upcoming" },
-      {
-        icon: Sparkles,
-        label: "Recommendations",
-        path: "/recommendations",
-      },
+      { icon: Sparkles, label: "Recommendations", path: "/recommendations" },
     ],
   },
   {
@@ -71,7 +71,7 @@ const navSections: readonly NavSection[] = [
   },
 ];
 
-const mobileNavItems: readonly NavItem[] = [
+const mobileNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
@@ -79,7 +79,7 @@ const mobileNavItems: readonly NavItem[] = [
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
-const tabletNavItems: readonly NavItem[] = [
+const tabletNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
@@ -88,25 +88,24 @@ const tabletNavItems: readonly NavItem[] = [
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
-const isPathActive = (pathname: string, path: string): boolean =>
-  path === "/"
-    ? pathname === "/"
-    : pathname === path || pathname.startsWith(`${path}/`);
+/** "/" only matches itself; other routes also match their children (/collection/123). */
+const isPathActive = (pathname: string, path: string) =>
+  path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
 
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
-interface SidebarLinkProps {
-  item: NavItem;
-  isActive: boolean;
-  badge?: number;
-}
+/* ------------------------------ sidebar (desktop) ------------------------------ */
 
 const SidebarLink = memo(function SidebarLink({
   item,
   isActive,
   badge,
-}: SidebarLinkProps) {
+}: {
+  item: NavItem;
+  isActive: boolean;
+  badge?: number;
+}) {
   const Icon = item.icon;
 
   return (
@@ -118,18 +117,14 @@ const SidebarLink = memo(function SidebarLink({
         focusRing,
         isActive
           ? "font-bold text-black"
-          : "text-muted-foreground hover:bg-white/[0.04] hover:text-white",
+          : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
       )}
     >
       {isActive && (
         <motion.div
           layoutId="desktop-active-pill"
           className="absolute inset-0 -z-10 rounded-xl bg-primary shadow-lg shadow-primary/25"
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 32,
-          }}
+          transition={{ type: "spring", stiffness: 400, damping: 32 }}
         />
       )}
 
@@ -138,19 +133,19 @@ const SidebarLink = memo(function SidebarLink({
           size={18}
           className={cn(
             "transition-transform duration-200 group-hover:scale-110",
-            isActive ? "text-black" : "group-hover:text-primary",
+            isActive ? "text-black" : "group-hover:text-primary"
           )}
         />
         <span>{item.label}</span>
       </div>
 
-      {badge && badge > 0 ? (
+      {badge ? (
         <span
           className={cn(
             "rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide",
             isActive
               ? "border border-black/30 bg-black text-primary"
-              : "bg-red-500 text-white motion-safe:animate-pulse",
+              : "bg-red-500 text-white motion-safe:animate-pulse"
           )}
         >
           {badge > 99 ? "99+" : badge} new
@@ -168,19 +163,19 @@ const SidebarLink = memo(function SidebarLink({
   );
 });
 
-interface BottomNavLinkProps {
-  item: NavItem;
-  isActive: boolean;
-  showBadge: boolean;
-  pillId: string;
-}
+/* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
 
 const BottomNavLink = memo(function BottomNavLink({
   item,
   isActive,
   showBadge,
   pillId,
-}: BottomNavLinkProps) {
+}: {
+  item: NavItem;
+  isActive: boolean;
+  showBadge: boolean;
+  pillId: string;
+}) {
   const Icon = item.icon;
 
   return (
@@ -190,20 +185,14 @@ const BottomNavLink = memo(function BottomNavLink({
       className={cn(
         "relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full transition-colors duration-200 active:scale-95",
         focusRing,
-        isActive
-          ? "text-primary"
-          : "text-muted-foreground active:text-white",
+        isActive ? "text-primary" : "text-muted-foreground active:text-white"
       )}
     >
       {isActive && (
         <motion.div
           layoutId={pillId}
           className="absolute inset-0 -z-10 rounded-full border border-primary/30 bg-primary/15"
-          transition={{
-            type: "spring",
-            stiffness: 420,
-            damping: 34,
-          }}
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
         />
       )}
 
@@ -213,10 +202,9 @@ const BottomNavLink = memo(function BottomNavLink({
             size={18}
             className={cn(
               "transition-transform duration-200",
-              isActive && "scale-110",
+              isActive && "scale-110"
             )}
           />
-
           {showBadge && (
             <>
               <span
@@ -231,9 +219,7 @@ const BottomNavLink = memo(function BottomNavLink({
         <span
           className={cn(
             "text-[10px] font-semibold tracking-tight transition-colors duration-200",
-            isActive
-              ? "font-bold text-primary"
-              : "text-muted-foreground/80",
+            isActive ? "font-bold text-primary" : "text-muted-foreground/80"
           )}
         >
           {item.label}
@@ -243,16 +229,6 @@ const BottomNavLink = memo(function BottomNavLink({
   );
 });
 
-interface BottomNavProps {
-  items: readonly NavItem[];
-  pathname: string;
-  pillId: string;
-  badgePath: string;
-  pendingCount: number;
-  wrapperClassName: string;
-  navClassName: string;
-}
-
 const BottomNav = memo(function BottomNav({
   items,
   pathname,
@@ -261,19 +237,27 @@ const BottomNav = memo(function BottomNav({
   pendingCount,
   wrapperClassName,
   navClassName,
-}: BottomNavProps) {
+}: {
+  items: NavItem[];
+  pathname: string;
+  pillId: string;
+  badgePath: string;
+  pendingCount: number;
+  wrapperClassName: string;
+  navClassName: string;
+}) {
   return (
     <div
       className={cn(
         "pointer-events-none fixed inset-x-0 z-50 justify-center pb-[env(safe-area-inset-bottom)]",
-        wrapperClassName,
+        wrapperClassName
       )}
     >
       <nav
         aria-label="Primary"
         className={cn(
           "pointer-events-auto flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 backdrop-blur-xl",
-          navClassName,
+          navClassName
         )}
       >
         {items.map((item) => (
@@ -290,22 +274,20 @@ const BottomNav = memo(function BottomNav({
   );
 });
 
+/* ------------------------------ component ------------------------------ */
+
 export const Navigation = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
-
-    if (cachedAuth !== null) {
-      return cachedAuth;
-    }
-
-    return Boolean(getCachedProfile()?.user);
+    if (cachedAuth !== null) return cachedAuth;
+    return !!getCachedProfile()?.user;
   });
 
-  const [pendingCount, setPendingCount] = useState(
-    () => getCachedProfile()?.pendingCount ?? 0,
+  const [pendingCount, setPendingCount] = useState<number>(
+    () => getCachedProfile()?.pendingCount || 0
   );
 
   useEffect(() => {
@@ -313,41 +295,30 @@ export const Navigation = () => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
-        const authenticated = Boolean(session?.user);
-
-        setIsAuthenticated(authenticated);
-        setCachedAuthState(authenticated);
+        const isAuth = !!session?.user;
+        setIsAuthenticated(isAuth);
+        setCachedAuthState(isAuth);
 
         if (!session?.user) {
           setPendingCount(0);
           return;
         }
 
-        if (event === "TOKEN_REFRESHED") {
-          return;
-        }
+        // A silent token refresh doesn't change the profile; skip the refetch.
+        if (event === "TOKEN_REFRESHED") return;
 
+        // Defer: awaiting Supabase calls inside this callback can deadlock the auth client.
         setTimeout(async () => {
           try {
-            const profile = await fetchProfileData(
-              event !== "INITIAL_SESSION",
-            );
-
-            if (isMounted && profile) {
-              setPendingCount(profile.pendingCount);
-            }
+            const data = await fetchProfileData(event !== "INITIAL_SESSION");
+            if (isMounted && data) setPendingCount(data.pendingCount);
           } catch (error) {
-            console.error(
-              "[Navigation] Profile refresh failed:",
-              error,
-            );
+            console.error("Profile refresh failed:", error);
           }
         }, 0);
-      },
+      }
     );
 
     return () => {
@@ -362,12 +333,11 @@ export const Navigation = () => {
     clearCachedSocialCircle();
     setCachedAuthState(false);
     setIsAuthenticated(false);
-    setPendingCount(0);
 
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      console.error("[Navigation] Sign out failed:", error);
+      console.error("Sign out failed:", error);
     } finally {
       navigate("/login");
     }
@@ -375,6 +345,7 @@ export const Navigation = () => {
 
   return (
     <MotionConfig reducedMotion="user">
+      {/* Desktop sidebar */}
       <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 backdrop-blur-2xl lg:flex">
         <div
           aria-hidden="true"
@@ -384,20 +355,12 @@ export const Navigation = () => {
         <div>
           <Link
             to="/"
-            className={cn(
-              "group mb-8 flex items-center gap-3.5 rounded-xl px-2 py-1.5",
-              focusRing,
-            )}
+            className={cn("group mb-8 flex items-center gap-3.5 rounded-xl px-2 py-1.5", focusRing)}
           >
             <div className="relative">
               <div className="absolute -inset-1 rounded-2xl bg-primary/30 blur-sm transition-colors group-hover:bg-primary/50" />
-
               <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
-                <Film
-                  className="text-black/90"
-                  size={22}
-                  strokeWidth={2.2}
-                />
+                <Film className="text-black/90" size={22} strokeWidth={2.2} />
               </div>
             </div>
 
@@ -405,7 +368,6 @@ export const Navigation = () => {
               <span className="font-['Poppins'] text-xl font-black tracking-tight text-white">
                 SMDB
               </span>
-
               <span className="text-[11px] font-medium text-muted-foreground">
                 Cinema log and vault
               </span>
@@ -418,18 +380,13 @@ export const Navigation = () => {
                 <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
                   {section.title}
                 </p>
-
                 <div className="space-y-1">
                   {section.items.map((item) => (
                     <SidebarLink
                       key={item.path}
                       item={item}
                       isActive={isPathActive(pathname, item.path)}
-                      badge={
-                        item.path === "/friends"
-                          ? pendingCount
-                          : undefined
-                      }
+                      badge={item.path === "/friends" ? pendingCount : undefined}
                     />
                   ))}
                 </div>
@@ -445,7 +402,7 @@ export const Navigation = () => {
               onClick={handleLogout}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300",
-                focusRing,
+                focusRing
               )}
             >
               <LogOut
@@ -459,7 +416,7 @@ export const Navigation = () => {
               to="/login"
               className={cn(
                 "flex w-full items-center gap-3 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-bold text-black shadow-md shadow-primary/20 transition-colors hover:bg-primary/90",
-                focusRing,
+                focusRing
               )}
             >
               <LogIn size={18} />
@@ -468,25 +425,18 @@ export const Navigation = () => {
           )}
 
           <div className="flex items-center justify-between px-1.5 text-[11px] text-muted-foreground/70">
-            <Link
-              to="/about"
-              className="transition-colors hover:text-white"
-            >
+            <Link to="/about" className="transition-colors hover:text-white">
               About
             </Link>
-
-            <Link
-              to="/contact"
-              className="transition-colors hover:text-white"
-            >
+            <Link to="/contact" className="transition-colors hover:text-white">
               Support
             </Link>
-
             <span className="text-[10px]">v1.1</span>
           </div>
         </div>
       </aside>
 
+      {/* Mobile bottom bar */}
       <BottomNav
         items={mobileNavItems}
         pathname={pathname}
@@ -497,6 +447,7 @@ export const Navigation = () => {
         navClassName="max-w-sm"
       />
 
+      {/* Tablet bottom bar */}
       <BottomNav
         items={tabletNavItems}
         pathname={pathname}

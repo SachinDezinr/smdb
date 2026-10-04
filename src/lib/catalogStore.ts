@@ -1,4 +1,4 @@
-import type { ContentItem, MediaType, Region } from "./tmdb";
+import { MediaType, Region, ContentItem } from './tmdb';
 
 export interface CatalogState {
   activeCategory: MediaType;
@@ -12,39 +12,18 @@ export interface CatalogState {
 
 const currentYear = new Date().getFullYear();
 
-const initialCatalogState: CatalogState = {
-  activeCategory: "movie",
-  activeRegion: "all",
-  searchQuery: "",
+let catalogState: CatalogState = {
+  activeCategory: 'movie',
+  activeRegion: 'all',
+  searchQuery: '',
   expandedYears: [currentYear],
   yearData: {},
   yearPages: {},
   watchedIds: [],
 };
 
-let catalogState: CatalogState = initialCatalogState;
-
 export const getCatalogState = (): CatalogState => catalogState;
 
-export const setCatalogState = (
-  updates: Partial<CatalogState>,
-): CatalogState => {
-  catalogState = {
-    ...catalogState,
-    ...updates,
-  };
-
-  return catalogState;
-};
-
-export const resetCatalogState = (): CatalogState => {
-  catalogState = {
-    ...initialCatalogState,
-    expandedYears: [currentYear],
-    yearData: {},
-    yearPages: {},
-    watchedIds: [],
-  };
-
-  return catalogState;
+export const setCatalogState = (newState: Partial<CatalogState>) => {
+  catalogState = { ...catalogState, ...newState };
 };

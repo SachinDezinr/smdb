@@ -1,13 +1,13 @@
-import {
-  Award,
-  Compass,
+import { 
+  Compass, 
+  Tv, 
+  Film, 
+  Sparkles, 
+  Award, 
+  Flame, 
   Crown,
-  Film,
-  Flame,
-  Sparkles,
-  Tv,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon 
+} from 'lucide-react';
 
 export interface BadgeTier {
   min: number;
@@ -21,7 +21,7 @@ export interface BadgeTier {
   glowColor: string;
 }
 
-export const BADGE_TIERS: readonly BadgeTier[] = [
+export const BADGE_TIERS: BadgeTier[] = [
   {
     min: 0,
     max: 9,
@@ -31,7 +31,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Compass,
     badgeStyle: "bg-white/10 text-white/90 border-white/20",
     iconColor: "text-white/80",
-    glowColor: "rgba(255, 255, 255, 0.15)",
+    glowColor: "rgba(255, 255, 255, 0.15)"
   },
   {
     min: 10,
@@ -42,7 +42,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Tv,
     badgeStyle: "bg-teal-500/15 text-teal-300 border-teal-500/30",
     iconColor: "text-teal-400",
-    glowColor: "rgba(20, 184, 166, 0.2)",
+    glowColor: "rgba(20, 184, 166, 0.2)"
   },
   {
     min: 25,
@@ -53,7 +53,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Film,
     badgeStyle: "bg-blue-500/15 text-blue-300 border-blue-500/30",
     iconColor: "text-blue-400",
-    glowColor: "rgba(59, 130, 246, 0.2)",
+    glowColor: "rgba(59, 130, 246, 0.2)"
   },
   {
     min: 50,
@@ -64,7 +64,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Sparkles,
     badgeStyle: "bg-purple-500/15 text-purple-300 border-purple-500/35",
     iconColor: "text-purple-400",
-    glowColor: "rgba(168, 85, 247, 0.25)",
+    glowColor: "rgba(168, 85, 247, 0.25)"
   },
   {
     min: 100,
@@ -75,7 +75,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Award,
     badgeStyle: "bg-amber-400/20 text-amber-300 border-amber-400/40",
     iconColor: "text-amber-400",
-    glowColor: "rgba(251, 191, 36, 0.25)",
+    glowColor: "rgba(251, 191, 36, 0.25)"
   },
   {
     min: 250,
@@ -86,7 +86,7 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     icon: Flame,
     badgeStyle: "bg-orange-500/20 text-orange-300 border-orange-500/40",
     iconColor: "text-orange-400",
-    glowColor: "rgba(249, 115, 22, 0.3)",
+    glowColor: "rgba(249, 115, 22, 0.3)"
   },
   {
     min: 500,
@@ -95,55 +95,40 @@ export const BADGE_TIERS: readonly BadgeTier[] = [
     level: "Tier 7",
     description: "The ultimate movie authority and vault master.",
     icon: Crown,
-    badgeStyle:
-      "bg-gradient-to-r from-amber-500/25 via-yellow-400/25 to-primary/30 text-yellow-300 border-yellow-400/60 shadow-lg shadow-yellow-500/10",
+    badgeStyle: "bg-gradient-to-r from-amber-500/25 via-yellow-400/25 to-primary/30 text-yellow-300 border-yellow-400/60 shadow-lg shadow-yellow-500/10",
     iconColor: "text-yellow-400",
-    glowColor: "rgba(234, 179, 8, 0.4)",
-  },
+    glowColor: "rgba(234, 179, 8, 0.4)"
+  }
 ];
 
-export interface UserBadge {
+export const getUserBadge = (watchedCount: number): {
   current: BadgeTier;
   next: BadgeTier | null;
   progress: number;
   neededForNext: number;
-}
+} => {
+  const current = BADGE_TIERS.find(tier => {
+    if (tier.max === null) return watchedCount >= tier.min;
+    return watchedCount >= tier.min && watchedCount <= tier.max;
+  }) || BADGE_TIERS[0];
 
-export const getUserBadge = (watchedCount: number): UserBadge => {
-  const count = Math.max(0, Math.floor(watchedCount));
+  const currentIndex = BADGE_TIERS.indexOf(current);
+  const next = currentIndex < BADGE_TIERS.length - 1 ? BADGE_TIERS[currentIndex + 1] : null;
 
-  const currentIndex = BADGE_TIERS.findIndex(
-    (tier) =>
-      count >= tier.min &&
-      (tier.max === null || count <= tier.max),
-  );
+  let progress = 100;
+  let neededForNext = 0;
 
-  const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-  const current = BADGE_TIERS[safeIndex];
-  const next = BADGE_TIERS[safeIndex + 1] ?? null;
-
-  if (!next) {
-    return {
-      current,
-      next: null,
-      progress: 100,
-      neededForNext: 0,
-    };
+  if (next) {
+    const range = next.min - current.min;
+    const currentProgress = watchedCount - current.min;
+    progress = Math.min(Math.round((currentProgress / range) * 100), 100);
+    neededForNext = next.min - watchedCount;
   }
-
-  const range = next.min - current.min;
-  const progress = Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(((count - current.min) / range) * 100),
-    ),
-  );
 
   return {
     current,
     next,
     progress,
-    neededForNext: Math.max(0, next.min - count),
+    neededForNext
   };
 };

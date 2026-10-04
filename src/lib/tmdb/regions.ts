@@ -1,75 +1,51 @@
-import type { MediaType, Region } from "./types";
+import { MediaType, Region } from './types';
 
-type RegionParams = Record<string, string>;
+/**
+ * Returns the earliest relevant start year for each category and regional filter
+ * to avoid rendering years with zero available content on TMDB.
+ */
+export const getStartYear = (category: MediaType, region: Region): number => {
+  if (category === "anime") {
+    return 1961;
+  }
 
-const START_YEARS: Record<MediaType, Partial<Record<Region, number>>> = {
-  movie: {
-    punjabi: 1970,
-    "south-indian": 1950,
-    animated: 1960,
-    bollywood: 1950,
-    hollywood: 1950,
-  },
-  tv: {
-    hollywood: 1950,
-    all: 1950,
-    bollywood: 1985,
-    punjabi: 2000,
-    "south-indian": 1995,
-    animated: 1965,
-  },
-  anime: {},
-  "k-drama": {},
+  if (category === "k-drama") {
+    return 1970;
+  }
+
+  if (category === "tv") {
+    switch (region) {
+      case "hollywood": return 1950;
+      case "all": return 1950;
+      case "bollywood": return 1985;
+      case "punjabi": return 2000;
+      case "south-indian": return 1995;
+      case "animated": return 1965;
+      default: return 1950;
+    }
+  }
+
+  // category === "movie"
+  switch (region) {
+    case "punjabi": return 1970;
+    case "south-indian": return 1950;
+    case "animated": return 1960;
+    case "bollywood": return 1950;
+    case "hollywood": return 1950;
+    default: return 1950;
+  }
 };
 
-const DEFAULT_START_YEAR: Record<MediaType, number> = {
-  movie: 1950,
-  tv: 1950,
-  anime: 1961,
-  "k-drama": 1970,
+export const getRegionParams = (region: Region): Record<string, string> => {
+  switch (region) {
+    case "bollywood": return { with_original_language: "hi", region: "IN" };
+    case "punjabi": return { with_original_language: "pa", region: "IN" };
+    case "south-indian": return { with_original_language: "te|ta|kn|ml", region: "IN" };
+    case "hollywood": return { with_original_language: "en", region: "US" };
+    case "animated": return { with_genres: "16" };
+    case "korean": return { with_original_language: "ko" };
+    case "indian": return { with_original_language: "hi|te|ta|kn|ml|pa", region: "IN" };
+    case "international": return { with_original_language: "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa" };
+    default: return {};
+  }
 };
-
-export const getStartYear = (
-  category: MediaType,
-  region: Region,
-): number =>
-  START_YEARS[category][region] ??
-  DEFAULT_START_YEAR[category];
-
-const REGION_PARAMS: Partial<Record<Region, RegionParams>> = {
-  bollywood: {
-    with_original_language: "hi",
-    region: "IN",
-  },
-  punjabi: {
-    with_original_language: "pa",
-    region: "IN",
-  },
-  "south-indian": {
-    with_original_language: "te|ta|kn|ml",
-    region: "IN",
-  },
-  hollywood: {
-    with_original_language: "en",
-    region: "US",
-  },
-  animated: {
-    with_genres: "16",
-  },
-  korean: {
-    with_original_language: "ko",
-  },
-  indian: {
-    with_original_language: "hi|te|ta|kn|ml|pa",
-    region: "IN",
-  },
-  international: {
-    with_original_language:
-      "fr|de|es|it|ja|ko|zh|hi|te|ta|kn|ml|pa",
-  },
-};
-
-export const getRegionParams = (
-  region: Region,
-): RegionParams =>
-  REGION_PARAMS[region] ?? {};

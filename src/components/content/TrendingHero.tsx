@@ -1,25 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Play,
-  Sparkles,
-  Star,
-  X,
-} from "lucide-react";
-import type { ContentItem } from "@/lib/tmdb";
-import {
-  fetchTrailers,
-  fetchTrending,
-  fetchTvSeasons,
-  getCachedTvSeason,
-  getSeasonDisplayText,
-  isSeriesMediaType,
-} from "@/lib/tmdb";
-import { cn } from "@/lib/utils";
-import { showError } from "@/utils/toast";
+"use client";
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Star, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
+import { ContentItem, fetchTrending, fetchTrailers, fetchTvSeasons, getCachedTvSeason, getSeasonDisplayText, isSeriesMediaType } from '@/lib/tmdb';
+import { cn } from '@/lib/utils';
+import { showError } from '@/utils/toast';
 
 export const TrendingHero = () => {
   const [trending, setTrending] = useState<ContentItem[]>([]);
@@ -28,148 +14,90 @@ export const TrendingHero = () => {
   const [loading, setLoading] = useState(true);
   const [loadingTrailer, setLoadingTrailer] = useState(false);
   const [direction, setDirection] = useState(0);
-  const [currentSeasons, setCurrentSeasons] = useState<number | undefined>();
-
+  const [currentSeasons, setCurrentSeasons] = useState<number | undefined>(undefined);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const current = trending[currentIndex];
   const isSeries = current ? isSeriesMediaType(current.media_type) : false;
 
-  const paginate = useCallback(
-    (newDirection: number) => {
-      setDirection(newDirection);
+  const paginate = useCallback((newDirection: number) => {
+    setDirection(newDirection);
+    setCurrentIndex((prevIndex) => {
+      if (trending.length === 0) return prevIndex;
+      let nextIndex = prevIndex + newDirection;
+      if (nextIndex < 0) nextIndex = trending.length - 1;
+      if (nextIndex >= trending.length) nextIndex = 0;
+      return nextIndex;
+    });
+  }, [trending]);
 
-      setCurrentIndex((previousIndex) => {
-        if (trending.length === 0) {
-          return previousIndex;
-        }
-
-        const nextIndex = previousIndex + newDirection;
-
-        if (nextIndex < 0) {
-          return trending.length - 1;
-        }
-
-        if (nextIndex >= trending.length) {
-          return 0;
-        }
-
-        return nextIndex;
-      });
-    },
-    [trending.length],
-  );
-
+  // Load trending data once on mount
   useEffect(() => {
-    let active = true;
-
-    const loadTrending = async () => {
-      try {
-        const data = await fetchTrending();
-
-        if (active) {
-          setTrending(data);
-          setCurrentIndex(0);
-        }
-      } catch (error) {
-        if (active) {
-          console.error("[TrendingHero] Failed to load trending content:", error);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+    const load = async () => {
+      const data = await fetchTrending();
+      setTrending(data);
+      setLoading(false);
     };
-
-    loadTrending();
-
-    return () => {
-      active = false;
-    };
+    load();
   }, []);
 
+  // Auto-advance every 8s. Re-arms whenever trending or currentIndex changes,
+  // so the timer always calls a fresh "paginate" instead of one stuck on the
+  // empty array from the first render, and it restarts the clock after any
+  // manual navigation (button, dot, or swipe).
   useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    if (trending.length === 0) {
-      return;
-    }
-
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (trending.length === 0) return;
     timerRef.current = setInterval(() => {
       paginate(1);
     }, 8000);
-
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, paginate, trending.length]);
+  }, [trending, currentIndex, paginate]);
 
+  // Season count lookup. Kept above the loading early-return below so hook
+  // order stays identical on every render.
   useEffect(() => {
     if (!current || !isSeries) {
       setCurrentSeasons(undefined);
       return;
     }
-
     if (current.season_count) {
       setCurrentSeasons(current.season_count);
       return;
     }
-
-    const cachedSeasonCount = getCachedTvSeason(current.id);
-
-    if (cachedSeasonCount) {
-      setCurrentSeasons(cachedSeasonCount);
+    const cached = getCachedTvSeason(current.id);
+    if (cached) {
+      setCurrentSeasons(cached);
       return;
     }
-
-    let active = true;
-
+    let isMounted = true;
     fetchTvSeasons(current.id)
       .then((count) => {
-        if (active && count) {
+        if (isMounted && count) {
           setCurrentSeasons(count);
         }
       })
-      .catch((error) => {
-        if (active) {
-          console.warn(
-            `[TrendingHero] Failed to load seasons for ${current.id}:`,
-            error,
-          );
-        }
+      .catch(() => {
+        // Season count is decorative; ignore failures.
       });
-
     return () => {
-      active = false;
+      isMounted = false;
     };
   }, [current?.id, current?.season_count, isSeries]);
 
   const handleWatchTrailer = async (item: ContentItem) => {
     setLoadingTrailer(true);
-
     try {
       const url = await fetchTrailers(item.id, item.media_type, item.title);
-
       if (url) {
         setTrailerUrl(url);
-        return;
+      } else {
+        const query = encodeURIComponent(`${item.title} official trailer`);
+        window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       }
-
-      const query = encodeURIComponent(`${item.title} official trailer`);
-
-      window.open(
-        `https://www.youtube.com/results?search_query=${query}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } catch {
+    } catch (err) {
       showError("Could not load trailer");
     } finally {
       setLoadingTrailer(false);
@@ -177,19 +105,18 @@ export const TrendingHero = () => {
   };
 
   const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
 
-  const swipePower = (offset: number, velocity: number) =>
-    Math.abs(offset) * velocity;
-
+  // Early return happens AFTER every hook above has run, on every render.
   if (loading || trending.length === 0) {
     return (
       <div className="w-full aspect-[16/8] md:aspect-[21/9] md:max-h-[360px] lg:aspect-[32/10] lg:max-h-none bg-neutral-900/60 animate-pulse rounded-2xl md:rounded-3xl border border-white/15 mb-5" />
     );
   }
 
-  const seasonText = isSeries
-    ? getSeasonDisplayText(currentSeasons)
-    : "";
+  const seasonText = isSeries ? getSeasonDisplayText(currentSeasons) : '';
 
   const variants = {
     enter: (dir: number) => ({
@@ -225,7 +152,7 @@ export const TrendingHero = () => {
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={1}
-          onDragEnd={(_, { offset, velocity }) => {
+          onDragEnd={(e, { offset, velocity }) => {
             const swipe = swipePower(offset.x, velocity.x);
 
             if (swipe < -swipeConfidenceThreshold) {
@@ -241,7 +168,7 @@ export const TrendingHero = () => {
             alt={current.title}
             className="w-full h-full object-cover pointer-events-none"
           />
-
+          {/* Softened Vignettes & Gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/20 to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_60%,_rgba(0,0,0,0.17)_1000%)] pointer-events-none" />
@@ -250,18 +177,13 @@ export const TrendingHero = () => {
 
       <div className="hidden lg:flex absolute inset-y-0 left-0 right-0 items-center justify-between px-6 z-20 pointer-events-none">
         <button
-          type="button"
           onClick={() => paginate(-1)}
-          aria-label="Previous trending title"
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
         >
           <ChevronLeft size={22} />
         </button>
-
         <button
-          type="button"
           onClick={() => paginate(1)}
-          aria-label="Next trending title"
           className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary hover:text-black transition-all pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
         >
           <ChevronRight size={22} />
@@ -278,21 +200,16 @@ export const TrendingHero = () => {
         >
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 bg-primary text-black text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
-              <Sparkles size={10} aria-hidden="true" />
-              Trending
+              <Sparkles size={10} /> Trending
             </span>
-
             <div className="flex items-center gap-1 text-primary bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-primary/30">
-              <Star size={11} fill="currentColor" aria-hidden="true" />
-              <span className="text-[11px] md:text-xs font-bold">
-                {current.vote_average.toFixed(1)}
-              </span>
+              <Star size={11} fill="currentColor" />
+              <span className="text-[11px] md:text-xs font-bold">{current.vote_average.toFixed(1)}</span>
             </div>
           </div>
 
           <h2 className="text-lg md:text-3xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg truncate max-w-full">
             {current.title}
-
             {seasonText && (
               <span className="text-white/60 font-medium text-xs md:text-xl lg:text-2xl ml-2 inline-block whitespace-nowrap">
                 {seasonText}
@@ -306,17 +223,11 @@ export const TrendingHero = () => {
 
           <div className="flex items-center gap-3 pt-0.5 pointer-events-auto">
             <button
-              type="button"
               onClick={() => handleWatchTrailer(current)}
               disabled={loadingTrailer}
               className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-black px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-[11px] md:text-xs hover:scale-105 transition-transform shadow-lg shadow-primary/20 disabled:opacity-50"
             >
-              {loadingTrailer ? (
-                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-              ) : (
-                <Play size={12} fill="currentColor" aria-hidden="true" />
-              )}
-
+              {loadingTrailer ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
               {loadingTrailer ? "Loading..." : "Watch Trailer"}
             </button>
           </div>
@@ -324,23 +235,16 @@ export const TrendingHero = () => {
       </div>
 
       <div className="absolute bottom-3 md:bottom-4 lg:bottom-6 right-4 md:right-6 lg:right-10 flex gap-1.5 z-20">
-        {trending.map((item, index) => (
+        {trending.map((_, i) => (
           <button
-            key={item.id}
-            type="button"
+            key={i}
             onClick={() => {
-              if (index === currentIndex) return;
-
-              setDirection(index > currentIndex ? 1 : -1);
-              setCurrentIndex(index);
+              setDirection(i > currentIndex ? 1 : -1);
+              setCurrentIndex(i);
             }}
-            aria-label={`Go to trending title ${index + 1}`}
-            aria-current={currentIndex === index ? "true" : undefined}
             className={cn(
               "h-1.5 rounded-full transition-all duration-500",
-              currentIndex === index
-                ? "w-5 md:w-6 lg:w-8 bg-primary"
-                : "w-1.5 lg:w-2 bg-white/30 hover:bg-white/50",
+              currentIndex === i ? "w-5 md:w-6 lg:w-8 bg-primary" : "w-1.5 lg:w-2 bg-white/30 hover:bg-white/50"
             )}
           />
         ))}
@@ -360,23 +264,20 @@ export const TrendingHero = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-              onClick={(event) => event.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <iframe
-                src={`${trailerUrl}${trailerUrl.includes("?") ? "&" : "?"}autoplay=1&rel=0`}
+                src={`${trailerUrl}${trailerUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0`}
                 className="w-full h-full"
                 title={`${current.title} trailer`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
-
               <button
-                type="button"
                 onClick={() => setTrailerUrl(null)}
-                aria-label="Close trailer"
                 className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white z-10"
               >
-                <X size={20} aria-hidden="true" />
+                <X size={20} />
               </button>
             </motion.div>
           </motion.div>

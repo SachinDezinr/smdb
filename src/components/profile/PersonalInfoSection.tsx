@@ -1,24 +1,17 @@
-import { useState, type FormEvent } from "react";
-import type { User } from "@supabase/supabase-js";
-import { motion } from "framer-motion";
-import {
-  Check,
-  Edit3,
-  Loader2,
-  UserCheck,
-} from "lucide-react";
+"use client";
 
-import { supabase } from "@/lib/supabase";
-import { setCachedProfile } from "@/lib/profileStore";
-import { showError, showSuccess } from "@/utils/toast";
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { UserCheck, Edit3, Check, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { showSuccess, showError } from '@/utils/toast';
+import { setCachedProfile } from '@/lib/profileStore';
 
 interface PersonalInfoSectionProps {
-  user: User;
+  user: any;
   initialUsername: string;
   onUsernameUpdated: (newUsername: string) => void;
 }
-
-const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
 
 export const PersonalInfoSection = ({
   user,
@@ -29,46 +22,34 @@ export const PersonalInfoSection = ({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleUpdateProfile = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!USERNAME_REGEX.test(username)) {
-      showError(
-        "Username must start/end with letters, and only contain letters, numbers, _ or .",
-      );
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const usernameRegex = /^[a-zA-Z][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
+    if (!usernameRegex.test(username)) {
+      showError("Username must start/end with letters, and only contain letters, numbers, _ or .");
       return;
     }
 
     setLoading(true);
-
     try {
       const { error: authError } = await supabase.auth.updateUser({
         data: { username },
       });
-
-      if (authError) {
-        throw authError;
-      }
+      if (authError) throw authError;
 
       const { error: profileError } = await supabase
-        .from("profiles")
+        .from('profiles')
         .update({ username })
-        .eq("id", user.id);
+        .eq('id', user.id);
 
-      if (profileError) {
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
       setCachedProfile({ username });
       onUsernameUpdated(username);
       showSuccess("Profile updated successfully!");
       setIsEditing(false);
-    } catch (error) {
-      showError(
-        error instanceof Error
-          ? error.message
-          : "Failed to update profile.",
-      );
+    } catch (error: any) {
+      showError(error.message);
     } finally {
       setLoading(false);
     }
@@ -84,25 +65,16 @@ export const PersonalInfoSection = ({
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      aria-labelledby="personal-information-title"
       className="rounded-3xl border border-white/10 bg-neutral-950/70 p-6 md:p-8 backdrop-blur-xl"
     >
       <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
-            <UserCheck size={18} aria-hidden="true" />
+            <UserCheck size={18} />
           </div>
-
           <div>
-            <h3
-              id="personal-information-title"
-              className="text-lg font-bold text-white tracking-tight"
-            >
-              Personal Information
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Manage your display username.
-            </p>
+            <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>
+            <p className="text-xs text-muted-foreground">Manage your display username.</p>
           </div>
         </div>
 
@@ -112,7 +84,7 @@ export const PersonalInfoSection = ({
             onClick={() => setIsEditing(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-primary hover:text-black border border-white/10 hover:border-primary text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex-shrink-0"
           >
-            <Edit3 size={14} aria-hidden="true" />
+            <Edit3 size={14} />
             Edit Profile
           </button>
         )}
@@ -121,49 +93,26 @@ export const PersonalInfoSection = ({
       <form onSubmit={handleUpdateProfile} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label
-              htmlFor="profile-username"
-              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-            >
-              Username
-            </label>
-
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Username</label>
             <input
-              id="profile-username"
               type="text"
               disabled={!isEditing}
-              autoComplete="username"
               className="w-full bg-white/[0.04] border border-white/10 focus:border-primary/60 rounded-xl py-3 px-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
             />
-
-            <p className="text-[11px] text-muted-foreground">
-              Used for friend searches and social comparisons.
-            </p>
+            <p className="text-[11px] text-muted-foreground">Used for friend searches and social comparisons.</p>
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="profile-email"
-              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-            >
-              Registered Email
-            </label>
-
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Registered Email</label>
             <input
-              id="profile-email"
               type="email"
               disabled
-              autoComplete="email"
               className="w-full bg-white/[0.02] border border-white/5 rounded-xl py-3 px-4 text-sm text-white/50 cursor-not-allowed"
-              value={user.email ?? ""}
-              readOnly
+              value={user?.email || ''}
             />
-
-            <p className="text-[11px] text-muted-foreground">
-              Contact support to change your account email.
-            </p>
+            <p className="text-[11px] text-muted-foreground">Contact support to change your account email.</p>
           </div>
         </div>
 
@@ -176,21 +125,12 @@ export const PersonalInfoSection = ({
             >
               Cancel
             </button>
-
             <button
               type="submit"
               disabled={loading}
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-black text-xs font-bold rounded-xl transition-all shadow-md shadow-primary/20 disabled:opacity-50"
             >
-              {loading ? (
-                <Loader2
-                  className="animate-spin"
-                  size={14}
-                  aria-hidden="true"
-                />
-              ) : (
-                <Check size={14} aria-hidden="true" />
-              )}
+              {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
               Save Changes
             </button>
           </div>

@@ -1,43 +1,29 @@
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import {
-  ChevronRight,
-  Info,
-  MessageSquare,
-  Users,
-} from "lucide-react";
+"use client";
+
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Users, Info, MessageSquare, ChevronRight } from 'lucide-react';
 
 interface SocialLinksSectionProps {
   pendingCount: number;
 }
 
-export const SocialLinksSection = ({
-  pendingCount,
-}: SocialLinksSectionProps) => {
+export const SocialLinksSection = ({ pendingCount }: SocialLinksSectionProps) => {
   return (
     <motion.section
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      aria-labelledby="social-links-title"
       className="rounded-3xl border border-white/10 bg-neutral-950/70 p-6 md:p-8 backdrop-blur-xl"
     >
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
         <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
-          <Users size={18} aria-hidden="true" />
+          <Users size={18} />
         </div>
-
         <div>
-          <h3
-            id="social-links-title"
-            className="text-lg font-bold text-white tracking-tight"
-          >
-            Social & Quick Links
-          </h3>
-
-          <p className="text-xs text-muted-foreground">
-            Manage your movie buddies and explore platform info.
-          </p>
+          <h3 className="text-lg font-bold text-white tracking-tight">Social & Quick Links</h3>
+          <p className="text-xs text-muted-foreground">Manage your movie buddies and explore platform info.</p>
         </div>
       </div>
 
@@ -48,33 +34,23 @@ export const SocialLinksSection = ({
         >
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform">
-              <Users size={18} aria-hidden="true" />
+              <Users size={18} />
             </div>
-
             <div>
               <h4 className="text-sm font-semibold text-white group-hover:text-primary transition-colors">
                 Friends & Social Circle
               </h4>
-
-              <p className="text-xs text-muted-foreground">
-                Compare collections and send friend requests
-              </p>
+              <p className="text-xs text-muted-foreground">Compare collections and send friend requests</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             {pendingCount > 0 && (
-              <span
-                className="px-2 py-0.5 bg-red-500 text-white font-bold text-[10px] rounded-full animate-pulse"
-                aria-label={`${pendingCount} new friend requests`}
-              >
+              <span className="px-2 py-0.5 bg-red-500 text-white font-bold text-[10px] rounded-full animate-pulse">
                 {pendingCount} new
               </span>
             )}
-
             <ChevronRight
               size={16}
-              aria-hidden="true"
               className="text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all"
             />
           </div>
@@ -86,23 +62,17 @@ export const SocialLinksSection = ({
         >
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform">
-              <Info size={18} aria-hidden="true" />
+              <Info size={18} />
             </div>
-
             <div>
               <h4 className="text-sm font-semibold text-white group-hover:text-primary transition-colors">
                 About SMDB
               </h4>
-
-              <p className="text-xs text-muted-foreground">
-                Learn how the platform works and tracking tools
-              </p>
+              <p className="text-xs text-muted-foreground">Learn how the platform works and tracking tools</p>
             </div>
           </div>
-
           <ChevronRight
             size={16}
-            aria-hidden="true"
             className="text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all"
           />
         </Link>
@@ -113,23 +83,17 @@ export const SocialLinksSection = ({
         >
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform">
-              <MessageSquare size={18} aria-hidden="true" />
+              <MessageSquare size={18} />
             </div>
-
             <div>
               <h4 className="text-sm font-semibold text-white group-hover:text-primary transition-colors">
                 Contact Support & Developer
               </h4>
-
-              <p className="text-xs text-muted-foreground">
-                Submit feedback, feature requests, or report issues
-              </p>
+              <p className="text-xs text-muted-foreground">Submit feedback, feature requests, or report issues</p>
             </div>
           </div>
-
           <ChevronRight
             size={16}
-            aria-hidden="true"
             className="text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all"
           />
         </Link>

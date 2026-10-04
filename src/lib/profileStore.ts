@@ -1,8 +1,7 @@
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 export interface ProfileData {
-  user: User;
+  user: any;
   username: string;
   joinedDate: string;
   pendingCount: number;
@@ -10,124 +9,93 @@ export interface ProfileData {
   watchedCount: number;
 }
 
-const CACHE_TTL = 3 * 60 * 1000;
-
 let cachedProfile: ProfileData | null = null;
 let cachedAuthState: boolean | null = null;
 let lastFetched = 0;
+const CACHE_TTL = 1000 * 60 * 3; // 3 minutes
 
 export const getCachedProfile = (): ProfileData | null => cachedProfile;
 
 export const getCachedAuthState = (): boolean | null => {
-  if (cachedAuthState !== null) {
-    return cachedAuthState;
-  }
-
+  if (cachedAuthState !== null) return cachedAuthState;
   try {
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-
-      if (!key || (!key.includes("supabase.auth.token") && !key.startsWith("sb-"))) {
-        continue;
-      }
-
-      const value = localStorage.getItem(key);
-
-      if (value?.includes("access_token") || value?.includes("user")) {
-        cachedAuthState = true;
-        return true;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-'))) {
+        const item = localStorage.getItem(key);
+        if (item && (item.includes('access_token') || item.includes('user'))) {
+          cachedAuthState = true;
+          return true;
+        }
       }
     }
   } catch {
-    return null;
+    // ignore storage access errors
   }
-
   return null;
 };
 
-export const setCachedAuthState = (isAuthenticated: boolean): void => {
-  cachedAuthState = isAuthenticated;
+export const setCachedAuthState = (isAuth: boolean) => {
+  cachedAuthState = isAuth;
 };
 
-export const setCachedProfile = (
-  data: Partial<ProfileData>,
-): void => {
+export const setCachedProfile = (data: Partial<ProfileData>) => {
   if (!cachedProfile) return;
-
-  cachedProfile = {
-    ...cachedProfile,
-    ...data,
-  };
+  cachedProfile = { ...cachedProfile, ...data };
 };
 
-export const isProfileCacheValid = (): boolean =>
-  cachedProfile !== null &&
-  Date.now() - lastFetched < CACHE_TTL;
-
-export const fetchProfileData = async (
-  force = false,
-): Promise<ProfileData | null> => {
-  if (!force && isProfileCacheValid()) {
+export const fetchProfileData = async (force = false): Promise<ProfileData | null> => {
+  const now = Date.now();
+  if (!force && cachedProfile && now - lastFetched < CACHE_TTL) {
     return cachedProfile;
   }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     cachedAuthState = false;
-    cachedProfile = null;
     return null;
   }
 
   cachedAuthState = true;
 
-  const [pendingResult, friendsResult, watchedResult] =
-    await Promise.all([
-      supabase
-        .from("friends")
-        .select("id", { count: "exact", head: true })
-        .eq("friend_id", user.id)
-        .eq("status", "pending"),
+  let joinedDate = '';
+  if (user.created_at) {
+    const date = new Date(user.created_at);
+    joinedDate = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
 
-      supabase
-        .from("friends")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "accepted"),
-
-      supabase
-        .from("watched_content")
-        .select("content_id", { count: "exact", head: true })
-        .eq("user_id", user.id),
-    ]);
+  const [pendingRes, friendsRes, watchedRes] = await Promise.all([
+    supabase
+      .from('friends')
+      .select('id')
+      .eq('friend_id', user.id)
+      .eq('status', 'pending'),
+    supabase
+      .from('friends')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'accepted'),
+    supabase
+      .from('watched_content')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+  ]);
 
   const profileData: ProfileData = {
     user,
-    username:
-      typeof user.user_metadata?.username === "string"
-        ? user.user_metadata.username
-        : "",
-    joinedDate: user.created_at
-      ? new Date(user.created_at).toLocaleDateString("en-US", {
-          month: "short",
-          year: "numeric",
-        })
-      : "",
-    pendingCount: pendingResult.count ?? 0,
-    friendsCount: friendsResult.count ?? 0,
-    watchedCount: watchedResult.count ?? 0,
+    username: user.user_metadata?.username || '',
+    joinedDate,
+    pendingCount: pendingRes.data?.length || 0,
+    friendsCount: friendsRes.data?.length || 0,
+    watchedCount: watchedRes.count || 0
   };
 
   cachedProfile = profileData;
-  lastFetched = Date.now();
-
+  lastFetched = now;
   return profileData;
 };
 
-export const clearCachedProfile = (): void => {
+export const clearCachedProfile = () => {
   cachedProfile = null;
   cachedAuthState = false;
   lastFetched = 0;

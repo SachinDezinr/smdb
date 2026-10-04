@@ -1,34 +1,29 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
-interface ScrollPosition {
-  x: number;
-  y: number;
-}
-
-const scrollPositions = new Map<string, ScrollPosition>();
+const scrollPositions = new Map();
 
 export const RouteScrollToTop = () => {
   const location = useLocation();
-  const routeKey = `${location.pathname}${location.search}`;
+  const { pathname, search } = location;
+
+  // Include query parameters so different filtered pages can have
+  // separate scroll positions.
+  const routeKey = `${pathname}${search}`;
+
   const previousRouteRef = useRef(routeKey);
-  const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Prevent the browser from restoring its own position.
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
-
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-      }
-    };
   }, []);
 
   useEffect(() => {
     const previousRoute = previousRouteRef.current;
 
+    // Save the scroll position of the page we are leaving.
     if (previousRoute !== routeKey) {
       scrollPositions.set(previousRoute, {
         x: window.scrollX,
@@ -38,51 +33,49 @@ export const RouteScrollToTop = () => {
 
     previousRouteRef.current = routeKey;
 
+    // Restore the saved position for the new route.
     const savedPosition = scrollPositions.get(routeKey);
 
+    // Wait until the new page has rendered.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        window.scrollTo({
-          left: savedPosition?.x ?? 0,
-          top: savedPosition?.y ?? 0,
-          behavior: "instant",
-        });
+        if (savedPosition) {
+          window.scrollTo({
+            left: savedPosition.x,
+            top: savedPosition.y,
+            behavior: "instant",
+          });
+        } else {
+          // First visit to this route.
+          window.scrollTo({
+            left: 0,
+            top: 0,
+            behavior: "instant",
+          });
+        }
       });
     });
   }, [routeKey]);
 
   useEffect(() => {
-    const savePosition = () => {
-      if (frameRef.current !== null) {
-        return;
-      }
-
-      frameRef.current = requestAnimationFrame(() => {
-        scrollPositions.set(routeKey, {
-          x: window.scrollX,
-          y: window.scrollY,
-        });
-
-        frameRef.current = null;
+    // Continuously keep the latest position for the current route.
+    const handleScroll = () => {
+      scrollPositions.set(routeKey, {
+        x: window.scrollX,
+        y: window.scrollY,
       });
     };
 
-    window.addEventListener("scroll", savePosition, {
-      passive: true,
-    });
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      }
-
+      // Save one final position before leaving the page/component.
       scrollPositions.set(routeKey, {
         x: window.scrollX,
         y: window.scrollY,
       });
 
-      window.removeEventListener("scroll", savePosition);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, [routeKey]);
 

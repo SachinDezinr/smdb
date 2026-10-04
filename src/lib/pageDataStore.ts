@@ -1,3 +1,5 @@
+// In-memory / session-backed stores to prevent refetch spinners on tab/page transitions
+
 export interface StatsData {
   total: number;
   yearTotal: number;
@@ -11,56 +13,40 @@ export interface StatsData {
   };
 }
 
-export interface SocialCircleData {
-  friends: unknown[];
-  incomingRequests: unknown[];
-  sentRequests: unknown[];
-}
-
-const STATS_TTL = 5 * 60 * 1000;
-const SOCIAL_TTL = 3 * 60 * 1000;
-
 let cachedStats: StatsData | null = null;
 let statsLastFetched = 0;
-
-let cachedSocialCircle: SocialCircleData | null = null;
-let socialCircleLastFetched = 0;
+const STATS_TTL = 1000 * 60 * 5; // 5 minutes
 
 export const getCachedStats = (): StatsData | null => cachedStats;
 
-export const setCachedStats = (stats: StatsData): void => {
+export const setCachedStats = (stats: StatsData) => {
   cachedStats = stats;
   statsLastFetched = Date.now();
 };
 
-export const isStatsCacheValid = (): boolean =>
-  cachedStats !== null && Date.now() - statsLastFetched < STATS_TTL;
-
-export const clearCachedStats = (): void => {
+export const clearCachedStats = () => {
   cachedStats = null;
   statsLastFetched = 0;
 };
 
-export const getCachedSocialCircle = (): SocialCircleData | null =>
-  cachedSocialCircle;
+export interface SocialCircleData {
+  friends: any[];
+  incomingRequests: any[];
+  sentRequests: any[];
+}
 
-export const setCachedSocialCircle = (
-  data: SocialCircleData,
-): void => {
+let cachedSocialCircle: SocialCircleData | null = null;
+let socialCircleLastFetched = 0;
+const SOCIAL_TTL = 1000 * 60 * 3; // 3 minutes
+
+export const getCachedSocialCircle = (): SocialCircleData | null => cachedSocialCircle;
+
+export const setCachedSocialCircle = (data: SocialCircleData) => {
   cachedSocialCircle = data;
   socialCircleLastFetched = Date.now();
 };
 
-export const isSocialCircleCacheValid = (): boolean =>
-  cachedSocialCircle !== null &&
-  Date.now() - socialCircleLastFetched < SOCIAL_TTL;
-
-export const clearCachedSocialCircle = (): void => {
+export const clearCachedSocialCircle = () => {
   cachedSocialCircle = null;
   socialCircleLastFetched = 0;
-};
-
-export const clearPageDataCache = (): void => {
-  clearCachedStats();
-  clearCachedSocialCircle();
 };

@@ -1,1054 +1,335 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+"use client";
 
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
-
-import {
-  Compass,
-  Search,
-  X,
-} from "lucide-react";
-
-import { Navigation } from "@/components/layout/Navigation";
-import { TrendingHero } from "@/components/content/TrendingHero";
-import { CatalogFilters } from "@/components/content/CatalogFilters";
-import { CatalogSearchResults } from "@/components/content/CatalogSearchResults";
-import { YearSection } from "@/components/content/YearSection";
-import { ScrollToTop } from "@/components/layout/ScrollToTop";
-
-import {
-  ContentItem,
-  ContentCredits,
-  fetchContent,
-  getCachedTvSeason,
-  getStartYear,
-  MediaType,
-  Region,
-} from "@/lib/tmdb";
-
-import { supabase } from "@/lib/supabase";
-
-import {
-  showError,
-  showSuccess,
-} from "@/utils/toast";
-
-import {
-  getCatalogState,
-  setCatalogState,
-} from "@/lib/catalogStore";
-
-import {
-  addCollectionItem,
-  removeCollectionItem,
-} from "@/lib/collectionStore";
-
-/* -------------------------------------------------------------------------- */
-/* Constants                                                                  */
-/* -------------------------------------------------------------------------- */
-
-const SEARCH_DEBOUNCE_MS = 350;
-
-const SCROLL_HEADER_OFFSET = 80;
-
-const EMPTY_ITEMS: ContentItem[] = [];
-
-/* -------------------------------------------------------------------------- */
-/* Component                                                                  */
-/* -------------------------------------------------------------------------- */
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigation } from '@/components/layout/Navigation';
+import { TrendingHero } from '@/components/content/TrendingHero';
+import { CatalogFilters } from '@/components/content/CatalogFilters';
+import { CatalogSearchResults } from '@/components/content/CatalogSearchResults';
+import { YearSection } from '@/components/content/YearSection';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { fetchContent, ContentItem, MediaType, Region, getStartYear, getCachedTvSeason } from '@/lib/tmdb';
+import { Search, Compass, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { showSuccess, showError } from '@/utils/toast';
+import { getCatalogState, setCatalogState } from '@/lib/catalogStore';
+import { addCollectionItem, removeCollectionItem } from '@/lib/collectionStore';
 
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const initialStore = getCatalogState();
+  const [activeCategory, setActiveCategory] = useState<MediaType>(initialStore.activeCategory);
+  const [activeRegion, setActiveRegion] = useState<Region>(initialStore.activeRegion);
+  const [searchQuery, setSearchQuery] = useState(initialStore.searchQuery);
+  const [isSearching, setIsSearching] = useState(!!initialStore.searchQuery);
+  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
+  const [expandedYears, setExpandedYears] = useState<number[]>(initialStore.expandedYears);
+  const [yearData, setYearData] = useState<Record<number, ContentItem[]>>(initialStore.yearData);
+  const [yearPages, setYearPages] = useState<Record<number, number>>(initialStore.yearPages);
+  const [loadingYears, setLoadingYears] = useState<Record<number, boolean>>({});
+  const [watchedIds, setWatchedIds] = useState<number[]>(initialStore.watchedIds);
+  const [highlightedYear, setHighlightedYear] = useState<number | null>(null);
 
-  /*
-   * Read the persistent catalog state once.
-   * This avoids repeatedly calling getCatalogState()
-   * during renders.
-   */
-  const initialStore = useMemo(
-    () => getCatalogState(),
-    [],
-  );
+  const prevFilters = useRef({ category: activeCategory, region: activeRegion });
+  const isInitialMount = useRef(true);
+  // Bumped every time category/region changes so a fetch started under the
+  // old filters can tell, when it resolves, that it's stale and drop itself
+  // instead of merging old-filter results into the currently displayed data.
+  const requestGeneration = useRef(0);
 
-  const [
-    activeCategory,
-    setActiveCategory,
-  ] = useState<MediaType>(
-    initialStore.activeCategory,
-  );
-
-  const [
-    activeRegion,
-    setActiveRegion,
-  ] = useState<Region>(
-    initialStore.activeRegion,
-  );
-
-  const [
-    searchQuery,
-    setSearchQuery,
-  ] = useState(
-    initialStore.searchQuery,
-  );
-
-  const [
-    isSearching,
-    setIsSearching,
-  ] = useState(
-    Boolean(initialStore.searchQuery),
-  );
-
-  const [
-    searchResults,
-    setSearchResults,
-  ] = useState<ContentItem[]>(
-    EMPTY_ITEMS,
-  );
-
-  const [
-    expandedYears,
-    setExpandedYears,
-  ] = useState<number[]>(
-    initialStore.expandedYears,
-  );
-
-  const [
-    yearData,
-    setYearData,
-  ] = useState<
-    Record<number, ContentItem[]>
-  >(
-    initialStore.yearData,
-  );
-
-  const [
-    yearPages,
-    setYearPages,
-  ] = useState<
-    Record<number, number>
-  >(
-    initialStore.yearPages,
-  );
-
-  const [
-    loadingYears,
-    setLoadingYears,
-  ] = useState<
-    Record<number, boolean>
-  >({});
-
-  const [
-    watchedIds,
-    setWatchedIds,
-  ] = useState<number[]>(
-    initialStore.watchedIds,
-  );
-
-  const [
-    highlightedYear,
-    setHighlightedYear,
-  ] = useState<number | null>(
-    null,
-  );
-
-  /*
-   * Used to invalidate requests that started under
-   * previous category/region filters.
-   */
-  const requestGeneration =
-    useRef(0);
-
-  /*
-   * Prevent unnecessary filter initialization logic.
-   */
-  const previousFilters =
-    useRef({
-      category: activeCategory,
-      region: activeRegion,
-    });
-
-  /*
-   * Used to invalidate old search requests.
-   */
-  const searchGeneration =
-    useRef(0);
-
-  const currentYear =
-    new Date().getFullYear();
-
-  /* ------------------------------------------------------------------------ */
-  /* Derived years                                                            */
-  /* ------------------------------------------------------------------------ */
+  const currentYear = new Date().getFullYear();
 
   const years = useMemo(() => {
-    const startYear =
-      getStartYear(
-        activeCategory,
-        activeRegion,
-      );
+    const startYear = getStartYear(activeCategory, activeRegion);
+    const count = Math.max(1, currentYear - startYear + 1);
+    return Array.from({ length: count }, (_, i) => currentYear - i);
+  }, [activeCategory, activeRegion, currentYear]);
 
-    const count = Math.max(
-      1,
-      currentYear -
-        startYear +
-        1,
-    );
-
-    return Array.from(
-      { length: count },
-      (_, index) =>
-        currentYear - index,
-    );
-  }, [
-    activeCategory,
-    activeRegion,
-    currentYear,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Watched content                                                          */
-  /* ------------------------------------------------------------------------ */
-
-  const fetchWatchedIds =
-    useCallback(async () => {
-      const {
-        data: { user },
-        error: userError,
-      } =
-        await supabase.auth.getUser();
-
-      if (userError) {
-        console.error(
-          "[Collection] Failed to get user:",
-          userError.message,
-        );
-
-        setWatchedIds([]);
-        return;
-      }
-
+  // Watched IDs depend only on who is logged in, not on category/region/search,
+  // so this runs once on mount and again whenever auth state changes -
+  // not on every filter toggle like before.
+  useEffect(() => {
+    const fetchWatchedIds = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setWatchedIds([]);
         return;
       }
-
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from("watched_content")
-          .select("content_id")
-          .eq(
-            "user_id",
-            user.id,
-          );
-
-      if (error) {
-        console.error(
-          "[Collection] Failed to load watched IDs:",
-          error.message,
-        );
-
-        return;
+      const { data } = await supabase
+        .from('watched_content')
+        .select('content_id')
+        .eq('user_id', user.id);
+      if (data) {
+        setWatchedIds(data.map((item) => item.content_id));
       }
+    };
 
-      setWatchedIds(
-        data?.map(
-          (item) =>
-            item.content_id,
-        ) ?? [],
-      );
-    }, []);
+    fetchWatchedIds();
 
-  useEffect(() => {
-    void fetchWatchedIds();
-
-    const {
-      data: {
-        subscription,
-      },
-    } =
-      supabase.auth.onAuthStateChange(
-        () => {
-          void fetchWatchedIds();
-        },
-      );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchWatchedIds();
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchWatchedIds]);
+  }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* Persistent catalog state                                                 */
-  /* ------------------------------------------------------------------------ */
-
+  // Mirror watchedIds into the persistent store whenever it actually changes.
   useEffect(() => {
-    setCatalogState({
-      activeCategory,
-      activeRegion,
-    });
-  }, [
-    activeCategory,
-    activeRegion,
-  ]);
-
-  useEffect(() => {
-    setCatalogState({
-      searchQuery,
-    });
-  }, [searchQuery]);
-
-  useEffect(() => {
-    setCatalogState({
-      watchedIds,
-    });
+    setCatalogState({ watchedIds });
   }, [watchedIds]);
 
+  // Mirror expandedYears into the persistent store whenever it changes.
   useEffect(() => {
-    setCatalogState({
-      expandedYears,
-    });
+    setCatalogState({ expandedYears });
   }, [expandedYears]);
 
+  // Mirror yearData/yearPages into the persistent store whenever they change.
   useEffect(() => {
-    setCatalogState({
-      yearData,
-      yearPages,
-    });
-  }, [
-    yearData,
-    yearPages,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Search                                                                   */
-  /* ------------------------------------------------------------------------ */
-
-  const performSearch =
-    useCallback(
-      async (
-        query: string,
-      ) => {
-        const trimmedQuery =
-          query.trim();
-
-        if (!trimmedQuery) {
-          setIsSearching(false);
-          setSearchResults(
-            EMPTY_ITEMS,
-          );
-          return;
-        }
-
-        const generation =
-          ++searchGeneration.current;
-
-        setIsSearching(true);
-
-        setLoadingYears(
-          (previous) => ({
-            ...previous,
-            0: true,
-          }),
-        );
-
-        try {
-          const results =
-            await fetchContent(
-              activeCategory,
-              undefined,
-              1,
-              trimmedQuery,
-              activeRegion,
-            );
-
-          /*
-           * User may have typed another query
-           * while this request was running.
-           */
-          if (
-            generation !==
-            searchGeneration.current
-          ) {
-            return;
-          }
-
-          setSearchResults(
-            results,
-          );
-        } catch (error) {
-          if (
-            generation !==
-            searchGeneration.current
-          ) {
-            return;
-          }
-
-          console.error(
-            "[Catalog] Search failed:",
-            error,
-          );
-
-          showError(
-            "Search failed. Please try again.",
-          );
-
-          setSearchResults(
-            EMPTY_ITEMS,
-          );
-        } finally {
-          if (
-            generation ===
-            searchGeneration.current
-          ) {
-            setLoadingYears(
-              (previous) => ({
-                ...previous,
-                0: false,
-              }),
-            );
-          }
-        }
-      },
-      [
-        activeCategory,
-        activeRegion,
-      ],
-    );
-
-  useEffect(() => {
-    const trimmedQuery =
-      searchQuery.trim();
-
-    const timer =
-      window.setTimeout(() => {
-        if (!trimmedQuery) {
-          setIsSearching(false);
-          setSearchResults(
-            EMPTY_ITEMS,
-          );
-          return;
-        }
-
-        void performSearch(
-          trimmedQuery,
-        );
-      }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-
-      /*
-       * Invalidate a request that may still
-       * resolve after the input changes.
-       */
-      searchGeneration.current += 1;
-    };
-  }, [
-    searchQuery,
-    performSearch,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Year content                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const loadYearContent =
-    useCallback(
-      async (
-        year: number,
-        page = 1,
-      ) => {
-        const generation =
-          requestGeneration.current;
-
-        setLoadingYears(
-          (previous) => ({
-            ...previous,
-            [year]: true,
-          }),
-        );
-
-        try {
-          const results =
-            await fetchContent(
-              activeCategory,
-              year,
-              page,
-              "",
-              activeRegion,
-            );
-
-          /*
-           * Category or region changed while
-           * this request was running.
-           */
-          if (
-            generation !==
-            requestGeneration.current
-          ) {
-            return;
-          }
-
-          setYearData(
-            (previous) => {
-              if (page === 1) {
-                return {
-                  ...previous,
-                  [year]: results,
-                };
-              }
-
-              const existing =
-                previous[year] ??
-                EMPTY_ITEMS;
-
-              const existingIds =
-                new Set(
-                  existing.map(
-                    (item) =>
-                      item.id,
-                  ),
-                );
-
-              const newItems =
-                results.filter(
-                  (item) =>
-                    !existingIds.has(
-                      item.id,
-                    ),
-                );
-
-              return {
-                ...previous,
-                [year]: [
-                  ...existing,
-                  ...newItems,
-                ],
-              };
-            },
-          );
-
-          setYearPages(
-            (previous) => ({
-              ...previous,
-              [year]: page,
-            }),
-          );
-        } catch (error) {
-          if (
-            generation !==
-            requestGeneration.current
-          ) {
-            return;
-          }
-
-          console.error(
-            `[Catalog] Failed to fetch ${year}:`,
-            error,
-          );
-        } finally {
-          if (
-            generation ===
-            requestGeneration.current
-          ) {
-            setLoadingYears(
-              (previous) => ({
-                ...previous,
-                [year]: false,
-              }),
-            );
-          }
-        }
-      },
-      [
-        activeCategory,
-        activeRegion,
-      ],
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Year controls                                                            */
-  /* ------------------------------------------------------------------------ */
-
-  const toggleYear =
-    useCallback(
-      (year: number) => {
-        const isExpanded =
-          expandedYears.includes(
-            year,
-          );
-
-        setExpandedYears(
-          (previous) =>
-            previous.includes(year)
-              ? previous.filter(
-                  (value) =>
-                    value !== year,
-                )
-              : [
-                  ...previous,
-                  year,
-                ],
-        );
-
-        if (isExpanded) {
-          setHighlightedYear(
-            year,
-          );
-          return;
-        }
-
-        setHighlightedYear(
-          null,
-        );
-
-        if (
-          !yearData[year]
-        ) {
-          void loadYearContent(
-            year,
-            1,
-          );
-        }
-      },
-      [
-        expandedYears,
-        yearData,
-        loadYearContent,
-      ],
-    );
-
-  const handleCloseYear =
-    useCallback(
-      (year: number) => {
-        setExpandedYears(
-          (previous) =>
-            previous.filter(
-              (value) =>
-                value !== year,
-            ),
-        );
-
-        setHighlightedYear(
-          year,
-        );
-
-        window.setTimeout(
-          () => {
-            const element =
-              document.getElementById(
-                `year-section-${year}`,
-              );
-
-            if (!element) {
-              return;
-            }
-
-            const elementPosition =
-              element.getBoundingClientRect()
-                .top;
-
-            const offsetPosition =
-              elementPosition +
-              window.scrollY -
-              SCROLL_HEADER_OFFSET;
-
-            window.scrollTo({
-              top: Math.max(
-                0,
-                offsetPosition,
-              ),
-              behavior:
-                "smooth",
-            });
-          },
-          50,
-        );
-      },
-      [],
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Watched / Collection                                                     */
-  /* ------------------------------------------------------------------------ */
-
-  const toggleWatched =
-    useCallback(
-      async (
-        item: ContentItem,
-      ) => {
-        const {
-          data: { user },
-        } =
-          await supabase.auth.getUser();
-
-        if (!user) {
-          const currentPath =
-            location.pathname +
-            location.search;
-
-          const params =
-            new URLSearchParams({
-              return_to:
-                currentPath || "/",
-
-              action:
-                "add_collection",
-
-              movie_id:
-                String(item.id),
-
-              media_type:
-                item.media_type,
-
-              title: item.title,
-
-              poster_path:
-                item.poster_path,
-
-              release_date:
-                item.release_date,
-
-              vote_average:
-                String(
-                  item.vote_average,
-                ),
-            });
-
-          navigate(
-            `/login?${params.toString()}`,
-          );
-
-          return;
-        }
-
-        const isWatched =
-          watchedIds.includes(
-            item.id,
-          );
-
-        if (isWatched) {
-          const {
-            error,
-          } =
-            await supabase
-              .from(
-                "watched_content",
-              )
-              .delete()
-              .eq(
-                "user_id",
-                user.id,
-              )
-              .eq(
-                "content_id",
-                item.id,
-              );
-
-          if (error) {
-            console.error(
-              "[Collection] Remove failed:",
-              error.message,
-            );
-
-            showError(
-              "Couldn't remove this title.",
-            );
-
-            return;
-          }
-
-          setWatchedIds(
-            (previous) =>
-              previous.filter(
-                (id) =>
-                  id !== item.id,
-              ),
-          );
-
-          removeCollectionItem(
-            item.id,
-          );
-
-          showSuccess(
-            "Removed from collection",
-          );
-
-          return;
-        }
-
-        const collectionItem = {
-          user_id: user.id,
-          content_id: item.id,
-          title: item.title,
-          poster_path:
-            item.poster_path,
-          release_date:
-            item.release_date,
-          vote_average:
-            item.vote_average,
-          media_type:
-            item.media_type,
-          season_count:
-            item.season_count ??
-            getCachedTvSeason(
-              item.id,
-            ) ??
-            null,
-          created_at:
-            new Date().toISOString(),
-        };
-
-        const {
-          error,
-        } =
-          await supabase
-            .from(
-              "watched_content",
-            )
-            .insert(
-              collectionItem,
-            );
-
-        if (error) {
-          console.error(
-            "[Collection] Add failed:",
-            error.message,
-          );
-
-          showError(
-            "Couldn't add this title to your collection.",
-          );
-
-          return;
-        }
-
-        setWatchedIds(
-          (previous) =>
-            previous.includes(
-              item.id,
-            )
-              ? previous
-              : [
-                  ...previous,
-                  item.id,
-                ],
-        );
-
-        addCollectionItem(
-          collectionItem,
-        );
-
-        showSuccess(
-          "Added to your collection!",
-        );
-      },
-      [
-        location.pathname,
-        location.search,
-        navigate,
-        watchedIds,
-      ],
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Filter changes                                                           */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    const previous =
-      previousFilters.current;
-
-    const filterChanged =
-      previous.category !==
-        activeCategory ||
-      previous.region !==
-        activeRegion;
-
-    if (!filterChanged) {
-      /*
-       * On first render, load only the
-       * already-expanded years restored
-       * from the catalog store.
-       */
-      if (
-        Object.keys(yearData)
-          .length === 0 &&
-        !isSearching
-      ) {
-        expandedYears.forEach(
-          (year) => {
-            void loadYearContent(
-              year,
-              1,
-            );
-          },
-        );
+    setCatalogState({ yearData, yearPages });
+  }, [yearData, yearPages]);
+
+  const performSearch = useCallback(
+    async (query: string) => {
+      if (!query.trim()) {
+        setIsSearching(false);
+        setSearchResults([]);
+        setCatalogState({ searchQuery: '' });
+        return;
       }
 
-      return;
-    }
+      setIsSearching(true);
+      setLoadingYears((prev) => ({ ...prev, 0: true }));
+      try {
+        const results = await fetchContent(activeCategory, undefined, 1, query, activeRegion);
+        setSearchResults(results);
+      } catch (error) {
+        showError("Search failed. Please try again.");
+      } finally {
+        setLoadingYears((prev) => ({ ...prev, 0: false }));
+      }
+    },
+    [activeCategory, activeRegion]
+  );
 
-    previousFilters.current = {
-      category:
-        activeCategory,
-      region:
-        activeRegion,
-    };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCatalogState({ searchQuery });
+      if (searchQuery) {
+        performSearch(searchQuery);
+      } else {
+        setIsSearching(false);
+      }
+    }, 300);
 
-    /*
-     * Invalidate every request belonging
-     * to the previous filter combination.
-     */
-    requestGeneration.current += 1;
+    return () => clearTimeout(timer);
+  }, [searchQuery, performSearch]);
 
-    /*
-     * Search belongs to the previous filter
-     * context, so invalidate it too.
-     */
-    searchGeneration.current += 1;
+  const loadYearContent = useCallback(async (year: number, page: number = 1) => {
+    const generation = requestGeneration.current;
+    setLoadingYears((prev) => ({ ...prev, [year]: true }));
+    try {
+      const results = await fetchContent(activeCategory, year, page, "", activeRegion);
 
-    setYearData({});
-    setYearPages({});
-    setHighlightedYear(null);
+      // Filters changed while this request was in flight - discard it.
+      if (generation !== requestGeneration.current) return;
 
-    if (isSearching) {
-      return;
-    }
-
-    /*
-     * Reload only expanded years instead of
-     * requesting the entire catalog.
-     */
-    expandedYears.forEach(
-      (year) => {
-        void loadYearContent(
-          year,
-          1,
-        );
-      },
-    );
-  }, [
-    activeCategory,
-    activeRegion,
-    expandedYears,
-    isSearching,
-    loadYearContent,
-    yearData,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Search clear                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const clearSearch =
-    useCallback(() => {
-      searchGeneration.current += 1;
-
-      setSearchQuery("");
-      setIsSearching(false);
-      setSearchResults(
-        EMPTY_ITEMS,
-      );
-      setCatalogState({
-        searchQuery: "",
+      setYearData((prev) => {
+        const existing = prev[year] || [];
+        const existingIds = new Set(existing.map((item) => item.id));
+        const uniqueNew = results.filter((item) => !existingIds.has(item.id));
+        return {
+          ...prev,
+          [year]: page === 1 ? results : [...existing, ...uniqueNew],
+        };
       });
-    }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* Render                                                                   */
-  /* ------------------------------------------------------------------------ */
+      setYearPages((prev) => ({ ...prev, [year]: page }));
+    } catch (error) {
+      console.error(`Failed to fetch content for ${year}:`, error);
+    } finally {
+      setLoadingYears((prev) => ({ ...prev, [year]: false }));
+    }
+  }, [activeCategory, activeRegion]);
+
+  const toggleYear = useCallback((year: number) => {
+    const isCurrentlyExpanded = expandedYears.includes(year);
+
+    setExpandedYears((prev) =>
+      prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]
+    );
+
+    if (isCurrentlyExpanded) {
+      // Closing via header click: highlight this year with no time limit
+      setHighlightedYear(year);
+    } else {
+      // Opening a year: remove previous closed highlight
+      setHighlightedYear(null);
+      if (!yearData[year]) {
+        loadYearContent(year, 1);
+      }
+    }
+  }, [expandedYears, yearData, loadYearContent]);
+
+  const handleCloseYear = useCallback((year: number) => {
+    setExpandedYears((prev) => prev.filter((y) => y !== year));
+
+    // Highlight closed year with no time limit until another year is opened
+    setHighlightedYear(year);
+
+    setTimeout(() => {
+      const el = document.getElementById(`year-section-${year}`);
+      if (el) {
+        const headerOffset = 80;
+        const elementPosition = el.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth',
+        });
+      }
+    }, 50);
+  }, []);
+
+  const toggleWatched = useCallback(async (item: ContentItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // SOFT GATE: If logged out, redirect to /login with soft-gate parameters
+    if (!user) {
+      const currentPath = location.pathname + location.search;
+      const params = new URLSearchParams({
+        return_to: currentPath || '/',
+        action: 'add_collection',
+        movie_id: String(item.id),
+        media_type: item.media_type || 'movie',
+        title: item.title,
+        poster_path: item.poster_path || '',
+        release_date: item.release_date || '',
+        vote_average: String(item.vote_average || 0),
+      });
+
+      navigate(`/login?${params.toString()}`);
+      return;
+    }
+
+    const isCurrentlyWatched = watchedIds.includes(item.id);
+
+    if (isCurrentlyWatched) {
+      const { error } = await supabase
+        .from('watched_content')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('content_id', item.id);
+
+      if (!error) {
+        setWatchedIds((prev) => prev.filter((id) => id !== item.id));
+        removeCollectionItem(item.id);
+        showSuccess("Removed from collection");
+      }
+    } else {
+      const newItem = {
+        user_id: user.id,
+        content_id: item.id,
+        title: item.title,
+        poster_path: item.poster_path,
+        release_date: item.release_date,
+        vote_average: item.vote_average,
+        media_type: item.media_type,
+        // Store the verified released season count if available
+        season_count: (item.season_count || getCachedTvSeason(item.id)) ?? null,
+        created_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('watched_content').insert(newItem);
+
+      if (!error) {
+        setWatchedIds((prev) => [...prev, item.id]);
+        addCollectionItem(newItem);
+        showSuccess("Added to your collection!");
+      }
+    }
+  }, [location, navigate, watchedIds]);
+
+  useEffect(() => {
+    setCatalogState({ activeCategory, activeRegion });
+
+    const filterChanged =
+      prevFilters.current.category !== activeCategory ||
+      prevFilters.current.region !== activeRegion;
+
+    if (filterChanged) {
+      requestGeneration.current += 1;
+    }
+
+    if (filterChanged || Object.keys(yearData).length === 0) {
+      prevFilters.current = { category: activeCategory, region: activeRegion };
+      if (!isSearching) {
+        setYearData({});
+        setYearPages({});
+
+        expandedYears.forEach((year) => {
+          loadYearContent(year, 1);
+        });
+      }
+    } else if (isInitialMount.current) {
+      expandedYears.forEach((year) => {
+        if (!yearData[year]) {
+          loadYearContent(year, 1);
+        }
+      });
+    }
+
+    isInitialMount.current = false;
+  }, [activeCategory, activeRegion, isSearching]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <Navigation />
-
       <ScrollToTop />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 p-5 pb-28 md:p-8 lg:p-12 lg:pb-12">
-        {/* ---------------------------------------------------------------- */}
-        {/* Header                                                            */}
-        {/* ---------------------------------------------------------------- */}
-
+      <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
+        {/* Header and Search Area */}
         <header className="mb-6 space-y-4">
-          <div className="flex flex-col justify-between gap-4 md:gap-6 lg:flex-row lg:items-center">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6">
             <div>
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-                <Compass
-                  size={14}
-                  aria-hidden="true"
-                />
-
-                <span>
-                  Cinema Catalog
-                </span>
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+                <Compass size={14} /> Cinema Catalog
               </div>
-
-              <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
-                Discover{" "}
-                <span className="text-primary">
-                  SMDB
-                </span>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
+                Discover <span className="text-primary">SMDB</span>
               </h1>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Explore movies, series, and
-                anime categorized by release
-                year.
+              <p className="text-muted-foreground text-sm mt-1">
+                Explore movies, series, and anime categorized by release year.
               </p>
             </div>
 
-            {/* ------------------------------------------------------------ */}
-            {/* Search                                                         */}
-            {/* ------------------------------------------------------------ */}
-
-            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-              <div className="group relative flex-1 sm:w-64">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <div className="relative group flex-1 sm:w-64">
                 <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors"
                   size={18}
-                  aria-hidden="true"
                 />
-
                 <input
-                  type="search"
+                  type="text"
                   placeholder="Search catalog..."
-                  aria-label="Search catalog"
-                  autoComplete="off"
-                  className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-10 text-sm text-white outline-none transition-all placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(
-                      event.target.value,
-                    )
-                  }
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-
                 {searchQuery && (
                   <button
                     type="button"
-                    aria-label="Clear search"
-                    onClick={
-                      clearSearch
-                    }
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-white"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setIsSearching(false);
+                      setCatalogState({ searchQuery: '' });
+                    }}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
                   >
-                    <X
-                      size={16}
-                      aria-hidden="true"
-                    />
+                    <X size={16} />
                   </button>
                 )}
               </div>
@@ -1057,100 +338,46 @@ const Index = () => {
 
           {!isSearching && (
             <CatalogFilters
-              activeCategory={
-                activeCategory
-              }
-              activeRegion={
-                activeRegion
-              }
-              onCategoryChange={
-                setActiveCategory
-              }
-              onRegionChange={
-                setActiveRegion
-              }
+              activeCategory={activeCategory}
+              activeRegion={activeRegion}
+              onCategoryChange={setActiveCategory}
+              onRegionChange={setActiveRegion}
             />
           )}
         </header>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Hero                                                              */}
-        {/* ---------------------------------------------------------------- */}
+        {/* Hero Section */}
+        {!isSearching && <TrendingHero />}
 
-        {!isSearching && (
-          <TrendingHero />
-        )}
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Content                                                           */}
-        {/* ---------------------------------------------------------------- */}
-
+        {/* Search Results or Year Accordions */}
         <div className="space-y-3">
           {isSearching ? (
             <CatalogSearchResults
-              searchQuery={
-                searchQuery
-              }
-              searchResults={
-                searchResults
-              }
-              isLoading={
-                Boolean(
-                  loadingYears[0],
-                )
-              }
-              watchedIds={
-                watchedIds
-              }
-              onToggleWatched={
-                toggleWatched
-              }
-              onClearSearch={
-                clearSearch
-              }
+              searchQuery={searchQuery}
+              searchResults={searchResults}
+              isLoading={!!loadingYears[0]}
+              watchedIds={watchedIds}
+              onToggleWatched={toggleWatched}
+              onClearSearch={() => {
+                setSearchQuery('');
+                setIsSearching(false);
+                setCatalogState({ searchQuery: '' });
+              }}
             />
           ) : (
             years.map((year) => (
               <YearSection
                 key={year}
                 year={year}
-                isExpanded={expandedYears.includes(
-                  year,
-                )}
-                isHighlighted={
-                  highlightedYear ===
-                  year
-                }
-                items={
-                  yearData[year]
-                }
-                isLoading={Boolean(
-                  loadingYears[
-                    year
-                  ],
-                )}
-                watchedIds={
-                  watchedIds
-                }
-                onToggle={
-                  toggleYear
-                }
-                onLoadMore={(
-                  selectedYear,
-                ) =>
-                  void loadYearContent(
-                    selectedYear,
-                    (yearPages[
-                      selectedYear
-                    ] ?? 1) + 1,
-                  )
-                }
-                onClose={
-                  handleCloseYear
-                }
-                onToggleWatched={
-                  toggleWatched
-                }
+                isExpanded={expandedYears.includes(year)}
+                isHighlighted={highlightedYear === year}
+                items={yearData[year]}
+                isLoading={!!loadingYears[year]}
+                watchedIds={watchedIds}
+                onToggle={toggleYear}
+                onLoadMore={(y) => loadYearContent(y, (yearPages[y] || 1) + 1)}
+                onClose={handleCloseYear}
+                onToggleWatched={toggleWatched}
               />
             ))
           )}
