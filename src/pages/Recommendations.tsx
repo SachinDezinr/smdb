@@ -2,10 +2,10 @@ import React, { memo, useCallback, useEffect, useId, useMemo, useRef, useState }
 import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { ContentItem } from '@/lib/tmdb/types';
-import { fetchBestOfYear } from '@/lib/tmdb/queries';
+import { fetchBestOfYear, type RatedContentItem } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal, Tags } from 'lucide-react';
+import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +24,11 @@ const ALL_YEARS: number[] = Array.from(
 const INITIAL_YEARS_COUNT = 15;
 const STEP_YEARS_COUNT = 12;
 
-const FORMAT_OPTIONS: { id: RecommendationCategory; label: string}[] = [
-  { id: 'movie', label: 'Movies',},
-  { id: 'tv', label: 'Series',},
-  { id: 'kdrama', label: 'K-Drama',},
-  { id: 'anime', label: 'Anime',},
+const FORMAT_OPTIONS: { id: RecommendationCategory; label: string; emoji: string }[] = [
+  { id: 'movie', label: 'Movies', emoji: '🎬' },
+  { id: 'tv', label: 'Series', emoji: '📺' },
+  { id: 'kdrama', label: 'K-Drama', emoji: '🇰🇷' },
+  { id: 'anime', label: 'Anime', emoji: '⚡' },
 ];
 
 const REGION_OPTIONS: { id: RecommendationRegion; label: string }[] = [
@@ -149,7 +149,7 @@ const FilterDropdown = memo(function FilterDropdown({ label, value, onChange, op
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
         onKeyUp={(e) => e.key === ' ' && e.preventDefault()}
-        className="flex h-9 w-full items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 text-left text-xs font-medium text-white transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="flex h-9 w-full items-center rounded-xl border border-white/10 bg-white/[0.04] px-3 text-left text-xs font-medium text-white transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         {icon && <span className="mr-1.5 shrink-0 text-primary" aria-hidden="true">{icon}</span>}
         <span className="min-w-0 flex-1 truncate">
@@ -197,6 +197,7 @@ const FilterDropdown = memo(function FilterDropdown({ label, value, onChange, op
 const FORMAT_DROPDOWN_OPTIONS: DropdownOption[] = FORMAT_OPTIONS.map((o) => ({
   value: o.id,
   label: o.label,
+  prefix: o.emoji,
 }));
 const REGION_DROPDOWN_OPTIONS: DropdownOption[] = REGION_OPTIONS.map((o) => ({ value: o.id, label: o.label }));
 
@@ -228,6 +229,8 @@ interface YearEntryProps {
 }
 
 const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryProps) {
+  const voteCount = (item as RatedContentItem | null | undefined)?.vote_count;
+
   return (
     <li id={`year-card-${year}`} className="flex gap-6 scroll-mt-6">
       {/* Timeline rail: the year is the structure of this page */}
@@ -263,41 +266,38 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
           {isLoading || !item ? (
             <YearSkeleton />
           ) : (
-            <>
-              <div className="flex gap-3 sm:gap-5">
-                {/* Poster */}
-                <div className="w-32 sm:w-36 md:w-40 shrink-0">
-                  <ContentCard item={item} />
-                </div>
-
-                {/* Details */}
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <span className="rounded-md bg-white/[0.08] px-2 py-0.5 font-medium text-white/90">
-                      {item.media_type === 'movie' ? 'Movie' : 'Series'}
-                    </span>
-                    {item.vote_count ? (
-                      <span className="hidden sm:inline">{item.vote_count.toLocaleString()} votes</span>
-                    ) : null}
-                  </div>
-
-                  <h2 className="mb-2 text-base sm:text-xl font-bold leading-snug text-white line-clamp-2">
-                    {item.title}
-                  </h2>
-
-                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-4 sm:line-clamp-5 max-w-prose">
-                    {item.overview || 'No synopsis available for this title.'}
-                  </p>
-                </div>
+            <div className="flex gap-3 sm:gap-5">
+              {/* Poster */}
+              <div className="w-32 sm:w-36 md:w-40 shrink-0">
+                <ContentCard item={item} />
               </div>
 
-              {/* Release date: bottom right of the card, gold like the year */}
-              {item.release_date && item.release_date !== 'TBA' && (
-                <p className="mt-3 text-right text-[11px] sm:text-xs font-semibold text-primary">
-                  Released: {item.release_date}
+              {/* Details */}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span className="rounded-md bg-white/[0.08] px-2 py-0.5 font-medium text-white/90">
+                    {item.media_type === 'movie' ? 'Movie' : 'Series'}
+                  </span>
+                  {voteCount ? (
+                    <span className="hidden sm:inline">{voteCount.toLocaleString()} votes</span>
+                  ) : null}
+                </div>
+
+                <h2 className="mb-2 text-base sm:text-xl font-bold leading-snug text-white line-clamp-2">
+                  {item.title}
+                </h2>
+
+                <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-4 sm:line-clamp-5 max-w-prose">
+                  {item.overview || 'No synopsis available for this title.'}
                 </p>
-              )}
-            </>
+
+                {item.release_date && item.release_date !== 'TBA' && (
+                  <p className="mt-auto pt-3 text-right text-[11px] sm:text-xs text-muted-foreground">
+                    Released {item.release_date}
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </article>
@@ -462,9 +462,9 @@ export default function Recommendations() {
             <span className="text-xs sm:text-sm font-bold uppercase tracking-widest">Hall of Fame</span>
           </div>
           <h1 className="font-['Poppins'] text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white">
-            Recommendations
-            <span className="text-primary">
-              Vault
+            Recommendations{' '}
+            <span className="whitespace-nowrap text-primary">
+              {START_YEAR}&ndash;{END_YEAR}
             </span>
           </h1>
           <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
@@ -510,7 +510,6 @@ export default function Recommendations() {
                 value={genre}
                 onChange={setSelectedGenre}
                 options={genreOptions}
-                icon={<Tags className="h-3.5 w-3.5" />}
               />
 
               {hasActiveFilters && (

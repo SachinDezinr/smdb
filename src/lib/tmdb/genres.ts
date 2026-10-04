@@ -40,7 +40,6 @@ const GENRES = {
   reality: { id: 10764, name: 'Reality' },
   sciFiFantasy: { id: 10765, name: 'Sci-Fi & Fantasy' },
   talk: { id: 10767, name: 'Talk' },
-  soap: { id: 10766, name: 'Soap' },
   warPolitics: { id: 10768, name: 'War & Politics' },
 } as const satisfies Record<string, GenreOption>;
 
@@ -60,7 +59,7 @@ export const MOVIE_GENRES: GenreOption[] = buildList(
 export const TV_GENRES: GenreOption[] = buildList(
   'actionAdventure', 'animation', 'comedy', 'crime', 'documentary', 'drama',
   'family', 'kids', 'mystery', 'news', 'reality', 'sciFiFantasy', 'talk',
-  'thriller', 'tvShows', 'warPolitics', 'western'
+  'thriller', 'warPolitics', 'western'
 );
 
 // Unified genre list for "All" or combined category (K-Drama / Anime)

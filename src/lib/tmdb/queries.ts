@@ -8,6 +8,8 @@ import { mapResults, interleave, uniqueById, sortYearContent } from './mappers';
 type Params = Record<string, string | number | boolean | undefined>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawList = { results?: any[] };
+/** ContentItem as declared in ./types doesn't list these fields, though mapResults fills them in at runtime. */
+export type RatedContentItem = ContentItem & { rating?: number; vote_count?: number };
 type Video = { site?: string; type?: string; official?: boolean; key?: string };
 
 const VIDEO_LANGS = 'en,hi,te,ta,kn,ml,pa,ko,ja,null';
@@ -406,7 +408,7 @@ async function fetchTopOne(
   genreId: number | string | undefined,
   extra: Params = {},
   animation = false
-): Promise<ContentItem | null> {
+): Promise<RatedContentItem | null> {
   const params: Params = {
     [DATE_KEYS[kind].year]: year,
     include_adult: false,
@@ -429,19 +431,19 @@ async function fetchTopOne(
   }
 
   const data = await fetchFromProxy(`/discover/${kind}`, params);
-  return mapResults(data.results || [], kind)[0] ?? null;
+  return (mapResults(data.results || [], kind)[0] as RatedContentItem | undefined) ?? null;
 }
 
 const pickBetter = (
-  m: ContentItem | null,
-  t: ContentItem | null,
-  movieWins: (m: ContentItem, t: ContentItem) => boolean
+  m: RatedContentItem | null,
+  t: RatedContentItem | null,
+  movieWins: (m: RatedContentItem, t: RatedContentItem) => boolean
 ) => (!m ? t : !t ? m : movieWins(m, t) ? m : t);
 
-const byRating = (m: ContentItem, t: ContentItem) => (m.rating || 0) >= (t.rating || 0);
-const byVotes = (m: ContentItem, t: ContentItem) => (m.vote_count || 0) >= (t.vote_count || 0);
-const blendedScore = (i: ContentItem) => (i.rating || 0) * 1000 + Math.min(i.vote_count || 0, 5000);
-const byBlendedScore = (m: ContentItem, t: ContentItem) => blendedScore(m) >= blendedScore(t);
+const byRating = (m: RatedContentItem, t: RatedContentItem) => (m.rating || 0) >= (t.rating || 0);
+const byVotes = (m: RatedContentItem, t: RatedContentItem) => (m.vote_count || 0) >= (t.vote_count || 0);
+const blendedScore = (i: RatedContentItem) => (i.rating || 0) * 1000 + Math.min(i.vote_count || 0, 5000);
+const byBlendedScore = (m: RatedContentItem, t: RatedContentItem) => blendedScore(m) >= blendedScore(t);
 
 /* ---- concurrency cap: the page asks for many years at once ---- */
 
