@@ -465,7 +465,7 @@ export default function Recommendations() {
             Recommendation <span className="whitespace-nowrap text-primary"> Vault </span>
           </h1>
           <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
-            One top-rated pick for every year, newest first. Change a filter and the list updates.
+            
           </p>
         </header>
 
