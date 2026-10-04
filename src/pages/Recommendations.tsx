@@ -253,7 +253,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
 
       {/* Entry */}
       <article className="flex-1 min-w-0 pb-6 sm:pb-10">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-5 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:p-5 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
           <p
             className={cn(
               'mb-3 text-xl font-black tabular-nums leading-none sm:hidden',
@@ -287,7 +287,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
                   {item.title}
                 </h2>
 
-                <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-4 sm:line-clamp-5 max-w-prose">
+                <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-5 sm:line-clamp-5 max-w-prose">
                   {item.overview || 'No synopsis available for this title.'}
                 </p>
 
@@ -465,7 +465,7 @@ export default function Recommendations() {
             Recommendation <span className="whitespace-nowrap text-primary"> Vault </span>
           </h1>
           <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
-            
+            A year-by-year collection of standout titles worth remembering.
           </p>
         </header>
 
