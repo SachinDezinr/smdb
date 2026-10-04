@@ -1,11 +1,13 @@
-"use client";
-
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ContentCard } from '@/components/content/ContentCard';
-import { ContentItem } from '@/lib/tmdb';
-import { ChevronDown, ChevronUp, Loader2, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Plus,
+} from "lucide-react";
+import { ContentCard } from "@/components/content/ContentCard";
+import type { ContentItem } from "@/lib/tmdb";
+import { cn } from "@/lib/utils";
 
 interface YearSectionProps {
   year: number;
@@ -34,12 +36,10 @@ export const YearSection = ({
 }: YearSectionProps) => {
   const isLoaded = items !== undefined;
 
-  const getBadgeText = () => {
-    if (!isLoaded || (isLoading && (!items || items.length === 0))) {
-      return "Loading...";
-    }
-    return `${items.length}+ Titles`;
-  };
+  const badgeText =
+    !isLoaded || (isLoading && (!items || items.length === 0))
+      ? "Loading..."
+      : `${items.length}+ Titles`;
 
   return (
     <div
@@ -49,27 +49,33 @@ export const YearSection = ({
         isExpanded
           ? "border-primary/50 shadow-md shadow-primary/5"
           : isHighlighted
-          ? "border-primary/60 shadow-[0_0_14px_rgba(245,197,24,0.16)] bg-primary/[0.04]"
-          : "border-white/10 hover:border-white/20"
+            ? "border-primary/60 shadow-[0_0_14px_rgba(245,197,24,0.16)] bg-primary/[0.04]"
+            : "border-white/10 hover:border-white/20",
       )}
     >
       <button
+        type="button"
         onClick={() => onToggle(year)}
+        aria-expanded={isExpanded}
+        aria-controls={`year-content-${year}`}
         className={cn(
           "w-full flex items-center justify-between p-4 md:p-5 transition-colors",
-          isHighlighted && !isExpanded ? "bg-primary/[0.04]" : "hover:bg-white/[0.04]"
+          isHighlighted && !isExpanded
+            ? "bg-primary/[0.04]"
+            : "hover:bg-white/[0.04]",
         )}
       >
         <div className="flex items-center gap-3 md:gap-4">
           <span
             className={cn(
               "inline-block text-xl md:text-3xl font-bold tracking-tight transition-all select-none",
-              isHighlighted || isExpanded ? "text-primary" : ""
+              isHighlighted || isExpanded ? "text-primary" : "",
             )}
             style={
               !isHighlighted && !isExpanded
                 ? {
-                    backgroundImage: "linear-gradient(to bottom, #FFFFFF 40%, #F5C518 100%)",
+                    backgroundImage:
+                      "linear-gradient(to bottom, #FFFFFF 40%, #F5C518 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
@@ -79,29 +85,39 @@ export const YearSection = ({
           >
             {year}
           </span>
-          <span className={cn(
-            "text-[11px] md:text-xs font-semibold px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border transition-colors",
-            isHighlighted && !isExpanded
-              ? "bg-primary/15 text-primary border-primary/30 font-medium" 
-              : isExpanded
-              ? "bg-primary/20 text-primary border-primary/40 font-bold"
-              : "text-muted-foreground bg-white/[0.04] border-white/5"
-          )}>
-            {getBadgeText()}
+
+          <span
+            className={cn(
+              "text-[11px] md:text-xs font-semibold px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border transition-colors",
+              isHighlighted && !isExpanded
+                ? "bg-primary/15 text-primary border-primary/30 font-medium"
+                : isExpanded
+                  ? "bg-primary/20 text-primary border-primary/40 font-bold"
+                  : "text-muted-foreground bg-white/[0.04] border-white/5",
+            )}
+          >
+            {badgeText}
           </span>
         </div>
+
         <ChevronDown
           className={cn(
             "transition-transform duration-300",
-            isExpanded ? "rotate-180 text-primary" : isHighlighted ? "text-primary" : "text-muted-foreground"
+            isExpanded
+              ? "rotate-180 text-primary"
+              : isHighlighted
+                ? "text-primary"
+                : "text-muted-foreground",
           )}
           size={18}
+          aria-hidden="true"
         />
       </button>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
+            id={`year-content-${year}`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -122,25 +138,38 @@ export const YearSection = ({
               )}
 
               {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin text-primary" size={28} />
+                <div
+                  className="flex items-center justify-center py-8"
+                  role="status"
+                  aria-label={`Loading ${year} content`}
+                >
+                  <Loader2
+                    className="animate-spin text-primary"
+                    size={28}
+                    aria-hidden="true"
+                  />
                 </div>
               ) : (
-                items && items.length > 0 && (
+                items &&
+                items.length > 0 && (
                   <div className="mt-6 flex items-center justify-center gap-3">
                     <button
+                      type="button"
                       onClick={() => onLoadMore(year)}
                       className="flex items-center gap-2 px-6 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-white border border-white/10"
                     >
-                      <Plus size={15} />
+                      <Plus size={15} aria-hidden="true" />
                       Load More {year}
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => onClose(year)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-muted-foreground border border-white/10"
                       title={`Close ${year}`}
+                      aria-label={`Close ${year}`}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all font-bold text-xs uppercase tracking-wider text-muted-foreground border border-white/10"
                     >
-                      <ChevronUp size={15} />
+                      <ChevronUp size={15} aria-hidden="true" />
                       Close {year}
                     </button>
                   </div>

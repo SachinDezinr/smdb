@@ -1,9 +1,6 @@
-"use client";
-
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X } from 'lucide-react';
-import { BADGE_TIERS, BadgeTier } from '@/lib/badges';
+import { AnimatePresence, motion } from "framer-motion";
+import { Sparkles, X } from "lucide-react";
+import { BADGE_TIERS, type BadgeTier } from "@/lib/badges";
 
 interface BadgeTiersModalProps {
   isOpen: boolean;
@@ -21,28 +18,46 @@ export const BadgeTiersModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="badge-ranks-title"
+          onClick={onClose}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
+            onClick={(event) => event.stopPropagation()}
             className="relative w-full max-w-lg bg-neutral-950 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
           >
             <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Sparkles className="text-primary" size={18} />
+                <h3
+                  id="badge-ranks-title"
+                  className="text-lg font-bold text-white flex items-center gap-2"
+                >
+                  <Sparkles
+                    className="text-primary"
+                    size={18}
+                    aria-hidden="true"
+                  />
                   Cinephile Badge Ranks
                 </h3>
+
                 <p className="text-xs text-muted-foreground">
                   Unlock higher badges by expanding your watch history.
                 </p>
               </div>
+
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close badge ranks"
                 className="p-2 text-muted-foreground hover:text-white bg-white/5 rounded-full transition-colors"
               >
-                <X size={16} />
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 
@@ -55,35 +70,55 @@ export const BadgeTiersModal = ({
                 return (
                   <div
                     key={tier.label}
-                    className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                    className={[
+                      "p-3.5 rounded-2xl border flex items-center justify-between transition-all",
                       isCurrent
-                        ? 'border-primary/60 bg-primary/10'
+                        ? "border-primary/60 bg-primary/10"
                         : isUnlocked
-                        ? 'border-white/10 bg-white/[0.03]'
-                        : 'border-white/5 bg-white/[0.01] opacity-50'
-                    }`}
+                          ? "border-white/10 bg-white/[0.03]"
+                          : "border-white/5 bg-white/[0.01] opacity-50",
+                    ].join(" ")}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`p-2.5 rounded-xl border ${tier.badgeStyle} flex-shrink-0`}>
-                        <Icon size={18} className={tier.iconColor} />
+                      <div
+                        className={`p-2.5 rounded-xl border ${tier.badgeStyle} flex-shrink-0`}
+                      >
+                        <Icon
+                          size={18}
+                          className={tier.iconColor}
+                          aria-hidden="true"
+                        />
                       </div>
+
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white truncate">{tier.label}</h4>
+                          <h4 className="text-sm font-bold text-white truncate">
+                            {tier.label}
+                          </h4>
+
                           {isCurrent && (
                             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-primary text-black rounded-full">
                               Current
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{tier.description}</p>
+
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {tier.description}
+                        </p>
                       </div>
                     </div>
+
                     <div className="text-right flex-shrink-0 pl-2">
                       <span className="text-xs font-bold text-primary">
-                        {tier.max === null ? `${tier.min}+` : `${tier.min} - ${tier.max}`}
+                        {tier.max === null
+                          ? `${tier.min}+`
+                          : `${tier.min} - ${tier.max}`}
                       </span>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">titles</p>
+
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        titles
+                      </p>
                     </div>
                   </div>
                 );

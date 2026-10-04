@@ -1,5 +1,20 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
+
+import App from "./App";
 import "./globals.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement =
+  document.getElementById("root");
+
+if (!rootElement) {
+  throw new Error(
+    "SMDB root element was not found.",
+  );
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

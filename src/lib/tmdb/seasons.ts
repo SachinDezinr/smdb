@@ -1,57 +1,71 @@
-import { fetchFromProxy } from './client';
-import { countReleasedSeasons } from '../seasonFormat';
+import { countReleasedSeasons, type SeasonInfo } from "../seasonFormat";
+import { fetchFromProxy } from "./client";
 
-// In-memory cache for season counts by content ID
+interface TvDetailsResponse {
+  seasons?: SeasonInfo[];
+  number_of_seasons?: number;
+}
+
 const seasonCache = new Map<number, number>();
 
-/**
- * Fetches the total number of regular seasons that have ALREADY BEEN RELEASED
- * for a TV series, anime, or k-drama.
- * TMDB's /tv/{id} returns a `seasons` array with air_date and season_number.
- * We only count regular seasons (season_number > 0) whose air_date is on or before today.
- * Any announced or upcoming seasons without a past/current air_date are excluded.
- * When a new season is released and reached its air date, this automatically includes it.
- */
-export const fetchTvSeasons = async (id: number): Promise<number | undefined> => {
-  if (!id) return undefined;
-  if (seasonCache.has(id)) {
-    return seasonCache.get(id);
+export const fetchTvSeasons = async (
+  id: number,
+): Promise<number | undefined> => {
+  if (!Number.isFinite(id) || id <= 0) {
+    return undefined;
+  }
+
+  const cached = seasonCache.get(id);
+
+  if (cached !== undefined) {
+    return cached;
   }
 
   try {
-    const data = await fetchFromProxy(`/tv/${id}`);
-    if (data) {
-      let count: number | undefined;
-      if (Array.isArray(data.seasons)) {
-        count = countReleasedSeasons(data.seasons);
-      } else if (typeof data.number_of_seasons === 'number') {
-        count = data.number_of_seasons;
-      }
+    const data = await fetchFromProxy<TvDetailsResponse>(`/tv/${id}`);
 
-      if (typeof count === 'number' && count > 0) {
-        seasonCache.set(id, count);
-        return count;
-      }
+    if (!data) {
+      return undefined;
     }
-  } catch (err) {
-    console.warn(`[tmdb] Error fetching seasons for tv ID ${id}:`, err);
+
+    const count = Array.isArray(data.seasons)
+      ? countReleasedSeasons(data.seasons)
+      : typeof data.number_of_seasons === "number"
+        ? Math.max(0, Math.floor(data.number_of_seasons))
+        : undefined;
+
+    if (count !== undefined && count > 0) {
+      seasonCache.set(id, count);
+      return count;
+    }
+  } catch (error) {
+    console.warn(
+      `[tmdb] Failed to fetch seasons for TV ID ${id}:`,
+      error,
+    );
   }
 
   return undefined;
 };
 
-/**
- * Pre-populates the cache with known season counts
- */
-export const cacheTvSeason = (id: number, seasons: number) => {
-  if (id && seasons > 0) {
-    seasonCache.set(id, seasons);
+export const cacheTvSeason = (
+  id: number,
+  seasons: number,
+): void => {
+  if (
+    Number.isFinite(id) &&
+    id > 0 &&
+    Number.isFinite(seasons) &&
+    seasons > 0
+  ) {
+    seasonCache.set(id, Math.floor(seasons));
   }
 };
 
-/**
- * Gets cached season count synchronously if available
- */
-export const getCachedTvSeason = (id: number): number | undefined => {
-  return seasonCache.get(id);
+export const getCachedTvSeason = (
+  id: number,
+): number | undefined => seasonCache.get(id);
+
+export const clearTvSeasonCache = (): void => {
+  seasonCache.clear();
 };
