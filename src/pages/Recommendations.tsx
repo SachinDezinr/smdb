@@ -197,7 +197,6 @@ const FilterDropdown = memo(function FilterDropdown({ label, value, onChange, op
 const FORMAT_DROPDOWN_OPTIONS: DropdownOption[] = FORMAT_OPTIONS.map((o) => ({
   value: o.id,
   label: o.label,
-  prefix: o.emoji,
 }));
 const REGION_DROPDOWN_OPTIONS: DropdownOption[] = REGION_OPTIONS.map((o) => ({ value: o.id, label: o.label }));
 
