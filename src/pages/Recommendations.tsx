@@ -5,7 +5,7 @@ import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear, type RatedContentItem } from '@/lib/tmdb/queries';
 import { MOVIE_GENRES, TV_GENRES, COMMON_GENRES, GenreOption } from '@/lib/tmdb/genres';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Award, Check, ChevronDown, Clapperboard, Globe, Loader2, RotateCcw, SlidersHorizontal, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -292,7 +292,7 @@ const YearEntry = memo(function YearEntry({ year, item, isLoading }: YearEntryPr
 
                 {item.release_date && item.release_date !== 'TBA' && (
                   <p className="mt-auto pt-3 text-right text-[11px] sm:text-xs text-muted-foreground">
-                    Released {item.release_date}
+                    Released: {item.release_date}
                   </p>
                 )}
               </div>
@@ -506,6 +506,7 @@ export default function Recommendations() {
                 value={genre}
                 onChange={setSelectedGenre}
                 options={genreOptions}
+                icon={<Tags className="h-3.5 w-3.5" />}
               />
 
               {hasActiveFilters && (
