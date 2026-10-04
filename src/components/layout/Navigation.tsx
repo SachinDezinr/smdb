@@ -165,16 +165,17 @@ const SidebarLink = memo(function SidebarLink({
 
 /* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
 
+// One spring for the whole bar: fast, no visible overshoot.
+const PILL_SPRING = { type: "spring", stiffness: 420, damping: 38, mass: 0.9 } as const;
+
 const BottomNavLink = memo(function BottomNavLink({
   item,
   isActive,
   showBadge,
-  pillId,
 }: {
   item: NavItem;
   isActive: boolean;
   showBadge: boolean;
-  pillId: string;
 }) {
   const Icon = item.icon;
 
@@ -183,25 +184,22 @@ const BottomNavLink = memo(function BottomNavLink({
       to={item.path}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full transition-colors duration-200 active:scale-95",
-        focusRing,
-        isActive ? "text-primary" : "text-muted-foreground active:text-white"
+        "group relative flex h-full min-w-0 select-none items-center justify-center rounded-full [-webkit-tap-highlight-color:transparent]",
+        focusRing
       )}
     >
-      {isActive && (
-        <motion.div
-          layoutId={pillId}
-          className="absolute inset-0 -z-10 rounded-full border border-primary/30 bg-primary/15"
-          transition={{ type: "spring", stiffness: 420, damping: 34 }}
-        />
-      )}
-
-      <div className="relative flex flex-col items-center gap-0.5">
-        <div className="relative">
+      {/* Press feedback lives on the inner wrapper, never on the link, so it can't distort the pill */}
+      <span
+        className={cn(
+          "flex flex-col items-center gap-0.5 transition-[color,transform] duration-300 ease-out group-active:scale-95",
+          isActive ? "text-primary" : "text-muted-foreground group-active:text-white"
+        )}
+      >
+        <span className="relative">
           <Icon
             size={18}
             className={cn(
-              "transition-transform duration-200",
+              "transition-transform duration-300 ease-out",
               isActive && "scale-110"
             )}
           />
@@ -214,17 +212,17 @@ const BottomNavLink = memo(function BottomNavLink({
               <span className="sr-only">New requests</span>
             </>
           )}
-        </div>
+        </span>
 
         <span
           className={cn(
-            "text-[10px] font-semibold tracking-tight transition-colors duration-200",
-            isActive ? "font-bold text-primary" : "text-muted-foreground/80"
+            "text-[10px] font-semibold tracking-tight transition-opacity duration-300",
+            isActive ? "opacity-100" : "opacity-80"
           )}
         >
           {item.label}
         </span>
-      </div>
+      </span>
     </Link>
   );
 });
@@ -232,7 +230,6 @@ const BottomNavLink = memo(function BottomNavLink({
 const BottomNav = memo(function BottomNav({
   items,
   pathname,
-  pillId,
   badgePath,
   pendingCount,
   wrapperClassName,
@@ -240,12 +237,14 @@ const BottomNav = memo(function BottomNav({
 }: {
   items: NavItem[];
   pathname: string;
-  pillId: string;
   badgePath: string;
   pendingCount: number;
   wrapperClassName: string;
   navClassName: string;
 }) {
+  const count = items.length;
+  const activeIndex = items.findIndex((item) => isPathActive(pathname, item.path));
+
   return (
     <div
       className={cn(
@@ -253,22 +252,39 @@ const BottomNav = memo(function BottomNav({
         wrapperClassName
       )}
     >
+      {/* No backdrop-blur here: the bar is near-opaque anyway, and blur makes animations stutter on phones */}
       <nav
         aria-label="Primary"
         className={cn(
-          "pointer-events-auto flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 backdrop-blur-xl",
+          "pointer-events-auto h-[58px] w-full rounded-full border border-white/15 bg-neutral-950/95 p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10",
           navClassName
         )}
       >
-        {items.map((item) => (
-          <BottomNavLink
-            key={item.path}
-            item={item}
-            pillId={pillId}
-            isActive={isPathActive(pathname, item.path)}
-            showBadge={item.path === badgePath && pendingCount > 0}
-          />
-        ))}
+        <div
+          className="relative grid h-full"
+          style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+        >
+          {/* One pill, moved with a transform only (no layout measuring), so it is identical on every tap */}
+          <motion.span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 transform-gpu will-change-transform"
+            style={{ width: `${100 / count}%` }}
+            initial={false}
+            animate={{ x: `${Math.max(activeIndex, 0) * 100}%`, opacity: activeIndex >= 0 ? 1 : 0 }}
+            transition={{ x: PILL_SPRING, opacity: { duration: 0.2 } }}
+          >
+            <span className="block h-full w-full rounded-full border border-primary/30 bg-primary/15" />
+          </motion.span>
+
+          {items.map((item, i) => (
+            <BottomNavLink
+              key={item.path}
+              item={item}
+              isActive={i === activeIndex}
+              showBadge={item.path === badgePath && pendingCount > 0}
+            />
+          ))}
+        </div>
       </nav>
     </div>
   );
@@ -440,7 +456,6 @@ export const Navigation = () => {
       <BottomNav
         items={mobileNavItems}
         pathname={pathname}
-        pillId="mobile-active-pill"
         badgePath="/profile"
         pendingCount={pendingCount}
         wrapperClassName="bottom-2.5 flex px-4 sm:bottom-3 md:hidden"
@@ -451,7 +466,6 @@ export const Navigation = () => {
       <BottomNav
         items={tabletNavItems}
         pathname={pathname}
-        pillId="tablet-active-pill"
         badgePath="/friends"
         pendingCount={pendingCount}
         wrapperClassName="bottom-3 hidden px-6 md:flex lg:hidden"
