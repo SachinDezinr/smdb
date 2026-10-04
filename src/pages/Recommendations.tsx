@@ -462,10 +462,7 @@ export default function Recommendations() {
             <span className="text-xs sm:text-sm font-bold uppercase tracking-widest">Hall of Fame</span>
           </div>
           <h1 className="font-['Poppins'] text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white">
-            Recommendations{' '}
-            <span className="whitespace-nowrap text-primary">
-              {START_YEAR}&ndash;{END_YEAR}
-            </span>
+            Recommendation <span className="whitespace-nowrap text-primary"> Vault </span>
           </h1>
           <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
             One top-rated pick for every year, newest first. Change a filter and the list updates.
