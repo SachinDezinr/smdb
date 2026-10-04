@@ -463,9 +463,9 @@ export default function Recommendations() {
             <span className="text-xs sm:text-sm font-bold uppercase tracking-widest">Hall of Fame</span>
           </div>
           <h1 className="font-['Poppins'] text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white">
-            Recommendations{' '}
+            Recommendations
             <span className="text-primary">
-              {START_YEAR}&ndash;{END_YEAR}
+              Vault
             </span>
           </h1>
           <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-muted-foreground">
