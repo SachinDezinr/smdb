@@ -9,6 +9,9 @@ const ALL_GENRES: GenreOption = { id: 'all', name: 'All Genres' };
  * Every genre is defined exactly once. The lists below only pick keys,
  * so names and ids can't drift apart between lists, and shared genres
  * are the same object in memory.
+ *
+ * Ids follow TMDB. Movies and TV use different genre sets, so only the
+ * genres in the "shared" group exist for both.
  */
 const GENRES = {
   // shared between movies and TV
@@ -19,10 +22,9 @@ const GENRES = {
   drama: { id: 18, name: 'Drama' },
   family: { id: 10751, name: 'Family' },
   mystery: { id: 9648, name: 'Mystery' },
-  thriller: { id: 53, name: 'Thriller' },
   western: { id: 37, name: 'Western' },
 
-  // movie only
+  // movie only (TMDB has no TV equivalent, except where noted in queries.ts)
   action: { id: 28, name: 'Action' },
   adventure: { id: 12, name: 'Adventure' },
   fantasy: { id: 14, name: 'Fantasy' },
@@ -57,12 +59,16 @@ export const MOVIE_GENRES: GenreOption[] = buildList(
   'sciFi', 'thriller', 'war', 'western'
 );
 
+// No 'thriller' here: TMDB has no Thriller genre for TV, so picking it returned nothing.
 export const TV_GENRES: GenreOption[] = buildList(
   'actionAdventure', 'animation', 'comedy', 'crime', 'documentary', 'drama',
-  'family', 'kids', 'mystery', 'news', 'reality', 'sciFiFantasy', 'talk', 'warPolitics', 'western'
+  'family', 'kids', 'mystery', 'news', 'reality', 'sciFiFantasy', 'talk',
+  'warPolitics', 'western'
 );
 
-// Unified genre list for "All" or combined category (K-Drama / Anime)
+// Unified genre list for "All" or combined category (Anime). These are movie ids;
+// queries.ts translates them for TV (Action -> Action & Adventure, etc.) and skips
+// TV for genres it doesn't have (Horror, Romance, Thriller).
 export const COMMON_GENRES: GenreOption[] = buildList(
   'action', 'adventure', 'animation', 'comedy', 'crime', 'drama', 'fantasy',
   'horror', 'mystery', 'romance', 'sciFi', 'thriller'

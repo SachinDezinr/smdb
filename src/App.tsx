@@ -111,7 +111,9 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        {/* startTransition keeps the current page on screen until the next one has loaded,
+            instead of swapping it for the full-screen loader */}
+        <BrowserRouter future={{ v7_startTransition: true }}>
           <RouteScrollToTop />
           <Suspense fallback={<FullScreenLoader message="Loading..." />}>
             <Routes>

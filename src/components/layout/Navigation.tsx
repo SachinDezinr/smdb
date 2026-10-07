@@ -1,6 +1,13 @@
 "use client";
 
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -18,7 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { motion, MotionConfig } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   fetchProfileData,
   clearCachedProfile,
@@ -71,6 +78,8 @@ const navSections: NavSection[] = [
   },
 ];
 
+const sidebarItems = navSections.flatMap((s) => s.items);
+
 const mobileNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Upcoming", path: "/upcoming" },
@@ -95,68 +104,161 @@ const isPathActive = (pathname: string, path: string) =>
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
+/* ------------------------------ one motion language ------------------------------ */
+
+// Every movement (sidebar, tablet bar, phone bar) uses this same spring,
+// and every colour/opacity change uses the same 200ms ease-out.
+const SPRING = { type: "spring", stiffness: 520, damping: 40, mass: 0.7 } as const;
+const COLOR = "transition-colors duration-200 ease-out";
+
+/* ------------------------------ sliding active pill ------------------------------ */
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+// Remembers where each pill was last. Pages render <Navigation /> themselves, so it
+// remounts on every route change; this lets the pill still slide from its old spot.
+const lastRects: Record<string, Rect | undefined> = {};
+
+/**
+ * Measures the active item inside `containerRef` and keeps the rect up to date
+ * (route change, resize, bar becoming visible at a breakpoint).
+ */
+function useActivePill(id: string, activeKey: string | undefined) {
+  const containerRef = useRef<HTMLElement | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLElement>());
+  const [rect, setRect] = useState<Rect | null>(null);
+
+  const register = useCallback((path: string, el: HTMLElement | null) => {
+    if (el) itemRefs.current.set(path, el);
+    else itemRefs.current.delete(path);
+  }, []);
+
+  const measure = useCallback(() => {
+    const el = activeKey ? itemRefs.current.get(activeKey) : undefined;
+    // width 0 means this bar is hidden at the current breakpoint
+    if (!el || el.offsetWidth === 0) {
+      setRect(null);
+      return;
+    }
+    setRect((prev) => {
+      const next = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+      return prev && prev.x === next.x && prev.y === next.y && prev.w === next.w && prev.h === next.h
+        ? prev
+        : next;
+    });
+  }, [activeKey]);
+
+  useLayoutEffect(() => {
+    measure();
+  }, [measure]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [measure]);
+
+  // Written after commit, so the pill's `initial` still sees the previous position on mount.
+  useEffect(() => {
+    lastRects[id] = rect ?? undefined;
+  }, [id, rect]);
+
+  return { containerRef, register, rect };
+}
+
+const toVars = (r: Rect) => ({ x: r.x, y: r.y, width: r.w, height: r.h });
+
+const ActivePill = memo(function ActivePill({
+  id,
+  rect,
+  radius,
+}: {
+  id: string;
+  rect: Rect | null;
+  radius: number;
+}) {
+  const reduce = useReducedMotion();
+
+  return (
+    <AnimatePresence initial={false}>
+      {rect && (
+        <motion.div
+          key="pill"
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 bg-primary/15"
+          style={{
+            borderRadius: radius,
+            boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.3)",
+          }}
+          initial={lastRects[id] ? { ...toVars(lastRects[id]!), opacity: 1 } : { ...toVars(rect), opacity: 0 }}
+          animate={{ ...toVars(rect), opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          transition={reduce ? { duration: 0 } : SPRING}
+        />
+      )}
+    </AnimatePresence>
+  );
+});
+
 /* ------------------------------ sidebar (desktop) ------------------------------ */
 
 const SidebarLink = memo(function SidebarLink({
   item,
   isActive,
   badge,
+  register,
+  onNavigate,
 }: {
   item: NavItem;
   isActive: boolean;
   badge?: number;
+  register: (path: string, el: HTMLElement | null) => void;
+  onNavigate: (path: string) => void;
 }) {
   const Icon = item.icon;
 
   return (
     <Link
       to={item.path}
+      ref={(el) => register(item.path, el)}
+      onClick={() => onNavigate(item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200",
+        "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold",
+        COLOR,
         focusRing,
-        isActive
-          ? "font-bold text-black"
-          : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
+        isActive ? "text-primary" : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
       )}
     >
-      {isActive && (
-        <motion.div
-          layoutId="desktop-active-pill"
-          className="absolute inset-0 -z-10 rounded-xl bg-primary shadow-lg shadow-primary/25"
-          transition={{ type: "spring", stiffness: 400, damping: 32 }}
-        />
-      )}
-
       <div className="flex items-center gap-3">
         <Icon
           size={18}
-          className={cn(
-            "transition-transform duration-200 group-hover:scale-110",
-            isActive ? "text-black" : "group-hover:text-primary"
-          )}
+          className={cn(COLOR, isActive ? "text-primary" : "group-hover:text-primary")}
         />
         <span>{item.label}</span>
       </div>
 
       {badge ? (
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide",
-            isActive
-              ? "border border-black/30 bg-black text-primary"
-              : "bg-red-500 text-white motion-safe:animate-pulse"
-          )}
-        >
+        <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-white motion-safe:animate-pulse">
           {badge > 99 ? "99+" : badge} new
         </span>
-      ) : null}
-
-      {!isActive && (
+      ) : (
         <ChevronRight
           size={14}
           aria-hidden="true"
-          className="-translate-x-2 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60"
+          className={cn(
+            "text-muted-foreground transition-all duration-200 ease-out",
+            isActive
+              ? "translate-x-0 opacity-0"
+              : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-60"
+          )}
         />
       )}
     </Link>
@@ -165,44 +267,38 @@ const SidebarLink = memo(function SidebarLink({
 
 /* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
 
-// One spring for the whole bar: fast, no visible overshoot.
-const PILL_SPRING = { type: "spring", stiffness: 420, damping: 38, mass: 0.9 } as const;
-
 const BottomNavLink = memo(function BottomNavLink({
   item,
   isActive,
   showBadge,
+  register,
+  onNavigate,
 }: {
   item: NavItem;
   isActive: boolean;
   showBadge: boolean;
+  register: (path: string, el: HTMLElement | null) => void;
+  onNavigate: (path: string) => void;
 }) {
   const Icon = item.icon;
 
   return (
     <Link
       to={item.path}
+      ref={(el) => register(item.path, el)}
+      onClick={() => onNavigate(item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group relative flex h-full min-w-0 select-none items-center justify-center rounded-full [-webkit-tap-highlight-color:transparent]",
-        focusRing
+        "group relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full",
+        COLOR,
+        focusRing,
+        isActive ? "text-primary" : "text-muted-foreground"
       )}
     >
-      {/* Press feedback lives on the inner wrapper, never on the link, so it can't distort the pill */}
-      <span
-        className={cn(
-          "flex flex-col items-center gap-0.5 transition-[color,transform] duration-300 ease-out group-active:scale-95",
-          isActive ? "text-primary" : "text-muted-foreground group-active:text-white"
-        )}
-      >
-        <span className="relative">
-          <Icon
-            size={18}
-            className={cn(
-              "transition-transform duration-300 ease-out",
-              isActive && "scale-110"
-            )}
-          />
+      {/* press feedback lives on the content so it never distorts the sliding pill */}
+      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-150 ease-out group-active:scale-95">
+        <div className="relative">
+          <Icon size={18} className={COLOR} />
           {showBadge && (
             <>
               <span
@@ -212,38 +308,43 @@ const BottomNavLink = memo(function BottomNavLink({
               <span className="sr-only">New requests</span>
             </>
           )}
-        </span>
+        </div>
 
         <span
           className={cn(
-            "text-[10px] font-semibold tracking-tight transition-opacity duration-300",
-            isActive ? "opacity-100" : "opacity-80"
+            "text-[10px] font-semibold tracking-tight",
+            COLOR,
+            isActive ? "text-primary" : "text-muted-foreground/80"
           )}
         >
           {item.label}
         </span>
-      </span>
+      </div>
     </Link>
   );
 });
 
 const BottomNav = memo(function BottomNav({
   items,
-  pathname,
+  activePath,
+  pillId,
   badgePath,
   pendingCount,
   wrapperClassName,
   navClassName,
+  onNavigate,
 }: {
   items: NavItem[];
-  pathname: string;
+  activePath: string;
+  pillId: string;
   badgePath: string;
   pendingCount: number;
   wrapperClassName: string;
   navClassName: string;
+  onNavigate: (path: string) => void;
 }) {
-  const count = items.length;
-  const activeIndex = items.findIndex((item) => isPathActive(pathname, item.path));
+  const activeKey = items.find((i) => isPathActive(activePath, i.path))?.path;
+  const { containerRef, register, rect } = useActivePill(pillId, activeKey);
 
   return (
     <div
@@ -252,41 +353,71 @@ const BottomNav = memo(function BottomNav({
         wrapperClassName
       )}
     >
-      {/* No backdrop-blur here: the bar is near-opaque anyway, and blur makes animations stutter on phones */}
       <nav
+        ref={containerRef as React.RefObject<HTMLElement>}
         aria-label="Primary"
         className={cn(
-          "pointer-events-auto h-[58px] w-full rounded-full border border-white/15 bg-neutral-950/95 p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10",
+          "pointer-events-auto relative flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 backdrop-blur-xl",
           navClassName
         )}
       >
-        <div
-          className="relative grid h-full"
-          style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
-        >
-          {/* One pill, moved with a transform only (no layout measuring), so it is identical on every tap */}
-          <motion.span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 transform-gpu will-change-transform"
-            style={{ width: `${100 / count}%` }}
-            initial={false}
-            animate={{ x: `${Math.max(activeIndex, 0) * 100}%`, opacity: activeIndex >= 0 ? 1 : 0 }}
-            transition={{ x: PILL_SPRING, opacity: { duration: 0.2 } }}
-          >
-            <span className="block h-full w-full rounded-full border border-primary/30 bg-primary/15" />
-          </motion.span>
-
-          {items.map((item, i) => (
-            <BottomNavLink
-              key={item.path}
-              item={item}
-              isActive={i === activeIndex}
-              showBadge={item.path === badgePath && pendingCount > 0}
-            />
-          ))}
-        </div>
+        <ActivePill id={pillId} rect={rect} radius={9999} />
+        {items.map((item) => (
+          <BottomNavLink
+            key={item.path}
+            item={item}
+            register={register}
+            onNavigate={onNavigate}
+            isActive={item.path === activeKey}
+            showBadge={item.path === badgePath && pendingCount > 0}
+          />
+        ))}
       </nav>
     </div>
+  );
+});
+
+/* ------------------------------ sidebar nav (pill wrapper) ------------------------------ */
+
+const SidebarNav = memo(function SidebarNav({
+  activePath,
+  pendingCount,
+  onNavigate,
+}: {
+  activePath: string;
+  pendingCount: number;
+  onNavigate: (path: string) => void;
+}) {
+  const activeKey = sidebarItems.find((i) => isPathActive(activePath, i.path))?.path;
+  const { containerRef, register, rect } = useActivePill("sidebar", activeKey);
+
+  return (
+    <nav
+      ref={containerRef as React.RefObject<HTMLElement>}
+      aria-label="Primary"
+      className="relative space-y-6"
+    >
+      <ActivePill id="sidebar" rect={rect} radius={12} />
+      {navSections.map((section) => (
+        <div key={section.title} className="space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
+            {section.title}
+          </p>
+          <div className="space-y-1">
+            {section.items.map((item) => (
+              <SidebarLink
+                key={item.path}
+                item={item}
+                register={register}
+                onNavigate={onNavigate}
+                isActive={item.path === activeKey}
+                badge={item.path === "/friends" ? pendingCount : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
   );
 });
 
@@ -295,6 +426,22 @@ const BottomNav = memo(function BottomNav({
 export const Navigation = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+
+  // The pill starts moving on tap instead of waiting for the next page to render.
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const activePath = pendingPath ?? pathname;
+  const handleNavigate = useCallback((path: string) => setPendingPath(path), []);
+
+  useEffect(() => {
+    setPendingPath(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!pendingPath) return;
+    // Safety net if a route redirects or is blocked and the path never changes
+    const t = setTimeout(() => setPendingPath(null), 1000);
+    return () => clearTimeout(t);
+  }, [pendingPath]);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
@@ -360,7 +507,7 @@ export const Navigation = () => {
   }, [navigate]);
 
   return (
-    <MotionConfig reducedMotion="user">
+    <>
       {/* Desktop sidebar */}
       <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 backdrop-blur-2xl lg:flex">
         <div
@@ -374,8 +521,8 @@ export const Navigation = () => {
             className={cn("group mb-8 flex items-center gap-3.5 rounded-xl px-2 py-1.5", focusRing)}
           >
             <div className="relative">
-              <div className="absolute -inset-1 rounded-2xl bg-primary/30 blur-sm transition-colors group-hover:bg-primary/50" />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
+              <div className="absolute -inset-1 rounded-2xl bg-primary/30 blur-sm transition-colors duration-200 group-hover:bg-primary/50" />
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-[#FFE799] via-primary to-[#D69E0A] shadow-lg shadow-primary/20 transition-transform duration-200 group-hover:scale-105">
                 <Film className="text-black/90" size={22} strokeWidth={2.2} />
               </div>
             </div>
@@ -390,25 +537,11 @@ export const Navigation = () => {
             </div>
           </Link>
 
-          <nav aria-label="Primary" className="space-y-6">
-            {navSections.map((section) => (
-              <div key={section.title} className="space-y-1.5">
-                <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
-                  {section.title}
-                </p>
-                <div className="space-y-1">
-                  {section.items.map((item) => (
-                    <SidebarLink
-                      key={item.path}
-                      item={item}
-                      isActive={isPathActive(pathname, item.path)}
-                      badge={item.path === "/friends" ? pendingCount : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </nav>
+          <SidebarNav
+            activePath={activePath}
+            pendingCount={pendingCount}
+            onNavigate={handleNavigate}
+          />
         </div>
 
         <div className="space-y-3 border-t border-white/10 pt-4">
@@ -417,13 +550,14 @@ export const Navigation = () => {
               type="button"
               onClick={handleLogout}
               className={cn(
-                "group flex w-full items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300",
+                "group flex w-full items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300",
+                "transition-colors duration-200 ease-out",
                 focusRing
               )}
             >
               <LogOut
                 size={18}
-                className="transition-transform group-hover:-translate-x-0.5"
+                className="transition-transform duration-200 group-hover:-translate-x-0.5"
               />
               <span>Sign out</span>
             </button>
@@ -431,7 +565,8 @@ export const Navigation = () => {
             <Link
               to="/login"
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-bold text-black shadow-md shadow-primary/20 transition-colors hover:bg-primary/90",
+                "flex w-full items-center gap-3 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-bold text-black shadow-md shadow-primary/20 hover:bg-primary/90",
+                "transition-colors duration-200 ease-out",
                 focusRing
               )}
             >
@@ -441,10 +576,10 @@ export const Navigation = () => {
           )}
 
           <div className="flex items-center justify-between px-1.5 text-[11px] text-muted-foreground/70">
-            <Link to="/about" className="transition-colors hover:text-white">
+            <Link to="/about" className="transition-colors duration-200 hover:text-white">
               About
             </Link>
-            <Link to="/contact" className="transition-colors hover:text-white">
+            <Link to="/contact" className="transition-colors duration-200 hover:text-white">
               Support
             </Link>
             <span className="text-[10px]">v1.1</span>
@@ -455,9 +590,11 @@ export const Navigation = () => {
       {/* Mobile bottom bar */}
       <BottomNav
         items={mobileNavItems}
-        pathname={pathname}
+        activePath={activePath}
+        pillId="mobile"
         badgePath="/profile"
         pendingCount={pendingCount}
+        onNavigate={handleNavigate}
         wrapperClassName="bottom-2.5 flex px-4 sm:bottom-3 md:hidden"
         navClassName="max-w-sm"
       />
@@ -465,12 +602,14 @@ export const Navigation = () => {
       {/* Tablet bottom bar */}
       <BottomNav
         items={tabletNavItems}
-        pathname={pathname}
+        activePath={activePath}
+        pillId="tablet"
         badgePath="/friends"
         pendingCount={pendingCount}
+        onNavigate={handleNavigate}
         wrapperClassName="bottom-3 hidden px-6 md:flex lg:hidden"
         navClassName="max-w-md"
       />
-    </MotionConfig>
+    </>
   );
 };

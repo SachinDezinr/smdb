@@ -84,9 +84,11 @@ const buildQuery = (path: string, params: ProxyParams): string => {
 const send = async <T>(query: string): Promise<T> => {
   incrementActivityScore();
 
-  const token = await getAccessToken();
+  const token = (await getAccessToken()) ?? undefined;
   const response = await fetch(`${PROXY_URL}?${query}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    // Always send the header, as the original code did. Logged-out visitors have no token,
+    // and the proxy appears to reject requests that have no Authorization header at all.
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!response.ok) {
