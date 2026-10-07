@@ -2,6 +2,7 @@
 
 import React, {
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   fetchProfileData,
   clearCachedProfile,
@@ -106,9 +106,10 @@ const focusRing =
 
 /* ------------------------------ one motion language ------------------------------ */
 
-// Every movement (sidebar, tablet bar, phone bar) uses this same spring,
-// and every colour/opacity change uses the same 200ms ease-out.
-const SPRING = { type: "spring", stiffness: 520, damping: 40, mass: 0.7 } as const;
+// The sliding pill uses a plain CSS transform transition. Those run on the compositor,
+// so they keep moving smoothly even while the main thread is busy rendering the next page.
+const PILL_TRANSITION =
+  "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
 /* ------------------------------ sliding active pill ------------------------------ */
@@ -173,8 +174,6 @@ function useActivePill(id: string, activeKey: string | undefined) {
   return { containerRef, register, rect };
 }
 
-const toVars = (r: Rect) => ({ x: r.x, y: r.y, width: r.w, height: r.h });
-
 const ActivePill = memo(function ActivePill({
   id,
   rect,
@@ -184,26 +183,55 @@ const ActivePill = memo(function ActivePill({
   rect: Rect | null;
   radius: number;
 }) {
-  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const placed = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (!rect) {
+      el.style.opacity = "0";
+      return;
+    }
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const place = (r: Rect, animate: boolean) => {
+      el.style.transition = animate && !reduce ? PILL_TRANSITION : "none";
+      el.style.transform = `translate3d(${r.x}px, ${r.y}px, 0)`;
+      el.style.width = `${r.w}px`;
+      el.style.height = `${r.h}px`;
+    };
+
+    if (!placed.current) {
+      placed.current = true;
+      const from = lastRects[id];
+      if (from && (from.x !== rect.x || from.y !== rect.y)) {
+        // remounted by a route change: start where the previous pill ended, then slide
+        place(from, false);
+        void el.offsetWidth; // flush so the browser sees the starting position
+        place(rect, true);
+      } else {
+        place(rect, false);
+      }
+    } else {
+      place(rect, true);
+    }
+    el.style.opacity = "1";
+  }, [id, rect]);
 
   return (
-    <AnimatePresence initial={false}>
-      {rect && (
-        <motion.div
-          key="pill"
-          aria-hidden="true"
-          className="pointer-events-none absolute left-0 top-0 bg-primary/15"
-          style={{
-            borderRadius: radius,
-            boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.3)",
-          }}
-          initial={lastRects[id] ? { ...toVars(lastRects[id]!), opacity: 1 } : { ...toVars(rect), opacity: 0 }}
-          animate={{ ...toVars(rect), opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.15 } }}
-          transition={reduce ? { duration: 0 } : SPRING}
-        />
-      )}
-    </AnimatePresence>
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className="pointer-events-none absolute left-0 top-0 bg-primary/15"
+      style={{
+        opacity: 0,
+        borderRadius: radius,
+        boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.3)",
+        willChange: "transform",
+      }}
+    />
   );
 });
 
@@ -220,7 +248,7 @@ const SidebarLink = memo(function SidebarLink({
   isActive: boolean;
   badge?: number;
   register: (path: string, el: HTMLElement | null) => void;
-  onNavigate: (path: string) => void;
+  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
 }) {
   const Icon = item.icon;
 
@@ -228,7 +256,7 @@ const SidebarLink = memo(function SidebarLink({
     <Link
       to={item.path}
       ref={(el) => register(item.path, el)}
-      onClick={() => onNavigate(item.path)}
+      onClick={(e) => onNavigate(e, item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold",
@@ -271,34 +299,40 @@ const BottomNavLink = memo(function BottomNavLink({
   item,
   isActive,
   showBadge,
-  register,
   onNavigate,
 }: {
   item: NavItem;
   isActive: boolean;
   showBadge: boolean;
-  register: (path: string, el: HTMLElement | null) => void;
-  onNavigate: (path: string) => void;
+  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
 }) {
   const Icon = item.icon;
 
   return (
     <Link
       to={item.path}
-      ref={(el) => register(item.path, el)}
-      onClick={() => onNavigate(item.path)}
+      onClick={(e) => onNavigate(e, item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "group relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full",
-        COLOR,
+        "transition-colors duration-150 ease-out",
         focusRing,
         isActive ? "text-primary" : "text-muted-foreground"
       )}
     >
-      {/* press feedback lives on the content so it never distorts the sliding pill */}
-      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-150 ease-out group-active:scale-95">
+      {/* Simple fade: every item owns its highlight, no travelling pill to wait for */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 rounded-full bg-primary/15 ring-1 ring-inset ring-primary/30",
+          "transition-opacity duration-150 ease-out",
+          isActive ? "opacity-100" : "opacity-0"
+        )}
+      />
+
+      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-100 ease-out group-active:scale-95">
         <div className="relative">
-          <Icon size={18} className={COLOR} />
+          <Icon size={18} />
           {showBadge && (
             <>
               <span
@@ -312,8 +346,7 @@ const BottomNavLink = memo(function BottomNavLink({
 
         <span
           className={cn(
-            "text-[10px] font-semibold tracking-tight",
-            COLOR,
+            "text-[10px] font-semibold tracking-tight transition-colors duration-150 ease-out",
             isActive ? "text-primary" : "text-muted-foreground/80"
           )}
         >
@@ -327,7 +360,6 @@ const BottomNavLink = memo(function BottomNavLink({
 const BottomNav = memo(function BottomNav({
   items,
   activePath,
-  pillId,
   badgePath,
   pendingCount,
   wrapperClassName,
@@ -336,15 +368,13 @@ const BottomNav = memo(function BottomNav({
 }: {
   items: NavItem[];
   activePath: string;
-  pillId: string;
   badgePath: string;
   pendingCount: number;
   wrapperClassName: string;
   navClassName: string;
-  onNavigate: (path: string) => void;
+  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
 }) {
   const activeKey = items.find((i) => isPathActive(activePath, i.path))?.path;
-  const { containerRef, register, rect } = useActivePill(pillId, activeKey);
 
   return (
     <div
@@ -354,19 +384,16 @@ const BottomNav = memo(function BottomNav({
       )}
     >
       <nav
-        ref={containerRef as React.RefObject<HTMLElement>}
         aria-label="Primary"
         className={cn(
-          "pointer-events-auto relative flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 backdrop-blur-xl",
+          "pointer-events-auto flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10",
           navClassName
         )}
       >
-        <ActivePill id={pillId} rect={rect} radius={9999} />
         {items.map((item) => (
           <BottomNavLink
             key={item.path}
             item={item}
-            register={register}
             onNavigate={onNavigate}
             isActive={item.path === activeKey}
             showBadge={item.path === badgePath && pendingCount > 0}
@@ -386,7 +413,7 @@ const SidebarNav = memo(function SidebarNav({
 }: {
   activePath: string;
   pendingCount: number;
-  onNavigate: (path: string) => void;
+  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
 }) {
   const activeKey = sidebarItems.find((i) => isPathActive(activePath, i.path))?.path;
   const { containerRef, register, rect } = useActivePill("sidebar", activeKey);
@@ -430,7 +457,19 @@ export const Navigation = () => {
   // The pill starts moving on tap instead of waiting for the next page to render.
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const activePath = pendingPath ?? pathname;
-  const handleNavigate = useCallback((path: string) => setPendingPath(path), []);
+  const handleNavigate = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+      const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+      if (!plainClick) return; // let the browser open new tabs/windows as usual
+
+      e.preventDefault();
+      setPendingPath(path); // urgent: the pill starts sliding right away
+      // Low priority: the heavy page render can't hold up the pill or the tap feedback,
+      // and the old page stays on screen until the next one is ready.
+      startTransition(() => navigate(path));
+    },
+    [navigate]
+  );
 
   useEffect(() => {
     setPendingPath(null);
@@ -438,8 +477,8 @@ export const Navigation = () => {
 
   useEffect(() => {
     if (!pendingPath) return;
-    // Safety net if a route redirects or is blocked and the path never changes
-    const t = setTimeout(() => setPendingPath(null), 1000);
+    // Safety net if navigation is blocked and the path never changes (slow pages can take a while)
+    const t = setTimeout(() => setPendingPath(null), 4000);
     return () => clearTimeout(t);
   }, [pendingPath]);
 
@@ -591,7 +630,6 @@ export const Navigation = () => {
       <BottomNav
         items={mobileNavItems}
         activePath={activePath}
-        pillId="mobile"
         badgePath="/profile"
         pendingCount={pendingCount}
         onNavigate={handleNavigate}
@@ -603,7 +641,6 @@ export const Navigation = () => {
       <BottomNav
         items={tabletNavItems}
         activePath={activePath}
-        pillId="tablet"
         badgePath="/friends"
         pendingCount={pendingCount}
         onNavigate={handleNavigate}
