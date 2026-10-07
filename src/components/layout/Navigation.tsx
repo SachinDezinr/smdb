@@ -82,18 +82,18 @@ const sidebarItems = navSections.flatMap((s) => s.items);
 
 const mobileNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  { icon: Calendar, label: "LineUp", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
-  { icon: Library, label: "Collection", path: "/collection" },
+  { icon: Library, label: "Vault", path: "/collection" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
 const tabletNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Calendar, label: "Upcoming", path: "/upcoming" },
+  { icon: Calendar, label: "LineUp", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
-  { icon: Library, label: "Collection", path: "/collection" },
-  { icon: Users, label: "Friends", path: "/friends" },
+  { icon: Library, label: "Vault", path: "/collection" },
+  { icon: Users, label: "Social", path: "/friends" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
