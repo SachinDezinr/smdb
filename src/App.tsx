@@ -11,6 +11,7 @@ import { showSuccess } from "@/utils/toast";
 import { smartWarmCache } from "@/lib/tmdb";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RouteScrollToTop } from "@/components/layout/RouteScrollToTop";
+import { Navigation } from "@/components/layout/Navigation";
 
 // The landing page stays in the main bundle; every other page loads on demand
 import Index from "./pages/Index";
@@ -67,6 +68,26 @@ const GatedRoutes = ({ session, loading }: { session: Session | null; loading: b
   );
 };
 
+// Renders the navigation ONCE for every page inside it, so it no longer remounts (and
+// re-subscribes to auth) on each route change, and it stays on screen while a lazy page loads.
+// Pages inside this shell must NOT render <Navigation /> themselves.
+const AppShell = () => (
+  <div className="flex min-h-screen bg-background text-foreground">
+    <Navigation />
+    <div className="min-w-0 flex-1">
+      <Suspense
+        fallback={
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <Loader2 className="animate-spin text-primary" size={36} />
+          </div>
+        }
+      >
+        <Outlet />
+      </Suspense>
+    </div>
+  </div>
+);
+
 /* ------------------------------ app ------------------------------ */
 
 const App = () => {
@@ -117,25 +138,28 @@ const App = () => {
           <RouteScrollToTop />
           <Suspense fallback={<FullScreenLoader message="Loading..." />}>
             <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/upcoming" element={<Upcoming />} />
-              <Route path="/recommendations" element={<Recommendations />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
+              {/* Pages with the navigation (rendered once by AppShell) */}
+              <Route element={<AppShell />}>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/upcoming" element={<Upcoming />} />
+                <Route path="/recommendations" element={<Recommendations />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
 
-              {/* Auth & Login Routes */}
+                {/* Gated Routes */}
+                <Route element={<GatedRoutes session={session} loading={loading} />}>
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/collection" element={<Collection />} />
+                  <Route path="/friends" element={<Friends />} />
+                  <Route path="/stats" element={<Stats />} />
+                  <Route path="/compare/:friendId" element={<Compare />} />
+                </Route>
+              </Route>
+
+              {/* Auth & Login Routes (no navigation) */}
               <Route path="/login" element={<Auth />} />
               <Route path="/auth" element={<Navigate to="/login" replace />} />
-
-              {/* Gated Routes */}
-              <Route element={<GatedRoutes session={session} loading={loading} />}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/collection" element={<Collection />} />
-                <Route path="/friends" element={<Friends />} />
-                <Route path="/stats" element={<Stats />} />
-                <Route path="/compare/:friendId" element={<Compare />} />
-              </Route>
 
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -104,15 +104,15 @@ const isPathActive = (pathname: string, path: string) =>
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
-/* ------------------------------ one motion language ------------------------------ */
+/* ------------------------------ motion ------------------------------ */
 
-// The sliding pill uses a plain CSS transform transition. Those run on the compositor,
-// so they keep moving smoothly even while the main thread is busy rendering the next page.
+// The sidebar pill is a plain CSS transform transition. Those run on the compositor,
+// so they stay smooth even while the main thread is busy rendering the next page.
 const PILL_TRANSITION =
   "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
-/* ------------------------------ sliding active pill ------------------------------ */
+/* ------------------------------ sliding active pill (sidebar) ------------------------------ */
 
 interface Rect {
   x: number;
@@ -121,15 +121,12 @@ interface Rect {
   h: number;
 }
 
-// Remembers where each pill was last. Pages render <Navigation /> themselves, so it
-// remounts on every route change; this lets the pill still slide from its old spot.
-const lastRects: Record<string, Rect | undefined> = {};
-
 /**
  * Measures the active item inside `containerRef` and keeps the rect up to date
- * (route change, resize, bar becoming visible at a breakpoint).
+ * (route change, resize, sidebar becoming visible at a breakpoint).
+ * <Navigation /> is mounted once by AppShell, so the pill just moves between items.
  */
-function useActivePill(id: string, activeKey: string | undefined) {
+function useActivePill(activeKey: string | undefined) {
   const containerRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
   const [rect, setRect] = useState<Rect | null>(null);
@@ -141,7 +138,7 @@ function useActivePill(id: string, activeKey: string | undefined) {
 
   const measure = useCallback(() => {
     const el = activeKey ? itemRefs.current.get(activeKey) : undefined;
-    // width 0 means this bar is hidden at the current breakpoint
+    // width 0 means the sidebar is hidden at the current breakpoint
     if (!el || el.offsetWidth === 0) {
       setRect(null);
       return;
@@ -166,20 +163,13 @@ function useActivePill(id: string, activeKey: string | undefined) {
     return () => ro.disconnect();
   }, [measure]);
 
-  // Written after commit, so the pill's `initial` still sees the previous position on mount.
-  useEffect(() => {
-    lastRects[id] = rect ?? undefined;
-  }, [id, rect]);
-
   return { containerRef, register, rect };
 }
 
 const ActivePill = memo(function ActivePill({
-  id,
   rect,
   radius,
 }: {
-  id: string;
   rect: Rect | null;
   radius: number;
 }) {
@@ -192,33 +182,18 @@ const ActivePill = memo(function ActivePill({
 
     if (!rect) {
       el.style.opacity = "0";
+      placed.current = false; // reappear in place instead of sliding in from a stale spot
       return;
     }
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const place = (r: Rect, animate: boolean) => {
-      el.style.transition = animate && !reduce ? PILL_TRANSITION : "none";
-      el.style.transform = `translate3d(${r.x}px, ${r.y}px, 0)`;
-      el.style.width = `${r.w}px`;
-      el.style.height = `${r.h}px`;
-    };
-
-    if (!placed.current) {
-      placed.current = true;
-      const from = lastRects[id];
-      if (from && (from.x !== rect.x || from.y !== rect.y)) {
-        // remounted by a route change: start where the previous pill ended, then slide
-        place(from, false);
-        void el.offsetWidth; // flush so the browser sees the starting position
-        place(rect, true);
-      } else {
-        place(rect, false);
-      }
-    } else {
-      place(rect, true);
-    }
+    el.style.transition = placed.current && !reduce ? PILL_TRANSITION : "none";
+    el.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
+    el.style.width = `${rect.w}px`;
+    el.style.height = `${rect.h}px`;
     el.style.opacity = "1";
-  }, [id, rect]);
+    placed.current = true;
+  }, [rect]);
 
   return (
     <div
@@ -237,6 +212,8 @@ const ActivePill = memo(function ActivePill({
 
 /* ------------------------------ sidebar (desktop) ------------------------------ */
 
+type NavigateHandler = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+
 const SidebarLink = memo(function SidebarLink({
   item,
   isActive,
@@ -248,7 +225,7 @@ const SidebarLink = memo(function SidebarLink({
   isActive: boolean;
   badge?: number;
   register: (path: string, el: HTMLElement | null) => void;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  onNavigate: NavigateHandler;
 }) {
   const Icon = item.icon;
 
@@ -293,6 +270,48 @@ const SidebarLink = memo(function SidebarLink({
   );
 });
 
+const SidebarNav = memo(function SidebarNav({
+  activePath,
+  pendingCount,
+  onNavigate,
+}: {
+  activePath: string;
+  pendingCount: number;
+  onNavigate: NavigateHandler;
+}) {
+  const activeKey = sidebarItems.find((i) => isPathActive(activePath, i.path))?.path;
+  const { containerRef, register, rect } = useActivePill(activeKey);
+
+  return (
+    <nav
+      ref={containerRef as React.RefObject<HTMLElement>}
+      aria-label="Primary"
+      className="relative space-y-6"
+    >
+      <ActivePill rect={rect} radius={12} />
+      {navSections.map((section) => (
+        <div key={section.title} className="space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
+            {section.title}
+          </p>
+          <div className="space-y-1">
+            {section.items.map((item) => (
+              <SidebarLink
+                key={item.path}
+                item={item}
+                register={register}
+                onNavigate={onNavigate}
+                isActive={item.path === activeKey}
+                badge={item.path === "/friends" ? pendingCount : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+});
+
 /* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
 
 const BottomNavLink = memo(function BottomNavLink({
@@ -304,7 +323,7 @@ const BottomNavLink = memo(function BottomNavLink({
   item: NavItem;
   isActive: boolean;
   showBadge: boolean;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  onNavigate: NavigateHandler;
 }) {
   const Icon = item.icon;
 
@@ -320,7 +339,7 @@ const BottomNavLink = memo(function BottomNavLink({
         isActive ? "text-primary" : "text-muted-foreground"
       )}
     >
-      {/* Simple fade: every item owns its highlight, no travelling pill to wait for */}
+      {/* Simple fade: every item owns its highlight, so there is no travelling pill to wait for */}
       <span
         aria-hidden="true"
         className={cn(
@@ -372,7 +391,7 @@ const BottomNav = memo(function BottomNav({
   pendingCount: number;
   wrapperClassName: string;
   navClassName: string;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  onNavigate: NavigateHandler;
 }) {
   const activeKey = items.find((i) => isPathActive(activePath, i.path))?.path;
 
@@ -404,71 +423,35 @@ const BottomNav = memo(function BottomNav({
   );
 });
 
-/* ------------------------------ sidebar nav (pill wrapper) ------------------------------ */
-
-const SidebarNav = memo(function SidebarNav({
-  activePath,
-  pendingCount,
-  onNavigate,
-}: {
-  activePath: string;
-  pendingCount: number;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
-}) {
-  const activeKey = sidebarItems.find((i) => isPathActive(activePath, i.path))?.path;
-  const { containerRef, register, rect } = useActivePill("sidebar", activeKey);
-
-  return (
-    <nav
-      ref={containerRef as React.RefObject<HTMLElement>}
-      aria-label="Primary"
-      className="relative space-y-6"
-    >
-      <ActivePill id="sidebar" rect={rect} radius={12} />
-      {navSections.map((section) => (
-        <div key={section.title} className="space-y-1.5">
-          <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
-            {section.title}
-          </p>
-          <div className="space-y-1">
-            {section.items.map((item) => (
-              <SidebarLink
-                key={item.path}
-                item={item}
-                register={register}
-                onNavigate={onNavigate}
-                isActive={item.path === activeKey}
-                badge={item.path === "/friends" ? pendingCount : undefined}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </nav>
-  );
-});
-
 /* ------------------------------ component ------------------------------ */
 
 export const Navigation = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  // The pill starts moving on tap instead of waiting for the next page to render.
+  // Highlight the tapped item immediately instead of waiting for the next page to render.
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const activePath = pendingPath ?? pathname;
-  const handleNavigate = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+
+  const handleNavigate = useCallback<NavigateHandler>(
+    (e, path) => {
       const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
       if (!plainClick) return; // let the browser open new tabs/windows as usual
 
       e.preventDefault();
-      setPendingPath(path); // urgent: the pill starts sliding right away
-      // Low priority: the heavy page render can't hold up the pill or the tap feedback,
-      // and the old page stays on screen until the next one is ready.
+
+      if (path === pathname) {
+        // already here: scroll to top instead of stacking a duplicate history entry
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      setPendingPath(path); // urgent: the highlight moves right away
+      // Low priority: the heavy page render can't hold up tap feedback, and the
+      // old page stays on screen until the next one is ready.
       startTransition(() => navigate(path));
     },
-    [navigate]
+    [navigate, pathname]
   );
 
   useEffect(() => {
@@ -540,6 +523,8 @@ export const Navigation = () => {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Sign out failed:", error);
+      // the server call failed; still drop the local session so the user is really signed out
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     } finally {
       navigate("/login");
     }
@@ -548,7 +533,7 @@ export const Navigation = () => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 backdrop-blur-2xl lg:flex">
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
