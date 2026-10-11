@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { fetchUpcoming, fetchContent, ContentItem, MediaType, Region } from '@/lib/tmdb';
 import { Search, Loader2, Plus, X, Calendar as CalendarIcon, Sparkles, LayoutGrid, ChevronDown, Filter } from 'lucide-react';

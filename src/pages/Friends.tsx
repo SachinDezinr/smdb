@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, Users, Loader2, Clock, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';

@@ -1,5 +1,4 @@
 import React, { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
 import { ContentCard } from '@/components/content/ContentCard';
 import { ContentItem } from '@/lib/tmdb/types';
 import { fetchBestOfYear, type RatedContentItem } from '@/lib/tmdb/queries';
@@ -450,7 +449,6 @@ export default function Recommendations() {
   /* ---- render ---- */
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
       <ScrollToTop />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-3.5 sm:px-6 md:px-8 lg:px-10 pb-28 lg:pb-16">

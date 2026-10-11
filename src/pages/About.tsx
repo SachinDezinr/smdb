@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Users, BarChart3, Calendar, Sparkles, Film } from 'lucide-react';
 
@@ -15,7 +14,6 @@ const features = [
 const About = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-4xl mx-auto w-full">
         <motion.div 

@@ -109,7 +109,7 @@ const focusRing =
 // The sidebar pill is a plain CSS transform transition. Those run on the compositor,
 // so they stay smooth even while the main thread is busy rendering the next page.
 const PILL_TRANSITION =
-  "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
+  "transform 300ms cubic-bezier(0.22, 1, 0.35, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
 /* ------------------------------ sliding active pill (sidebar) ------------------------------ */
@@ -203,7 +203,7 @@ const ActivePill = memo(function ActivePill({
       style={{
         opacity: 0,
         borderRadius: radius,
-        boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.3)",
+        boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.2)",
         willChange: "transform",
       }}
     />

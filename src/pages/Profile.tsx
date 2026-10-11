@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -81,7 +80,6 @@ const Profile = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
 
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-5xl mx-auto w-full">
         {pageLoading && !user ? (

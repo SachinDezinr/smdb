@@ -1,6 +1,5 @@
 "use client";
 
-import { Navigation } from '@/components/layout/Navigation';
 import { motion } from 'framer-motion';
 import { Bug, Lightbulb, Instagram, Linkedin, Code, Sparkles, type LucideIcon } from 'lucide-react';
 
@@ -54,7 +53,6 @@ const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-primary'
 const Contact = () => {
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
 
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-4xl mx-auto w-full flex flex-col items-center justify-center">
         <motion.div

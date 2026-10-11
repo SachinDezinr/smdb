@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Navigation } from '@/components/layout/Navigation';
 import { TrendingHero } from '@/components/content/TrendingHero';
 import { CatalogFilters } from '@/components/content/CatalogFilters';
 import { CatalogSearchResults } from '@/components/content/CatalogSearchResults';
@@ -287,7 +286,6 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <Navigation />
       <ScrollToTop />
 
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
