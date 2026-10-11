@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserCheck, Edit3, Check, Loader2 } from 'lucide-react';
+import { User, Edit3, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
 import { setCachedProfile } from '@/lib/profileStore';
@@ -70,7 +70,7 @@ export const PersonalInfoSection = ({
       <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
-            <UserCheck size={18} />
+            <User size={18} />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white tracking-tight">Personal Information</h3>

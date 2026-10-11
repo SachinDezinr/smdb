@@ -332,6 +332,8 @@ const BEST_OF_REGION_LANG: Record<Exclude<BestOfRegion, 'all'>, string> = {
   tollywood: 'te',
 };
 
+const SPARSE_REGIONS = new Set<BestOfRegion>(['pollywood']);
+
 /** Vote-count floor for a year, before niche/regional/genre relaxation. */
 const baseMinVotes = (year: number, currentYear: number) =>
   year < 1980 ? 80 : year < 2000 ? 200 : year < 2020 ? 350 : year <= currentYear ? 150 : 0;
@@ -362,7 +364,12 @@ export function getBestOfYearConfig(
 
   const sortBy = isFuture ? 'popularity.desc' : 'vote_average.desc';
 
-  return { isFuture, hasGenre, regionParams, minVotes, sortBy };
+  // Regions with little TMDB data (few titles, few votes). A vote floor + "highest rated"
+  // sort either hides most years or surfaces 10.0 ratings from a handful of votes.
+  const sparse =
+    SPARSE_REGIONS.has(region) && (category === 'movie' || category === 'tv' || category === 'all');
+
+  return { isFuture, hasGenre, regionParams, minVotes, sortBy, sparse };
 }
 
 type BestOfConfig = ReturnType<typeof getBestOfYearConfig>;
@@ -400,6 +407,21 @@ export function genreForKind(kind: 'movie' | 'tv', id: number | string): string 
   return TV_TO_MOVIE[g]?.[0] ?? g; // first match: TMDB can't mix AND and OR in one filter
 }
 
+// Sparse regions have few votes per title, so rank with a weighted rating: a title with a
+// handful of votes is pulled toward the average of the year's candidates instead of
+// winning on one 10/10, but it still ranks (a flat vote floor would drop the whole year).
+const PRIOR_WEIGHT = 25;
+const pickByWeightedRating = (items: RatedContentItem[]): RatedContentItem | undefined => {
+  const voted = items.filter((i) => (i.vote_count || 0) > 0);
+  if (!voted.length) return undefined;
+  const mean = voted.reduce((sum, i) => sum + (i.rating || 0), 0) / voted.length;
+  const score = (i: RatedContentItem) => {
+    const v = i.vote_count || 0;
+    return (v / (v + PRIOR_WEIGHT)) * (i.rating || 0) + (PRIOR_WEIGHT / (v + PRIOR_WEIGHT)) * mean;
+  };
+  return voted.reduce((best, i) => (score(i) > score(best) ? i : best));
+};
+
 /** Top discover result for one media kind. Returns null without a request if the genre doesn't exist for it. */
 async function fetchTopOne(
   kind: 'movie' | 'tv',
@@ -409,10 +431,13 @@ async function fetchTopOne(
   extra: Params = {},
   animation = false
 ): Promise<RatedContentItem | null> {
+  // Sparse regions: take the most-voted titles of the year and rank them ourselves
+  const sparse = cfg.sparse && !cfg.isFuture;
+
   const params: Params = {
     [DATE_KEYS[kind].year]: year,
     include_adult: false,
-    sort_by: cfg.sortBy,
+    sort_by: sparse ? 'vote_count.desc' : cfg.sortBy,
     page: 1,
     ...extra,
   };
@@ -427,11 +452,18 @@ async function fetchTopOne(
 
   if (!cfg.isFuture && cfg.minVotes > 0) {
     // TV vote counts run lower than film, so the floor is halved
-    params['vote_count.gte'] = kind === 'movie' ? cfg.minVotes : Math.floor(cfg.minVotes / 2);
+    // Punjabi titles on TMDB rarely have more than a couple of votes, so a floor of 1
+    // only filters out completely unrated entries.
+    params['vote_count.gte'] = sparse
+      ? 1
+      : kind === 'movie'
+        ? cfg.minVotes
+        : Math.floor(cfg.minVotes / 2);
   }
 
   const data = await fetchFromProxy(`/discover/${kind}`, params);
-  return (mapResults(data.results || [], kind)[0] as RatedContentItem | undefined) ?? null;
+  const items = mapResults(data.results || [], kind) as RatedContentItem[];
+  return (sparse ? pickByWeightedRating(items) : items[0]) ?? null;
 }
 
 const pickBetter = (

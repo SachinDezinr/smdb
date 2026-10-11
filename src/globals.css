@@ -10,19 +10,19 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 2%;
     --popover-foreground: 0 0% 98%;
-    --primary: 45 91% 53%; /* IMDb Gold #F5C518 */
+    --primary: 45 90% 55%; /* IMDb Gold #F5C518 */
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 8%;
     --muted-foreground: 0 0% 60%;
-    --accent: 45 91% 53%;
+    --accent: 45 90% 55%;
     --accent-foreground: 0 0% 0%;
     --destructive: 0 62.5% 30.5%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 18%; /* Slightly increased intensity for crisp definition */
     --input: 0 0% 18%;
-    --ring: 45 92% 55%;
+    --ring: 45 90% 55%;
     --radius: 0.77rem;
   }
 }
@@ -36,7 +36,7 @@
     font-family: 'Poppins', sans-serif;
     background-color: #000000;
     background-image: 
-      radial-gradient(circle at 50% 0%, rgba(245, 196, 25, 0.04) 0%, transparent 40%);
+      radial-gradient(circle at 50% 0%, rgba(245, 195, 25, 0.05) 0%, transparent 40%);
     background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -50,7 +50,7 @@
 }
 
 .cinematic-glow {
-  box-shadow: 0 0 26px rgba(245, 196, 25, 0.12);
+  box-shadow: 0 0 26px rgba(245, 195, 25, 0.10);
 }
 
 .watched-glow {

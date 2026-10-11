@@ -216,9 +216,9 @@ const Compare = () => {
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
         <header className="mb-8">
-          <Link to="/friends" className="inline-flex lg:hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
-            <ArrowLeft size={15} /> Back to Friends
-          </Link>
+          //<Link to="/friends" className="inline-flex lg:hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
+            //<ArrowLeft size={15} /> Back to Friends
+          //</Link>
           
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div>
