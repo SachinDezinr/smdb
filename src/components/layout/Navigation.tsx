@@ -402,7 +402,7 @@ const BottomNav = memo(function BottomNav({
     <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:bottom-3 md:px-6 lg:hidden">
       <nav
         aria-label="Primary"
-        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
+        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-black px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
       >
         {bottomNavItems.map((item) => (
           <BottomNavLink
