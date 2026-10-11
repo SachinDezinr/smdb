@@ -2,12 +2,12 @@
 
 import React, {
   memo,
-  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -41,6 +41,8 @@ import {
 /* ------------------------------ data ------------------------------ */
 
 type IconType = React.ComponentType<{ size?: number; className?: string }>;
+type NavigateHandler = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+type RegisterFn = (path: string, el: HTMLElement | null) => void;
 
 interface NavItem {
   icon: IconType;
@@ -80,34 +82,33 @@ const navSections: NavSection[] = [
 
 const sidebarItems = navSections.flatMap((s) => s.items);
 
-const mobileNavItems: NavItem[] = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Calendar, label: "LineUp", path: "/upcoming" },
-  { icon: Sparkles, label: "Picks", path: "/recommendations" },
-  { icon: Library, label: "Vault", path: "/collection" },
-  { icon: User, label: "Profile", path: "/profile" },
-];
+interface BottomItem extends NavItem {
+  /** Extra classes for the link, e.g. to hide it at a breakpoint. */
+  className?: string;
+  /** Where the "new requests" dot shows: on every size, or only where Social is hidden. */
+  badge?: "always" | "mobileOnly";
+}
 
-const tabletNavItems: NavItem[] = [
+// One list for both bars. Mobile (<md) hides Social; tablet (md–lg) shows it.
+const bottomNavItems: BottomItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "LineUp", path: "/upcoming" },
   { icon: Sparkles, label: "Picks", path: "/recommendations" },
   { icon: Library, label: "Vault", path: "/collection" },
-  { icon: Users, label: "Social", path: "/friends" },
-  { icon: User, label: "Profile", path: "/profile" },
+  { icon: Users, label: "Social", path: "/friends", className: "hidden md:flex", badge: "always" },
+  { icon: User, label: "Profile", path: "/profile", badge: "mobileOnly" },
 ];
 
 /** "/" only matches itself; other routes also match their children (/collection/123). */
 const isPathActive = (pathname: string, path: string) =>
   path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
 
+const findActiveKey = (items: NavItem[], pathname: string) =>
+  items.find((i) => isPathActive(pathname, i.path))?.path;
+
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
-/* ------------------------------ one motion language ------------------------------ */
-
-// The sliding pill uses a plain CSS transform transition. Those run on the compositor,
-// so they keep moving smoothly even while the main thread is busy rendering the next page.
 const PILL_TRANSITION =
   "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
@@ -126,114 +127,95 @@ interface Rect {
 const lastRects: Record<string, Rect | undefined> = {};
 
 /**
- * Measures the active item inside `containerRef` and keeps the rect up to date
- * (route change, resize, bar becoming visible at a breakpoint).
+ * Moves the pill straight in the DOM. No React state, so a route change or a resize
+ * never re-renders anything just to reposition a div, and the transform transition
+ * stays on the compositor.
  */
 function useActivePill(id: string, activeKey: string | undefined) {
-  const containerRef = useRef<HTMLElement | null>(null);
+  const containerRef = useRef<HTMLElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
-  const [rect, setRect] = useState<Rect | null>(null);
+  const placed = useRef(false);
 
-  const register = useCallback((path: string, el: HTMLElement | null) => {
+  const register = useCallback<RegisterFn>((path, el) => {
     if (el) itemRefs.current.set(path, el);
     else itemRefs.current.delete(path);
   }, []);
 
-  const measure = useCallback(() => {
-    const el = activeKey ? itemRefs.current.get(activeKey) : undefined;
-    // width 0 means this bar is hidden at the current breakpoint
-    if (!el || el.offsetWidth === 0) {
-      setRect(null);
-      return;
-    }
-    setRect((prev) => {
-      const next = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
-      return prev && prev.x === next.x && prev.y === next.y && prev.w === next.w && prev.h === next.h
-        ? prev
-        : next;
-    });
-  }, [activeKey]);
+  const place = useCallback(
+    (animate: boolean) => {
+      const pill = pillRef.current;
+      if (!pill) return;
 
+      const item = activeKey ? itemRefs.current.get(activeKey) : undefined;
+      // width 0 means this bar is hidden at the current breakpoint
+      if (!item || item.offsetWidth === 0) {
+        pill.style.opacity = "0";
+        lastRects[id] = undefined;
+        return;
+      }
+
+      const next: Rect = {
+        x: item.offsetLeft,
+        y: item.offsetTop,
+        w: item.offsetWidth,
+        h: item.offsetHeight,
+      };
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const set = (r: Rect, withTransition: boolean) => {
+        pill.style.transition = withTransition && !reduce ? PILL_TRANSITION : "none";
+        pill.style.transform = `translate3d(${r.x}px, ${r.y}px, 0)`;
+        pill.style.width = `${r.w}px`;
+        pill.style.height = `${r.h}px`;
+      };
+
+      if (!placed.current) {
+        placed.current = true;
+        const from = lastRects[id];
+        if (from && (from.x !== next.x || from.y !== next.y)) {
+          // remounted by a route change: start where the previous pill ended, then slide
+          set(from, false);
+          void pill.offsetWidth; // flush so the browser sees the starting position
+          set(next, true);
+        } else {
+          set(next, false);
+        }
+      } else {
+        set(next, animate);
+      }
+
+      pill.style.opacity = "1";
+      lastRects[id] = next;
+    },
+    [id, activeKey]
+  );
+
+  // Route change: slide.
   useLayoutEffect(() => {
-    measure();
-  }, [measure]);
+    place(true);
+  }, [place]);
 
+  // Container resized (or the bar became visible at a breakpoint): snap, don't slide.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const ro = new ResizeObserver(measure);
+
+    let w = container.offsetWidth;
+    let h = container.offsetHeight;
+    const ro = new ResizeObserver(() => {
+      // ResizeObserver always fires once on observe(); ignore it unless the size really changed
+      if (container.offsetWidth === w && container.offsetHeight === h) return;
+      w = container.offsetWidth;
+      h = container.offsetHeight;
+      place(false);
+    });
     ro.observe(container);
     return () => ro.disconnect();
-  }, [measure]);
+  }, [place]);
 
-  // Written after commit, so the pill's `initial` still sees the previous position on mount.
-  useEffect(() => {
-    lastRects[id] = rect ?? undefined;
-  }, [id, rect]);
-
-  return { containerRef, register, rect };
+  return { containerRef, pillRef, register };
 }
-
-const ActivePill = memo(function ActivePill({
-  id,
-  rect,
-  radius,
-}: {
-  id: string;
-  rect: Rect | null;
-  radius: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const placed = useRef(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    if (!rect) {
-      el.style.opacity = "0";
-      return;
-    }
-
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const place = (r: Rect, animate: boolean) => {
-      el.style.transition = animate && !reduce ? PILL_TRANSITION : "none";
-      el.style.transform = `translate3d(${r.x}px, ${r.y}px, 0)`;
-      el.style.width = `${r.w}px`;
-      el.style.height = `${r.h}px`;
-    };
-
-    if (!placed.current) {
-      placed.current = true;
-      const from = lastRects[id];
-      if (from && (from.x !== rect.x || from.y !== rect.y)) {
-        // remounted by a route change: start where the previous pill ended, then slide
-        place(from, false);
-        void el.offsetWidth; // flush so the browser sees the starting position
-        place(rect, true);
-      } else {
-        place(rect, false);
-      }
-    } else {
-      place(rect, true);
-    }
-    el.style.opacity = "1";
-  }, [id, rect]);
-
-  return (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      className="pointer-events-none absolute left-0 top-0 bg-primary/15"
-      style={{
-        opacity: 0,
-        borderRadius: radius,
-        boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.3)",
-        willChange: "transform",
-      }}
-    />
-  );
-});
 
 /* ------------------------------ sidebar (desktop) ------------------------------ */
 
@@ -247,16 +229,20 @@ const SidebarLink = memo(function SidebarLink({
   item: NavItem;
   isActive: boolean;
   badge?: number;
-  register: (path: string, el: HTMLElement | null) => void;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  register: RegisterFn;
+  onNavigate: NavigateHandler;
 }) {
   const Icon = item.icon;
+  const { path } = item;
+
+  // Stable callback ref: an inline arrow would be detached and re-attached on every render.
+  const setRef = useCallback((el: HTMLAnchorElement | null) => register(path, el), [register, path]);
 
   return (
     <Link
-      to={item.path}
-      ref={(el) => register(item.path, el)}
-      onClick={(e) => onNavigate(e, item.path)}
+      to={path}
+      ref={setRef}
+      onClick={(e) => onNavigate(e, path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold",
@@ -282,7 +268,7 @@ const SidebarLink = memo(function SidebarLink({
           size={14}
           aria-hidden="true"
           className={cn(
-            "text-muted-foreground transition-all duration-200 ease-out",
+            "text-muted-foreground transition-[transform,opacity] duration-200 ease-out",
             isActive
               ? "translate-x-0 opacity-0"
               : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-60"
@@ -293,119 +279,6 @@ const SidebarLink = memo(function SidebarLink({
   );
 });
 
-/* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
-
-const BottomNavLink = memo(function BottomNavLink({
-  item,
-  isActive,
-  showBadge,
-  onNavigate,
-}: {
-  item: NavItem;
-  isActive: boolean;
-  showBadge: boolean;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
-}) {
-  const Icon = item.icon;
-
-  return (
-    <Link
-      to={item.path}
-      onClick={(e) => onNavigate(e, item.path)}
-      aria-current={isActive ? "page" : undefined}
-      className={cn(
-        "group relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full",
-        "transition-colors duration-150 ease-out",
-        focusRing,
-        isActive ? "text-primary" : "text-muted-foreground"
-      )}
-    >
-      {/* Simple fade: every item owns its highlight, no travelling pill to wait for */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-0 rounded-full bg-primary/15 ring-1 ring-inset ring-primary/30",
-          "transition-opacity duration-150 ease-out",
-          isActive ? "opacity-100" : "opacity-0"
-        )}
-      />
-
-      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-100 ease-out group-active:scale-95">
-        <div className="relative">
-          <Icon size={18} />
-          {showBadge && (
-            <>
-              <span
-                aria-hidden="true"
-                className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full border-2 border-neutral-950 bg-red-500"
-              />
-              <span className="sr-only">New requests</span>
-            </>
-          )}
-        </div>
-
-        <span
-          className={cn(
-            "text-[10px] font-semibold tracking-tight transition-colors duration-150 ease-out",
-            isActive ? "text-primary" : "text-muted-foreground/80"
-          )}
-        >
-          {item.label}
-        </span>
-      </div>
-    </Link>
-  );
-});
-
-const BottomNav = memo(function BottomNav({
-  items,
-  activePath,
-  badgePath,
-  pendingCount,
-  wrapperClassName,
-  navClassName,
-  onNavigate,
-}: {
-  items: NavItem[];
-  activePath: string;
-  badgePath: string;
-  pendingCount: number;
-  wrapperClassName: string;
-  navClassName: string;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
-}) {
-  const activeKey = items.find((i) => isPathActive(activePath, i.path))?.path;
-
-  return (
-    <div
-      className={cn(
-        "pointer-events-none fixed inset-x-0 z-50 justify-center pb-[env(safe-area-inset-bottom)]",
-        wrapperClassName
-      )}
-    >
-      <nav
-        aria-label="Primary"
-        className={cn(
-          "pointer-events-auto flex h-[58px] w-full items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10",
-          navClassName
-        )}
-      >
-        {items.map((item) => (
-          <BottomNavLink
-            key={item.path}
-            item={item}
-            onNavigate={onNavigate}
-            isActive={item.path === activeKey}
-            showBadge={item.path === badgePath && pendingCount > 0}
-          />
-        ))}
-      </nav>
-    </div>
-  );
-});
-
-/* ------------------------------ sidebar nav (pill wrapper) ------------------------------ */
-
 const SidebarNav = memo(function SidebarNav({
   activePath,
   pendingCount,
@@ -413,18 +286,18 @@ const SidebarNav = memo(function SidebarNav({
 }: {
   activePath: string;
   pendingCount: number;
-  onNavigate: (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  onNavigate: NavigateHandler;
 }) {
-  const activeKey = sidebarItems.find((i) => isPathActive(activePath, i.path))?.path;
-  const { containerRef, register, rect } = useActivePill("sidebar", activeKey);
+  const activeKey = findActiveKey(sidebarItems, activePath);
+  const { containerRef, pillRef, register } = useActivePill("sidebar", activeKey);
 
   return (
-    <nav
-      ref={containerRef as React.RefObject<HTMLElement>}
-      aria-label="Primary"
-      className="relative space-y-6"
-    >
-      <ActivePill id="sidebar" rect={rect} radius={12} />
+    <nav ref={containerRef} aria-label="Primary" className="relative space-y-6">
+      <div
+        ref={pillRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 rounded-xl bg-primary/15 opacity-0 ring-1 ring-inset ring-primary/30 will-change-transform"
+      />
       {navSections.map((section) => (
         <div key={section.title} className="space-y-1.5">
           <p className="px-3 text-[11px] font-semibold text-muted-foreground/70">
@@ -448,6 +321,103 @@ const SidebarNav = memo(function SidebarNav({
   );
 });
 
+/* ------------------------------ bottom bar (mobile + tablet) ------------------------------ */
+
+const BottomNavLink = memo(function BottomNavLink({
+  item,
+  isActive,
+  showBadge,
+  onNavigate,
+}: {
+  item: BottomItem;
+  isActive: boolean;
+  showBadge: boolean;
+  onNavigate: NavigateHandler;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      to={item.path}
+      onClick={(e) => onNavigate(e, item.path)}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "group relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full",
+        "transition-colors duration-150 ease-out",
+        focusRing,
+        isActive ? "text-primary" : "text-muted-foreground",
+        item.className
+      )}
+    >
+      {/* Simple fade: every item owns its highlight, no travelling pill to wait for */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 rounded-full bg-primary/15 ring-1 ring-inset ring-primary/30",
+          "transition-opacity duration-150 ease-out",
+          isActive ? "opacity-100" : "opacity-0"
+        )}
+      />
+
+      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-100 ease-out group-active:scale-95">
+        <div className="relative">
+          <Icon size={18} />
+          {showBadge && (
+            <span className={item.badge === "mobileOnly" ? "md:hidden" : undefined}>
+              <span
+                aria-hidden="true"
+                className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full border-2 border-neutral-950 bg-red-500"
+              />
+              <span className="sr-only">New requests</span>
+            </span>
+          )}
+        </div>
+
+        <span
+          className={cn(
+            "text-[10px] font-semibold tracking-tight transition-colors duration-150 ease-out",
+            isActive ? "text-primary" : "text-muted-foreground/80"
+          )}
+        >
+          {item.label}
+        </span>
+      </div>
+    </Link>
+  );
+});
+
+// One bar for mobile and tablet instead of two hidden/shown copies of the same DOM.
+const BottomNav = memo(function BottomNav({
+  activePath,
+  pendingCount,
+  onNavigate,
+}: {
+  activePath: string;
+  pendingCount: number;
+  onNavigate: NavigateHandler;
+}) {
+  const activeKey = findActiveKey(bottomNavItems, activePath);
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:bottom-3 md:px-6 lg:hidden">
+      <nav
+        aria-label="Primary"
+        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
+      >
+        {bottomNavItems.map((item) => (
+          <BottomNavLink
+            key={item.path}
+            item={item}
+            onNavigate={onNavigate}
+            isActive={item.path === activeKey}
+            showBadge={!!item.badge && pendingCount > 0}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+});
+
 /* ------------------------------ component ------------------------------ */
 
 export const Navigation = () => {
@@ -455,10 +425,14 @@ export const Navigation = () => {
   const navigate = useNavigate();
 
   // The pill starts moving on tap instead of waiting for the next page to render.
+  // isPending stays true until the transition commits (or is abandoned), so there is no
+  // reset effect and no timeout safety net to maintain.
+  const [isPending, startTransition] = useTransition();
   const [pendingPath, setPendingPath] = useState<string | null>(null);
-  const activePath = pendingPath ?? pathname;
-  const handleNavigate = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+  const activePath = isPending && pendingPath ? pendingPath : pathname;
+
+  const handleNavigate = useCallback<NavigateHandler>(
+    (e, path) => {
       const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
       if (!plainClick) return; // let the browser open new tabs/windows as usual
 
@@ -468,19 +442,8 @@ export const Navigation = () => {
       // and the old page stays on screen until the next one is ready.
       startTransition(() => navigate(path));
     },
-    [navigate]
+    [navigate, startTransition]
   );
-
-  useEffect(() => {
-    setPendingPath(null);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!pendingPath) return;
-    // Safety net if navigation is blocked and the path never changes (slow pages can take a while)
-    const t = setTimeout(() => setPendingPath(null), 4000);
-    return () => clearTimeout(t);
-  }, [pendingPath]);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
@@ -494,37 +457,44 @@ export const Navigation = () => {
 
   useEffect(() => {
     let isMounted = true;
+    let lastUserId: string | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!isMounted) return;
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
 
-        const isAuth = !!session?.user;
-        setIsAuthenticated(isAuth);
-        setCachedAuthState(isAuth);
+      const user = session?.user;
+      setIsAuthenticated(!!user);
+      setCachedAuthState(!!user);
 
-        if (!session?.user) {
-          setPendingCount(0);
-          return;
-        }
-
-        // A silent token refresh doesn't change the profile; skip the refetch.
-        if (event === "TOKEN_REFRESHED") return;
-
-        // Defer: awaiting Supabase calls inside this callback can deadlock the auth client.
-        setTimeout(async () => {
-          try {
-            const data = await fetchProfileData(event !== "INITIAL_SESSION");
-            if (isMounted && data) setPendingCount(data.pendingCount);
-          } catch (error) {
-            console.error("Profile refresh failed:", error);
-          }
-        }, 0);
+      if (!user) {
+        lastUserId = null;
+        setPendingCount(0);
+        return;
       }
-    );
+
+      const sameUser = user.id === lastUserId;
+      lastUserId = user.id;
+
+      // A silent token refresh doesn't change the profile. Supabase also re-emits
+      // SIGNED_IN when the tab regains focus; for the same user that's a no-op too.
+      if (event === "TOKEN_REFRESHED" || (event === "SIGNED_IN" && sameUser)) return;
+
+      // Defer: awaiting Supabase calls inside this callback can deadlock the auth client.
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          const data = await fetchProfileData(event !== "INITIAL_SESSION");
+          if (isMounted && data) setPendingCount(data.pendingCount);
+        } catch (error) {
+          console.error("Profile refresh failed:", error);
+        }
+      }, 0);
+    });
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
       authListener.subscription.unsubscribe();
     };
   }, []);
@@ -548,7 +518,7 @@ export const Navigation = () => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 backdrop-blur-2xl lg:flex">
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/80 px-5 py-6 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
@@ -590,7 +560,7 @@ export const Navigation = () => {
               onClick={handleLogout}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300",
-                "transition-colors duration-200 ease-out",
+                COLOR,
                 focusRing
               )}
             >
@@ -605,7 +575,7 @@ export const Navigation = () => {
               to="/login"
               className={cn(
                 "flex w-full items-center gap-3 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-bold text-black shadow-md shadow-primary/20 hover:bg-primary/90",
-                "transition-colors duration-200 ease-out",
+                COLOR,
                 focusRing
               )}
             >
@@ -626,26 +596,11 @@ export const Navigation = () => {
         </div>
       </aside>
 
-      {/* Mobile bottom bar */}
+      {/* Mobile + tablet bottom bar */}
       <BottomNav
-        items={mobileNavItems}
         activePath={activePath}
-        badgePath="/profile"
         pendingCount={pendingCount}
         onNavigate={handleNavigate}
-        wrapperClassName="bottom-2.5 flex px-4 sm:bottom-3 md:hidden"
-        navClassName="max-w-sm"
-      />
-
-      {/* Tablet bottom bar */}
-      <BottomNav
-        items={tabletNavItems}
-        activePath={activePath}
-        badgePath="/friends"
-        pendingCount={pendingCount}
-        onNavigate={handleNavigate}
-        wrapperClassName="bottom-3 hidden px-6 md:flex lg:hidden"
-        navClassName="max-w-md"
       />
     </>
   );
