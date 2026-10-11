@@ -2,6 +2,7 @@
 
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Navigation } from "@/components/layout/Navigation";
 import { Film } from "lucide-react";
 
 const NotFound = () => {
@@ -16,6 +17,7 @@ const NotFound = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      <Navigation />
 
       <main className="flex-1 flex items-center justify-center p-8">
         <div className="text-center glass-card border-white/10 rounded-3xl p-10 max-w-sm">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, Users, Loader2, Clock, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
@@ -209,6 +210,7 @@ const Friends = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      <Navigation />
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-5xl mx-auto w-full">
         <header className="mb-8">

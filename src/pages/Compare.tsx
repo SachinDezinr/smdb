@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Loader2, Plus, ChevronUp, Sparkles, Search, X } from 'lucide-react';
+import { Users, ArrowLeft, Loader2, Plus, ChevronUp, Sparkles, Search, X } from 'lucide-react';
 import { ContentCard } from '@/components/content/ContentCard';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -209,11 +210,16 @@ const Compare = () => {
     </div>
   );
 
-  // The navigation is rendered once by AppShell in App.tsx, so it is not imported here.
   return (
     <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      <Navigation />
+      
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
         <header className="mb-8">
+          //<Link to="/friends" className="inline-flex lg:hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
+            //<ArrowLeft size={15} /> Back to Friends
+          //</Link>
+          
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary mb-1">
@@ -275,7 +281,7 @@ const Compare = () => {
             <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">{friendCollection.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total in {friendProfile?.username || 'their'} vault</p>
           </div>
-
+          
           <div className="glass-card p-5 border-primary/30 rounded-2xl cinematic-glow text-center">
             <p className="text-[10px] uppercase font-bold tracking-widest text-primary mb-1">Common Interests</p>
             <p className="text-3xl md:text-4xl font-bold text-primary tracking-tight">{commonItems.length}</p>
@@ -291,8 +297,8 @@ const Compare = () => {
           <div className="glass-card p-5 border-white/10 rounded-2xl text-center">
             <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">Compatibility</p>
             <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-              {friendCollection.length > 0
-                ? Math.round((commonItems.length / friendCollection.length) * 100)
+              {friendCollection.length > 0 
+                ? Math.round((commonItems.length / friendCollection.length) * 100) 
                 : 0}%
             </p>
             <p className="text-xs text-muted-foreground mt-1">Taste alignment score</p>

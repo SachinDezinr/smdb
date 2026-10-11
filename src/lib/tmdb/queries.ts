@@ -412,12 +412,8 @@ export function genreForKind(kind: 'movie' | 'tv', id: number | string): string 
 // winning on one 10/10, but it still ranks (a flat vote floor would drop the whole year).
 const PRIOR_WEIGHT = 25;
 const pickByWeightedRating = (items: RatedContentItem[]): RatedContentItem | undefined => {
-  if (!items.length) return undefined;
-  // The request is already sorted by vote count with a floor of 1 vote, so the first item is the
-  // most-voted title. If the mapped items carry no vote data, fall back to it instead of
-  // returning nothing (which would hide every year).
   const voted = items.filter((i) => (i.vote_count || 0) > 0);
-  if (!voted.length) return items[0];
+  if (!voted.length) return undefined;
   const mean = voted.reduce((sum, i) => sum + (i.rating || 0), 0) / voted.length;
   const score = (i: RatedContentItem) => {
     const v = i.vote_count || 0;
