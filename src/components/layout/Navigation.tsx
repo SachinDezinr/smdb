@@ -110,7 +110,7 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
 const PILL_TRANSITION =
-  "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
+  "transform 300ms cubic-bezier(0.22, 1, 0.35, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
 /* ------------------------------ sliding active pill ------------------------------ */
