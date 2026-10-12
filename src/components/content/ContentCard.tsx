@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useState, useEffect, useMemo } from 'react';
+import React, { memo, useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, Film, User, Users, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,24 @@ const getLocalToday = () => {
   return `${now.getFullYear()}-${month}-${day}`;
 };
 
+type CreditsData = { director?: string; cast?: string[] };
+
+// One request per title, shared by every card showing it and by the hover
+// prefetch below. A failed request is dropped so the next click can retry.
+const creditsRequests = new Map<string, Promise<CreditsData | null>>();
+
+const loadCredits = (id: number, mediaType: string): Promise<CreditsData | null> => {
+  const type = mediaType === 'movie' ? 'movie' : 'tv';
+  const key = `${type}-${id}`;
+  let request = creditsRequests.get(key);
+  if (!request) {
+    request = fetchCredits(id, type);
+    creditsRequests.set(key, request);
+    request.catch(() => creditsRequests.delete(key));
+  }
+  return request;
+};
+
 // memo: this renders in grids of dozens of cards, and without it every card
 // re-rendered whenever the page above it did (a keystroke in the search box,
 // the scroll-to-top button appearing, etc.).
@@ -65,7 +83,7 @@ export const ContentCard = memo(function ContentCard({
 
   const [showCredits, setShowCredits] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [credits, setCredits] = useState<{ director?: string; cast?: string[] } | null>(null);
+  const [credits, setCredits] = useState<CreditsData | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
   const [seasons, setSeasons] = useState<number | undefined>(() =>
     isSeries ? item.season_count || getCachedTvSeason(item.id) : undefined
@@ -108,26 +126,53 @@ export const ContentCard = memo(function ContentCard({
     return date > getLocalToday();
   }, [item.release_date]);
 
-  const handlePosterClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+  // Upcoming/future cards show credits on click instead of toggling "watched".
+  const opensCredits = showReleaseDate || isFuture;
+
+  // Start loading credits before the click lands, so the overlay usually
+  // opens with its data already there. Hover waits a beat so sweeping the
+  // mouse across the grid doesn't fire a request per card; pointer-down
+  // covers touch screens, which have no hover.
+  const hoverTimer = useRef<number | undefined>(undefined);
+
+  const prefetchCredits = () => {
+    if (!opensCredits || credits) return;
+    loadCredits(item.id, item.media_type).then(setCredits).catch(() => {});
+  };
+
+  const handlePointerEnter = () => {
+    if (!opensCredits) return;
+    hoverTimer.current = window.setTimeout(prefetchCredits, 150);
+  };
+
+  const handlePointerLeave = () => window.clearTimeout(hoverTimer.current);
+
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+
+  const handlePosterClick = async (e: RMouse<HTMLDivElement>) => {
     // For upcoming/future items, toggle credits info
-    if (showReleaseDate || isFuture) {
+    if (opensCredits) {
       if (showCredits) {
         setShowCredits(false);
         return;
       }
 
+      // Open right away - the overlay shows its spinner while the credits
+      // load. This used to open only AFTER the request finished, so the click
+      // looked dead for the whole TMDB round trip (and the spinner never
+      // showed, because the overlay it lives in wasn't open yet).
+      setShowCredits(true);
+
       if (!credits) {
         setLoadingCredits(true);
         try {
-          const data = await fetchCredits(item.id, item.media_type === 'movie' ? 'movie' : 'tv');
-          setCredits(data);
+          setCredits(await loadCredits(item.id, item.media_type));
         } catch (err) {
           console.error("Failed to fetch credits", err);
         } finally {
           setLoadingCredits(false);
         }
       }
-      setShowCredits(true);
       return;
     }
 
@@ -149,7 +194,7 @@ export const ContentCard = memo(function ContentCard({
     }
   };
 
-  const handleActionClick = (e: React.MouseEvent) => {
+  const handleActionClick = (e: RMouse<Element>) => {
     e.stopPropagation();
     if (onToggleWatched) {
       onToggleWatched(item.id);
@@ -167,6 +212,9 @@ export const ContentCard = memo(function ContentCard({
     >
       <div 
         onClick={handlePosterClick}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onPointerDown={prefetchCredits}
         className={cn(
           "relative aspect-[2/3] overflow-hidden rounded-2xl transition-[border-color,border-width,box-shadow] duration-300 bg-neutral-900 cursor-pointer shadow-lg select-none",
           isWatched 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Navigation } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
@@ -84,48 +84,61 @@ const Compare = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Item ids whose toggle is currently talking to the server - a second tap on
+  // the same card while one is in flight is ignored, so a quick double-tap
+  // can't send the delete before the insert has finished.
+  const togglesInFlight = useRef(new Set<number>());
+
   // Stable across renders that don't change myCollection, instead of a new
   // function every render - matters because it's handed to every card below.
   const toggleWatched = useCallback(async (item: any, isUndo = false) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (togglesInFlight.current.has(item.content_id)) return;
+    togglesInFlight.current.add(item.content_id);
 
-    const isCurrentlyWatched = myCollection.some(i => i.content_id === item.content_id);
+    try {
+      // getSession() reads the session already stored in the browser;
+      // getUser() made a round trip to the auth server before every click.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) return;
 
-    if (isUndo || isCurrentlyWatched) {
-      const { error } = await supabase
-        .from('watched_content')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('content_id', item.content_id);
+      const removing = isUndo || myCollection.some(i => i.content_id === item.content_id);
 
-      if (!error) {
-        setMyCollection(prev => prev.filter(i => i.content_id !== item.content_id));
-        if (isUndo) {
-          showSuccess("Action undone");
-        } else {
-          showSuccess("Removed from collection");
-        }
-      } else {
-        showError("Failed to update collection");
+      // Update the card straight away; rolled back below if the request fails.
+      setMyCollection(prev =>
+        removing ? prev.filter(i => i.content_id !== item.content_id) : [...prev, item]
+      );
+
+      const { error } = removing
+        ? await supabase
+            .from('watched_content')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('content_id', item.content_id)
+        : await supabase
+            .from('watched_content')
+            .insert({
+              user_id: user.id,
+              content_id: item.content_id,
+              title: item.title,
+              poster_path: item.poster_path,
+              release_date: item.release_date,
+              vote_average: item.vote_average,
+              media_type: item.media_type,
+              season_count: item.season_count
+            });
+
+      if (error) {
+        setMyCollection(prev =>
+          removing ? [...prev, item] : prev.filter(i => i.content_id !== item.content_id)
+        );
+        showError(removing ? "Failed to update collection" : "Failed to add to collection");
+        return;
       }
-    } else {
-      const { error } = await supabase
-        .from('watched_content')
-        .insert({
-          user_id: user.id,
-          content_id: item.content_id,
-          title: item.title,
-          poster_path: item.poster_path,
-          release_date: item.release_date,
-          vote_average: item.vote_average,
-          media_type: item.media_type,
-          season_count: item.season_count
-        });
 
-      if (!error) {
-        setMyCollection(prev => [...prev, item]);
-
+      if (removing) {
+        showSuccess(isUndo ? "Action undone" : "Removed from collection");
+      } else {
         toast.success(`Added ${item.title}`, {
           description: "Moved to common interests",
           action: {
@@ -133,9 +146,9 @@ const Compare = () => {
             onClick: () => toggleWatched(item, true)
           },
         });
-      } else {
-        showError("Failed to add to collection");
       }
+    } finally {
+      togglesInFlight.current.delete(item.content_id);
     }
   }, [myCollection]);
 
@@ -216,6 +229,9 @@ const Compare = () => {
       
       <main className="flex-1 p-5 md:p-8 lg:p-12 pb-28 lg:pb-12 max-w-7xl mx-auto w-full">
         <header className="mb-8">
+          <Link to="/friends" className="inline-flex lg:hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-4">
+            <ArrowLeft size={15} /> Back to Friends
+          </Link>
           
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div>
@@ -253,7 +269,7 @@ const Compare = () => {
                 <input
                   type="text"
                   placeholder="Search titles..."
-                  className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 pl-11 pr-10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(12); }}
                 />

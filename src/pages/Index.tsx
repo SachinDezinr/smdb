@@ -8,7 +8,7 @@ import { CatalogFilters } from '@/components/content/CatalogFilters';
 import { CatalogSearchResults } from '@/components/content/CatalogSearchResults';
 import { YearSection } from '@/components/content/YearSection';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { fetchContent, ContentItem, MediaType, Region, getStartYear, getCachedTvSeason } from '@/lib/tmdb';
+import { fetchContent, ContentItem, MediaType, Region, getStartYear } from '@/lib/tmdb';
 import { Search, Compass, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { showSuccess, showError } from '@/utils/toast';
@@ -194,62 +194,90 @@ const Index = () => {
     }, 50);
   }, []);
 
+  // Item ids whose toggle is currently talking to the server. A second tap on
+  // the same card while one is in flight is ignored - otherwise a quick
+  // double-tap could send the delete before the insert has finished.
+  const togglesInFlight = useRef(new Set<number>());
+
   const toggleWatched = useCallback(async (item: ContentItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    if (togglesInFlight.current.has(item.id)) return;
+    togglesInFlight.current.add(item.id);
 
-    // SOFT GATE: If logged out, redirect to /login with soft-gate parameters
-    if (!user) {
-      const currentPath = location.pathname + location.search;
-      const params = new URLSearchParams({
-        return_to: currentPath || '/',
-        action: 'add_collection',
-        movie_id: String(item.id),
-        media_type: item.media_type || 'movie',
-        title: item.title,
-        poster_path: item.poster_path || '',
-        release_date: item.release_date || '',
-        vote_average: String(item.vote_average || 0),
-      });
+    try {
+      // getSession() reads the session already stored in the browser.
+      // getUser() makes a round trip to the auth server on every call, and it
+      // sat in front of every click. The database still checks who you are.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
-      navigate(`/login?${params.toString()}`);
-      return;
-    }
+      // SOFT GATE: If logged out, redirect to /login with soft-gate parameters
+      if (!user) {
+        const currentPath = location.pathname + location.search;
+        const params = new URLSearchParams({
+          return_to: currentPath || '/',
+          action: 'add_collection',
+          movie_id: String(item.id),
+          media_type: item.media_type || 'movie',
+          title: item.title,
+          poster_path: item.poster_path || '',
+          release_date: item.release_date || '',
+          vote_average: String(item.vote_average || 0),
+        });
 
-    const isCurrentlyWatched = watchedIds.includes(item.id);
-
-    if (isCurrentlyWatched) {
-      const { error } = await supabase
-        .from('watched_content')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('content_id', item.id);
-
-      if (!error) {
-        setWatchedIds((prev) => prev.filter((id) => id !== item.id));
-        removeCollectionItem(item.id);
-        showSuccess("Removed from collection");
+        navigate(`/login?${params.toString()}`);
+        return;
       }
-    } else {
-      const newItem = {
-        user_id: user.id,
-        content_id: item.id,
-        title: item.title,
-        poster_path: item.poster_path,
-        release_date: item.release_date,
-        vote_average: item.vote_average,
-        media_type: item.media_type,
-        // Store the verified released season count if available
-        season_count: (item.season_count || getCachedTvSeason(item.id)) ?? null,
-        created_at: new Date().toISOString(),
-      };
 
-      const { error } = await supabase.from('watched_content').insert(newItem);
+      const isCurrentlyWatched = watchedIds.includes(item.id);
 
-      if (!error) {
-        setWatchedIds((prev) => [...prev, item.id]);
-        addCollectionItem(newItem);
-        showSuccess("Added to your collection!");
+      // Update the card straight away instead of waiting for the server;
+      // it's rolled back below if the request fails.
+      setWatchedIds((prev) =>
+        isCurrentlyWatched ? prev.filter((id) => id !== item.id) : [...prev, item.id]
+      );
+
+      try {
+        if (isCurrentlyWatched) {
+          const { error } = await supabase
+            .from('watched_content')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('content_id', item.id);
+
+          if (error) throw error;
+          removeCollectionItem(item.id);
+          showSuccess("Removed from collection");
+        } else {
+          const newItem = {
+            user_id: user.id,
+            content_id: item.id,
+            title: item.title,
+            poster_path: item.poster_path,
+            release_date: item.release_date,
+            vote_average: item.vote_average,
+            media_type: item.media_type,
+            season_count: item.season_count,
+            created_at: new Date().toISOString(),
+          };
+
+          const { error } = await supabase.from('watched_content').insert(newItem);
+
+          if (error) throw error;
+          addCollectionItem(newItem);
+          showSuccess("Added to your collection!");
+        }
+      } catch {
+        setWatchedIds((prev) =>
+          isCurrentlyWatched ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+        );
+        showError(
+          isCurrentlyWatched
+            ? "Couldn't remove it - please try again"
+            : "Couldn't add it - please try again"
+        );
       }
+    } finally {
+      togglesInFlight.current.delete(item.id);
     }
   }, [location, navigate, watchedIds]);
 
