@@ -1,8 +1,10 @@
 "use client";
 
 import React, {
+  createContext,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -110,7 +112,7 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
 
 const PILL_TRANSITION =
-  "transform 300ms cubic-bezier(0.22, 1, 0.37, 1), opacity 150ms ease-out";
+  "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
 /* ------------------------------ sliding active pill ------------------------------ */
@@ -122,16 +124,12 @@ interface Rect {
   h: number;
 }
 
-// Remembers where each pill was last. Pages render <Navigation /> themselves, so it
-// remounts on every route change; this lets the pill still slide from its old spot.
-const lastRects: Record<string, Rect | undefined> = {};
-
 /**
  * Moves the pill straight in the DOM. No React state, so a route change or a resize
  * never re-renders anything just to reposition a div, and the transform transition
  * stays on the compositor.
  */
-function useActivePill(id: string, activeKey: string | undefined) {
+function useActivePill(activeKey: string | undefined) {
   const containerRef = useRef<HTMLElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
@@ -151,7 +149,6 @@ function useActivePill(id: string, activeKey: string | undefined) {
       // width 0 means this bar is hidden at the current breakpoint
       if (!item || item.offsetWidth === 0) {
         pill.style.opacity = "0";
-        lastRects[id] = undefined;
         return;
       }
 
@@ -170,25 +167,13 @@ function useActivePill(id: string, activeKey: string | undefined) {
         pill.style.height = `${r.h}px`;
       };
 
-      if (!placed.current) {
-        placed.current = true;
-        const from = lastRects[id];
-        if (from && (from.x !== next.x || from.y !== next.y)) {
-          // remounted by a route change: start where the previous pill ended, then slide
-          set(from, false);
-          void pill.offsetWidth; // flush so the browser sees the starting position
-          set(next, true);
-        } else {
-          set(next, false);
-        }
-      } else {
-        set(next, animate);
-      }
+      // The first placement just appears in position; after that, route changes slide.
+      set(next, placed.current && animate);
+      placed.current = true;
 
       pill.style.opacity = "1";
-      lastRects[id] = next;
     },
-    [id, activeKey]
+    [activeKey]
   );
 
   // Route change: slide.
@@ -289,7 +274,7 @@ const SidebarNav = memo(function SidebarNav({
   onNavigate: NavigateHandler;
 }) {
   const activeKey = findActiveKey(sidebarItems, activePath);
-  const { containerRef, pillRef, register } = useActivePill("sidebar", activeKey);
+  const { containerRef, pillRef, register } = useActivePill(activeKey);
 
   return (
     <nav ref={containerRef} aria-label="Primary" className="relative space-y-6">
@@ -402,7 +387,7 @@ const BottomNav = memo(function BottomNav({
     <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:bottom-3 md:px-6 lg:hidden">
       <nav
         aria-label="Primary"
-        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-black px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
+        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
       >
         {bottomNavItems.map((item) => (
           <BottomNavLink
@@ -420,8 +405,9 @@ const BottomNav = memo(function BottomNav({
 
 /* ------------------------------ component ------------------------------ */
 
-export const Navigation = () => {
-  const { pathname } = useLocation();
+// The actual nav. AppLayout renders this once and keeps it mounted across route changes.
+export const NavigationBar = () => {
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
 
   // The pill starts moving on tap instead of waiting for the next page to render.
@@ -433,16 +419,24 @@ export const Navigation = () => {
 
   const handleNavigate = useCallback<NavigateHandler>(
     (e, path) => {
-      const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+      const plainClick =
+        !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
       if (!plainClick) return; // let the browser open new tabs/windows as usual
 
       e.preventDefault();
+
+      // Tapping the tab you're already on does nothing. Link itself replaces instead of
+      // pushing when the URL is unchanged, but this handler skips Link's own click
+      // handling, so without this every tap on the active tab added a duplicate history
+      // entry and Back needed that many presses.
+      if (path === pathname + search) return;
+
       setPendingPath(path); // urgent: the pill starts sliding right away
       // Low priority: the heavy page render can't hold up the pill or the tap feedback,
       // and the old page stays on screen until the next one is ready.
       startTransition(() => navigate(path));
     },
-    [navigate, startTransition]
+    [navigate, startTransition, pathname, search]
   );
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -518,7 +512,7 @@ export const Navigation = () => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/80 px-5 py-6 lg:flex">
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
@@ -604,4 +598,19 @@ export const Navigation = () => {
       />
     </>
   );
+};
+
+/* ------------------------------ mounting ------------------------------ */
+
+// Set by AppLayout around the page content. A page that still renders its own
+// <Navigation /> then renders nothing, so the nav can never show up twice.
+const NavigationHostedContext = createContext(false);
+
+export const NavigationHost = ({ children }: { children: React.ReactNode }) => (
+  <NavigationHostedContext.Provider value={true}>{children}</NavigationHostedContext.Provider>
+);
+
+export const Navigation = () => {
+  const hosted = useContext(NavigationHostedContext);
+  return hosted ? null : <NavigationBar />;
 };
