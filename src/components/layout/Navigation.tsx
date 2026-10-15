@@ -387,7 +387,7 @@ const BottomNav = memo(function BottomNav({
     <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:bottom-3 md:px-6 lg:hidden">
       <nav
         aria-label="Primary"
-        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-neutral-950/95 px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
+        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-black px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
       >
         {bottomNavItems.map((item) => (
           <BottomNavLink
@@ -512,7 +512,7 @@ export const NavigationBar = () => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/70 px-5 py-6 lg:flex">
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/90 px-5 py-6 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
