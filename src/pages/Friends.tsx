@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Navigation } from '@/components/layout/Navigation';
+import { Navigation, notifyPendingRequestsChanged } from '@/components/layout/Navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, UserPlus, UserMinus, Check, Users, Loader2, Clock, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
@@ -162,6 +162,8 @@ const Friends = () => {
           // asymmetric, so don't claim success.
           console.error("Failed to create mirrored friendship row:", mirrorError);
           showError("Accepted, but something went wrong - try refreshing");
+          // The request itself is no longer pending, so the dot should still go.
+          notifyPendingRequestsChanged();
           fetchData(currentUser.id, true);
           return;
         }
@@ -175,6 +177,9 @@ const Friends = () => {
       }
       showSuccess("Request declined");
     }
+
+    // Accepted or declined: one less pending request, so update the notification dot now.
+    notifyPendingRequestsChanged();
     fetchData(currentUser.id, true);
   };
 

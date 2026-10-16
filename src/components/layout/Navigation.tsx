@@ -1,15 +1,12 @@
 "use client";
 
 import React, {
-  createContext,
   memo,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  useTransition,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -42,7 +39,12 @@ import {
 
 /* ------------------------------ data ------------------------------ */
 
-type IconType = React.ComponentType<{ size?: number; className?: string }>;
+type IconType = React.ComponentType<{
+  size?: number;
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+}>;
 type NavigateHandler = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
 type RegisterFn = (path: string, el: HTMLElement | null) => void;
 
@@ -89,16 +91,25 @@ interface BottomItem extends NavItem {
   className?: string;
   /** Where the "new requests" dot shows: on every size, or only where Social is hidden. */
   badge?: "always" | "mobileOnly";
+  /** Fill the icon when active (like Instagram/YouTube). Others just get a bolder stroke. */
+  solid?: boolean;
 }
 
-// One list for both bars. Mobile (<md) hides Social; tablet (md–lg) shows it.
+// One list for the bottom bar. Mobile (<md) hides Social; tablet (mdâ€“lg) shows it.
 const bottomNavItems: BottomItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "LineUp", path: "/upcoming" },
-  { icon: Sparkles, label: "Picks", path: "/recommendations" },
+  { icon: Sparkles, label: "Picks", path: "/recommendations", solid: true },
   { icon: Library, label: "Vault", path: "/collection" },
-  { icon: Users, label: "Social", path: "/friends", className: "hidden md:flex", badge: "always" },
-  { icon: User, label: "Profile", path: "/profile", badge: "mobileOnly" },
+  {
+    icon: Users,
+    label: "Social",
+    path: "/friends",
+    className: "hidden md:flex",
+    badge: "always",
+    solid: true,
+  },
+  { icon: User, label: "Profile", path: "/profile", badge: "mobileOnly", solid: true },
 ];
 
 /** "/" only matches itself; other routes also match their children (/collection/123). */
@@ -115,7 +126,30 @@ const PILL_TRANSITION =
   "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
 const COLOR = "transition-colors duration-200 ease-out";
 
-/* ------------------------------ sliding active pill ------------------------------ */
+/* ------------------------------ per-tab scroll memory ------------------------------ */
+
+// Remembers how far each route was scrolled, so coming back to a tab puts you
+// right where you left it (like Instagram / YouTube). Lives outside React on purpose:
+// pages render <Navigation /> themselves, so the component remounts on every route change.
+const scrollPositions: Record<string, number> = {};
+
+/* ------------------------------ pending-request updates ------------------------------ */
+
+export const PENDING_REQUESTS_EVENT = "smdb:pending-requests-changed";
+
+/**
+ * Call this after a friend request is accepted or declined. The notification dot updates
+ * right away. Pass the new count if you know it; otherwise it drops by one and is then
+ * re-synced from the server.
+ */
+export const notifyPendingRequestsChanged = (count?: number) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<number | undefined>(PENDING_REQUESTS_EVENT, { detail: count })
+  );
+};
+
+/* ------------------------------ sliding active pill (sidebar) ------------------------------ */
 
 interface Rect {
   x: number;
@@ -124,12 +158,15 @@ interface Rect {
   h: number;
 }
 
+// Remembers where each pill was last, so it can still slide after a remount.
+const lastRects: Record<string, Rect | undefined> = {};
+
 /**
  * Moves the pill straight in the DOM. No React state, so a route change or a resize
  * never re-renders anything just to reposition a div, and the transform transition
  * stays on the compositor.
  */
-function useActivePill(activeKey: string | undefined) {
+function useActivePill(id: string, activeKey: string | undefined) {
   const containerRef = useRef<HTMLElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
@@ -149,6 +186,7 @@ function useActivePill(activeKey: string | undefined) {
       // width 0 means this bar is hidden at the current breakpoint
       if (!item || item.offsetWidth === 0) {
         pill.style.opacity = "0";
+        lastRects[id] = undefined;
         return;
       }
 
@@ -167,13 +205,25 @@ function useActivePill(activeKey: string | undefined) {
         pill.style.height = `${r.h}px`;
       };
 
-      // The first placement just appears in position; after that, route changes slide.
-      set(next, placed.current && animate);
-      placed.current = true;
+      if (!placed.current) {
+        placed.current = true;
+        const from = lastRects[id];
+        if (from && (from.x !== next.x || from.y !== next.y)) {
+          // remounted by a route change: start where the previous pill ended, then slide
+          set(from, false);
+          void pill.offsetWidth; // flush so the browser sees the starting position
+          set(next, true);
+        } else {
+          set(next, false);
+        }
+      } else {
+        set(next, animate);
+      }
 
       pill.style.opacity = "1";
+      lastRects[id] = next;
     },
-    [activeKey]
+    [id, activeKey]
   );
 
   // Route change: slide.
@@ -221,7 +271,10 @@ const SidebarLink = memo(function SidebarLink({
   const { path } = item;
 
   // Stable callback ref: an inline arrow would be detached and re-attached on every render.
-  const setRef = useCallback((el: HTMLAnchorElement | null) => register(path, el), [register, path]);
+  const setRef = useCallback(
+    (el: HTMLAnchorElement | null) => register(path, el),
+    [register, path]
+  );
 
   return (
     <Link
@@ -274,7 +327,7 @@ const SidebarNav = memo(function SidebarNav({
   onNavigate: NavigateHandler;
 }) {
   const activeKey = findActiveKey(sidebarItems, activePath);
-  const { containerRef, pillRef, register } = useActivePill(activeKey);
+  const { containerRef, pillRef, register } = useActivePill("sidebar", activeKey);
 
   return (
     <nav ref={containerRef} aria-label="Primary" className="relative space-y-6">
@@ -327,51 +380,44 @@ const BottomNavLink = memo(function BottomNavLink({
       onClick={(e) => onNavigate(e, item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group relative flex h-11 min-w-0 flex-1 select-none flex-col items-center justify-center rounded-full",
-        "transition-colors duration-150 ease-out",
+        "relative flex h-full min-w-0 flex-1 select-none flex-col items-center justify-center gap-0.5",
+        "transition-[color,transform] duration-100 ease-out active:scale-90",
         focusRing,
         isActive ? "text-primary" : "text-muted-foreground",
         item.className
       )}
     >
-      {/* Simple fade: every item owns its highlight, no travelling pill to wait for */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-0 rounded-full bg-primary/15 ring-1 ring-inset ring-primary/30",
-          "transition-opacity duration-150 ease-out",
-          isActive ? "opacity-100" : "opacity-0"
+      <div className="relative">
+        {/* Active tab = filled / bolder icon, no pill (Instagram / YouTube style) */}
+        <Icon
+          size={22}
+          strokeWidth={isActive ? 2.5 : 1.75}
+          fill={isActive && item.solid ? "currentColor" : "none"}
+        />
+        {showBadge && (
+          <span className={item.badge === "mobileOnly" ? "md:hidden" : undefined}>
+            <span
+              aria-hidden="true"
+              className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full border-2 border-neutral-950 bg-red-500"
+            />
+            <span className="sr-only">New requests</span>
+          </span>
         )}
-      />
-
-      <div className="relative flex flex-col items-center gap-0.5 transition-transform duration-100 ease-out group-active:scale-95">
-        <div className="relative">
-          <Icon size={18} />
-          {showBadge && (
-            <span className={item.badge === "mobileOnly" ? "md:hidden" : undefined}>
-              <span
-                aria-hidden="true"
-                className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full border-2 border-neutral-950 bg-red-500"
-              />
-              <span className="sr-only">New requests</span>
-            </span>
-          )}
-        </div>
-
-        <span
-          className={cn(
-            "text-[10px] font-semibold tracking-tight transition-colors duration-150 ease-out",
-            isActive ? "text-primary" : "text-muted-foreground/80"
-          )}
-        >
-          {item.label}
-        </span>
       </div>
+
+      <span
+        className={cn(
+          "text-[10px] tracking-tight",
+          isActive ? "font-semibold" : "font-medium text-muted-foreground/80"
+        )}
+      >
+        {item.label}
+      </span>
     </Link>
   );
 });
 
-// One bar for mobile and tablet instead of two hidden/shown copies of the same DOM.
+// Docked to the bottom edge, like Instagram / YouTube. One bar for mobile and tablet.
 const BottomNav = memo(function BottomNav({
   activePath,
   pendingCount,
@@ -384,11 +430,11 @@ const BottomNav = memo(function BottomNav({
   const activeKey = findActiveKey(bottomNavItems, activePath);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:bottom-3 md:px-6 lg:hidden">
-      <nav
-        aria-label="Primary"
-        className="pointer-events-auto flex h-[58px] w-full max-w-sm items-center justify-between gap-1.5 rounded-full border border-white/15 bg-black px-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.85)] ring-1 ring-white/10 md:max-w-md"
-      >
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+    >
+      <div className="mx-auto flex h-14 w-full max-w-md items-stretch justify-around px-2">
         {bottomNavItems.map((item) => (
           <BottomNavLink
             key={item.path}
@@ -398,46 +444,41 @@ const BottomNav = memo(function BottomNav({
             showBadge={!!item.badge && pendingCount > 0}
           />
         ))}
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 });
 
 /* ------------------------------ component ------------------------------ */
 
-// The actual nav. AppLayout renders this once and keeps it mounted across route changes.
-export const NavigationBar = () => {
-  const { pathname, search } = useLocation();
+export const Navigation = () => {
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-
-  // The pill starts moving on tap instead of waiting for the next page to render.
-  // isPending stays true until the transition commits (or is abandoned), so there is no
-  // reset effect and no timeout safety net to maintain.
-  const [isPending, startTransition] = useTransition();
-  const [pendingPath, setPendingPath] = useState<string | null>(null);
-  const activePath = isPending && pendingPath ? pendingPath : pathname;
 
   const handleNavigate = useCallback<NavigateHandler>(
     (e, path) => {
-      const plainClick =
-        !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+      const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
       if (!plainClick) return; // let the browser open new tabs/windows as usual
 
       e.preventDefault();
 
-      // Tapping the tab you're already on does nothing. Link itself replaces instead of
-      // pushing when the URL is unchanged, but this handler skips Link's own click
-      // handling, so without this every tap on the active tab added a duplicate history
-      // entry and Back needed that many presses.
-      if (path === pathname + search) return;
+      // Tapping the tab you're already on scrolls it back to the top.
+      if (pathname === path) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
-      setPendingPath(path); // urgent: the pill starts sliding right away
-      // Low priority: the heavy page render can't hold up the pill or the tap feedback,
-      // and the old page stays on screen until the next one is ready.
-      startTransition(() => navigate(path));
+      // Remember where this page was, then switch immediately: no waiting on the next page.
+      scrollPositions[pathname] = window.scrollY;
+      navigate(path);
     },
-    [navigate, startTransition, pathname, search]
+    [navigate, pathname]
   );
+
+  // Restore the scroll position of the page we just landed on (0 for a page not seen yet).
+  useLayoutEffect(() => {
+    window.scrollTo(0, scrollPositions[pathname] ?? 0);
+  }, [pathname]);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const cachedAuth = getCachedAuthState();
@@ -493,6 +534,34 @@ export const NavigationBar = () => {
     };
   }, []);
 
+  // A friend request was accepted/declined somewhere in the app: update the dot now,
+  // then re-sync from the server so the cached profile stays correct too.
+  useEffect(() => {
+    let isMounted = true;
+
+    const onChange = (e: Event) => {
+      const next = (e as CustomEvent<number | undefined>).detail;
+      setPendingCount((current) =>
+        typeof next === "number" ? Math.max(0, next) : Math.max(0, current - 1)
+      );
+
+      void (async () => {
+        try {
+          const data = await fetchProfileData(true);
+          if (isMounted && data) setPendingCount(data.pendingCount);
+        } catch (error) {
+          console.error("Pending count refresh failed:", error);
+        }
+      })();
+    };
+
+    window.addEventListener(PENDING_REQUESTS_EVENT, onChange);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(PENDING_REQUESTS_EVENT, onChange);
+    };
+  }, []);
+
   const handleLogout = useCallback(async () => {
     clearCachedProfile();
     clearCachedStats();
@@ -512,7 +581,7 @@ export const NavigationBar = () => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-neutral-950/90 px-5 py-6 lg:flex">
+      <aside className="sticky top-0 z-40 hidden h-screen w-72 select-none flex-col justify-between border-r border-white/10 bg-black px-5 py-6 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-primary/[0.07] to-transparent"
@@ -521,6 +590,7 @@ export const NavigationBar = () => {
         <div>
           <Link
             to="/"
+            onClick={(e) => handleNavigate(e, "/")}
             className={cn("group mb-8 flex items-center gap-3.5 rounded-xl px-2 py-1.5", focusRing)}
           >
             <div className="relative">
@@ -541,7 +611,7 @@ export const NavigationBar = () => {
           </Link>
 
           <SidebarNav
-            activePath={activePath}
+            activePath={pathname}
             pendingCount={pendingCount}
             onNavigate={handleNavigate}
           />
@@ -592,7 +662,7 @@ export const NavigationBar = () => {
 
       {/* Mobile + tablet bottom bar */}
       <BottomNav
-        activePath={activePath}
+        activePath={pathname}
         pendingCount={pendingCount}
         onNavigate={handleNavigate}
       />
@@ -600,17 +670,3 @@ export const NavigationBar = () => {
   );
 };
 
-/* ------------------------------ mounting ------------------------------ */
-
-// Set by AppLayout around the page content. A page that still renders its own
-// <Navigation /> then renders nothing, so the nav can never show up twice.
-const NavigationHostedContext = createContext(false);
-
-export const NavigationHost = ({ children }: { children: React.ReactNode }) => (
-  <NavigationHostedContext.Provider value={true}>{children}</NavigationHostedContext.Provider>
-);
-
-export const Navigation = () => {
-  const hosted = useContext(NavigationHostedContext);
-  return hosted ? null : <NavigationBar />;
-};
