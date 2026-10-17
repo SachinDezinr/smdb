@@ -362,7 +362,7 @@ const BottomNavLink = memo(function BottomNavLink({
       onClick={(e) => onNavigate(e, item.path)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "relative flex h-full min-w-0 flex-1 select-none flex-col items-center justify-center gap-px",
+        "relative flex h-full min-w-0 flex-1 select-none flex-col items-center justify-center gap-[1.5px]",
         "transition-[color,transform] duration-100 ease-out active:scale-90",
         focusRing,
         isActive ? "text-primary" : "text-muted-foreground",
@@ -373,7 +373,7 @@ const BottomNavLink = memo(function BottomNavLink({
         {/* Active tab = filled / bolder icon, no pill (Instagram / YouTube style) */}
         <Icon
           size={20}
-          strokeWidth={isActive ? 2.5 : 1.75}
+          strokeWidth={isActive ? 2.44 : 1.77}
           fill={isActive && item.solid ? "currentColor" : "none"}
         />
         {showBadge && (
